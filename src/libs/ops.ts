@@ -76,5 +76,4 @@ inline function lte(a, b) {
 //Returns 1 if the first input is larger than the second or they are equal, and zero otherwise.
 inline function gte(a, b) {
     state = or(gt(a, b), equal(a, b));
-}`
-;
+}`;
