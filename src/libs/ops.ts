@@ -1,14 +1,8 @@
 export default
 `//Returns on 0 on 0, and 1 for anything else.
-//
-//Essentially, it works by taking the arctan function, which goes from -(pi/2) to pi/2
-//and applying an abs to it, making it go from pi/2 to pi/2. Then, it scales it to one
-//by dividing by pi/2, making it go from 1 to 1. Finally, the ceil function makes any
-//non-zero output 1 and 0 otherwise.
 inline function select(a) {
-    state = arctan(a);
+    state = a / (abs(a) + 1);
     state = abs(state);
-    state = state / (pi/2);
     state = ceil(state);
 }
 
