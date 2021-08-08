@@ -1,6 +1,7 @@
 import {Expression, grammar, OuterConstDeclaration, OuterDeclaration, OuterFunctionDeclaration, ParserOutput, semantic, Statement} from "./grammar";
 import ops from "../libs/ops";
 import {create, all} from "mathjs";
+import stdlib from "../libs/stdlib";
 
 const math = create(all);
 
@@ -28,6 +29,7 @@ export const Compile = (input: string) : string => {
 
     const inlines: Record<string, Inline> = {
         ...GetInlines(tree),
+        ...GetInlines(GetTree(stdlib)),
         ...GetInlines(GetTree(ops))
     };
 
