@@ -75,7 +75,7 @@ LogiMat {
       | "-" PriExp   -- neg
       | Sum
       | identifierName "(" ListOf<Expression, ","> ")"   -- func
-      | identifier   -- var
+      | identifier
       | number
 
     number  (a number)
@@ -159,3 +159,120 @@ LogiMat {
     singleLineComment = "//" (~lineTerminator any)*
 }
 `);
+
+export const semantic = grammar.createSemantics();
+
+semantic.addOperation("parse", {
+    _terminal(){
+        return this.sourceString;
+    },
+    Program(parts){
+        //console.log(parts)
+        return parts.children.map(part => part.parse());
+    },
+    ExportOuterConstDeclaration(_1, _2, _3, _4, name, _6, expr, _8){
+        return {type: "const", modifier: "export", name: name.parse(), expr: expr.parse()};
+    },
+    InlineOuterConstDeclaration(_1, _2, _3, _4, name, _6, expr, _8){
+        return {type: "const", modifier: "inline", name: name.parse(), expr: expr.parse()};
+    },
+    ExportFunctionDeclaration(_1, _2, _3, _4, name, _6, args, _8, block){
+        return {type: "function", modifier: "export", name: name.parse(), args: args.parse(), block: block.parse()};
+    },
+    InlineFunctionDeclaration(_1, _2, _3, _4, name, _6, args, _8, block){
+        return {type: "function", modifier: "inline", name: name.parse(), args: args.parse(), block: block.parse()};
+    },
+    FunctionArgs(l){
+        return l.asIteration().parse();
+    },
+    identifier(_){
+        return this.sourceString;
+    },
+    identifierName(_, _2){
+        return this.sourceString;
+    },
+    exportIdentifier(_){
+        return this.sourceString;
+    },
+    Expression(e){
+        return e.parse();
+    },
+    AddExp_plus(e, _, e2){
+        return {type: "+", args: [e.parse(), e2.parse()]};
+    },
+    AddExp_minus(e, _, e2){
+        return {type: "-", args: [e.parse(), e2.parse()]};
+    },
+    MulExp_times(e, _, e2){
+        return {type: "*", args: [e.parse(), e2.parse()]};
+    },
+    MulExp_divide(e, _, e2){
+        return {type: "/", args: [e.parse(), e2.parse()]};
+    },
+    ExpExp_power(e, _, e2){
+        return {type: "^", args: [e.parse(), e2.parse()]};
+    },
+    PriExp_paren(_, e, _2){
+        return e.parse();
+    },
+    PriExp_pos(_, e){
+        return e.parse();
+    },
+    PriExp_neg(_, e){
+        return {type: "n", args: [e.parse()]};
+    },
+    PriExp_func(n, _, l, _2){
+        return {type: "f", args: [n.parse(), l.asIteration().parse()]}
+    },
+    number_fract(_, _2, _3){
+        return this.sourceString;
+    },
+    number_whole(_){
+        return this.sourceString;
+    },
+    Block(_, e, _2){
+        return e.children.map(part => part.parse());
+    },
+    ConstDeclaration(_, _2, id, _3, expr, _4){
+        return {type: "const", name: id.parse(), expr: expr.parse()};
+    },
+    SetState(_, _2, expr, _3){
+        return {type: "state", expr: expr.parse()};
+    },
+    IfStatement(_, _2, condition, _3, ifaction, _4, elseaction){
+        return {type: "if", condition: condition.parse(), ifaction: ifaction.parse(), elseaction: elseaction.parse()};
+    },
+    Sum(_, _2, v1, _3, expr1, _4, v2, _5, expr2, _6, action){
+        return {type: "sum", v1: v1.parse(), v2: v2.parse(), n1: expr1.parse(), n2: expr2.parse()};
+    },
+    Statement(e){
+        return e.parse();
+    },
+    And_and(e, _, e2){
+        return {type: "&&", args: [e.parse(), e2.parse()]};
+    },
+    Or_or(e, _, e2){
+        return {type: "||", args: [e.parse(), e2.parse()]};
+    },
+    NotOperator(_, e){
+        return {type: "!", args: [e.parse()]};
+    },
+    EqualOperator(e, _, e2){
+        return {type: "==", args: [e.parse(), e2.parse()]};
+    },
+    NotEqualOperator(e, _, e2){
+        return {type: "!=", args: [e.parse(), e2.parse()]};
+    },
+    LessThanOperator(e, _, e2){
+        return {type: "<", args: [e.parse(), e2.parse()]};
+    },
+    LessThanEqualOperator(e, _, e2){
+        return {type: "<=", args: [e.parse(), e2.parse()]};
+    },
+    GreaterThanOperator(e, _, e2){
+        return {type: ">", args: [e.parse(), e2.parse()]};
+    },
+    GreaterThanEqualOperator(e, _, e2){
+        return {type: "=>", args: [e.parse(), e2.parse()]};
+    },
+});
