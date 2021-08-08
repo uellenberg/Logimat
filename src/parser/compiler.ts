@@ -1,5 +1,6 @@
 import {Expression, grammar, OuterConstDeclaration, OuterDeclaration, OuterFunctionDeclaration, ParserOutput, semantic, Statement} from "./grammar";
 import ops from "../libs/ops";
+import {simplify} from "mathjs";
 
 /**
  * Compiles LogiMat to a math function (or multiple). Each function/variable will be on a separate line.
@@ -18,8 +19,8 @@ export const Compile = (input: string) : string => {
     for (const declaration of tree) {
         if (declaration.type === "inline") continue;
 
-        if (declaration.type === "function") out.push(declaration.name + "(" + declaration["args"].join(",") + ")" + "=" + CompileBlock((<OuterFunctionDeclaration>declaration).block, inlines));
-        else out.push(declaration.name + "=" + CompileExpression((<OuterConstDeclaration>declaration).expr, inlines));
+        if (declaration.type === "function") out.push(declaration.name + "(" + declaration["args"].join(",") + ")" + "=" + simplify(CompileBlock((<OuterFunctionDeclaration>declaration).block, inlines)).toString().replace(/\s+/g, ""));
+        else out.push(declaration.name + "=" + simplify(CompileExpression((<OuterConstDeclaration>declaration).expr, inlines)).toString().replace(/\s+/g, ""));
     }
     return out.join("\n");
 }
