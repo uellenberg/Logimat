@@ -295,7 +295,7 @@ export interface OuterFunctionDeclaration {
     modifier: string;
     name: string;
     args: string[];
-    body: Statement[];
+    block: Statement[];
 }
 export interface Expression {
     type: string;
