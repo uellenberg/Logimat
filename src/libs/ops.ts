@@ -70,4 +70,9 @@ inline function lte(a, b) {
 //Returns 1 if the first input is larger than the second or they are equal, and zero otherwise.
 inline function gte(a, b) {
     state = or(gt(a, b), equal(a, b));
+}
+
+//Returns b if a is 1, and c if a is 0.
+inline function if(a, b, c) {
+    state = a*b + not(a)*c;
 }`;
