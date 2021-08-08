@@ -276,3 +276,41 @@ semantic.addOperation("parse", {
         return {type: "=>", args: [e.parse(), e2.parse()]};
     },
 });
+
+export type ParserOutput = OuterDeclaration[];
+export type OuterDeclaration = OuterConstDeclaration | OuterFunctionDeclaration;
+export interface OuterConstDeclaration {
+    type: string;
+    modifier: string;
+    name: string;
+    expr: Expression;
+}
+export interface OuterFunctionDeclaration {
+    type: string;
+    modifier: string;
+    name: string;
+    args: string[];
+    body: Statement[];
+}
+export interface Expression {
+    type: string;
+    args: (string | object)[];
+}
+export type Statement = SetState | IfStatement | Sum;
+export interface SetState {
+    type: string;
+    expr: Expression;
+}
+export interface IfStatement {
+    type: string;
+    condition: Expression;
+    ifaction: Statement[];
+    elseaction: Statement[];
+}
+export interface Sum {
+    type: string;
+    v1: string;
+    v2: string;
+    n1: string;
+    n2: string;
+}
