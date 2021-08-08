@@ -19,10 +19,42 @@ LogiMat {
     
     InnerDeclaration = ConstDeclaration
                      | SetState
+                     | IfStatement
 
     ConstDeclaration = "const" #space identifier "=" Expression ";"
 
     SetState = "state" "=" Expression ";"
+
+    IfStatement = "if" "(" Statement ")" Block "else" Block
+
+    Sum = "sum" "(" exportIdentifier "=" Expression ";" exportIdentifier "<" Expression ")" Block
+
+    Statement = And
+
+    And
+      = And "&&" Or   -- and
+      | Or
+
+    Or
+      = Or "||" Operator   -- or
+      | Operator
+
+    Operator = NotOperator
+             | EqualOperator
+             | NotEqualOperator
+             | LessThanOperator
+             | LessThanEqualOperator
+             | GreaterThanOperator
+             | GreaterThanEqualOperator
+             | "(" Operator ")"   -- paren
+
+    NotOperator = "!" Operator
+    EqualOperator = Expression "==" Expression
+    NotEqualOperator = Expression "!=" Expression
+    LessThanOperator = Expression "<" Expression
+    LessThanEqualOperator = Expression ("<=" | "=<") Expression
+    GreaterThanOperator = Expression ">" Expression
+    GreaterThanEqualOperator = Expression (">=" | "=>") Expression
 
     Expression = AddExp
 
@@ -41,8 +73,9 @@ LogiMat {
       = "(" Expression ")"  -- paren
       | "+" PriExp   -- pos
       | "-" PriExp   -- neg
+      | Sum
       | identifierName "(" ListOf<Expression, ","> ")"   -- func
-      | identifierName   -- var
+      | identifier   -- var
       | number
 
     number  (a number)
@@ -79,6 +112,7 @@ LogiMat {
              | "sign"
              | "ln"
              | "log"
+             | "sum"
 
     exportIdentifier = "a".."z"
 
