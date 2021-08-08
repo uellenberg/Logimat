@@ -7,6 +7,9 @@ const math = create(all);
 const functions = {
     sum(a, b, c, d) {
         return 1;
+    },
+    sqrt(a) {
+        return 1;
     }
 };
 
@@ -42,7 +45,10 @@ const SimplifyExpression = (input: string) : string => {
     return math.simplify(input).toString({
         handler: {
             sum(node, options){
-                return `\\sum_{${node.args[0].toString(options)}=${node.args[1].toString(options)}}^{${node.args[2].toString(options)}} ${node.args[3].toString(options)}`;
+                return `(\\sum_{${node.args[0].toString(options)}=${node.args[1].toString(options)}}^{${node.args[2].toString(options)}}{${node.args[3].toString(options)}})`;
+            },
+            sqrt(node, options){
+                return `\\sqrt{${node.args[0]}}`;
             }
         }
     }).replace(/\s+/g, "");
@@ -149,7 +155,7 @@ const CompileExpression = (expression: Expression, inlines: Record<string, Inlin
             if(inlines.hasOwnProperty(name)) return CompileExpression(inlines[name].value["expr"], inlines, vars);
             return name;
         case "sum":
-            return "sum(" + expression.args[0] + "," + expression.args[1] + "," + expression.args[2] + "," + CompileBlock(<Statement[]>expression.args[3], inlines, vars) + ")";
+            return "sum(" + args[0] + "," + args[1] + "," + args[2] + "," + CompileBlock(<Statement[]>args[3], inlines, vars) + ")";
     }
 
     return "";
