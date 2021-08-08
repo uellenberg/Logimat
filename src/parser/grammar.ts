@@ -120,6 +120,7 @@ LogiMat {
                   | "inline"
                   | "const"
                   | "function"
+                  | "state"
                   | builtIns
     identifier (an identifier) = ~reservedWord identifierName
     identifierName (an identifier) = letter identifierPart*
