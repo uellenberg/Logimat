@@ -77,6 +77,7 @@ LogiMat {
       | identifierName "(" ListOf<Expression, ","> ")"   -- func
       | identifier   -- var
       | number
+      | "state"
 
     number  (a number)
       = digit* "." digit+  -- fract
