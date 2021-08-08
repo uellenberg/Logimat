@@ -126,8 +126,9 @@ const CompileExpression = (expression: Expression, inlines: Record<string, Inlin
         case "v":
             const name = <string>expression.args[0];
 
-            if(!vars.hasOwnProperty(name)) return name;
-            return vars[name];
+            if(vars.hasOwnProperty(name)) return vars[name];
+            if(inlines.hasOwnProperty(name)) return CompileExpression(inlines[name].value["expr"], inlines, vars);
+            return name;
         case "sum":
             return "";
     }
