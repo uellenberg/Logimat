@@ -1,6 +1,18 @@
 import {Expression, grammar, OuterConstDeclaration, OuterDeclaration, OuterFunctionDeclaration, ParserOutput, semantic, Statement} from "./grammar";
 import ops from "../libs/ops";
-import {simplify} from "mathjs";
+import {create, all} from "mathjs";
+
+const math = create(all);
+
+const functions = {
+    sum(a, b, c, d) {
+        return 1;
+    }
+};
+
+math.import(functions, {
+    override: true
+});
 
 /**
  * Compiles LogiMat to a math function (or multiple). Each function/variable will be on a separate line.
@@ -19,10 +31,21 @@ export const Compile = (input: string) : string => {
     for (const declaration of tree) {
         if (declaration.modifier === "inline") continue;
 
-        if (declaration.type === "function") out.push(declaration.name + "(" + declaration["args"].join(",") + ")" + "=" + simplify(CompileBlock((<OuterFunctionDeclaration>declaration).block, inlines)).toString().replace(/\s+/g, ""));
-        else out.push(declaration.name + "=" + simplify(CompileExpression((<OuterConstDeclaration>declaration).expr, inlines)).toString().replace(/\s+/g, ""));
+        if (declaration.type === "function") out.push(declaration.name + "(" + declaration["args"].join(",") + ")" + "=" + SimplifyExpression(CompileBlock((<OuterFunctionDeclaration>declaration).block, inlines)));
+        else out.push(declaration.name + "=" + SimplifyExpression(CompileExpression((<OuterConstDeclaration>declaration).expr, inlines)));
     }
+
     return out.join("\n");
+}
+
+const SimplifyExpression = (input: string) : string => {
+    return math.simplify(input).toString({
+        handler: {
+            sum(node, options){
+                return `\\sum_{${node.args[0].toString(options)}=${node.args[1].toString(options)}}^{${node.args[2].toString(options)}} ${node.args[3].toString(options)}`;
+            }
+        }
+    }).replace(/\s+/g, "");
 }
 
 const GetTree = (input: string) : ParserOutput => {
@@ -83,10 +106,6 @@ const CompileBlock = (input: Statement[], inlines: Record<string, Inline>, vars:
                     ...newVars,
                     state: out
                 });
-
-
-                break;
-            case "sum":
                 break;
         }
     }
@@ -130,7 +149,7 @@ const CompileExpression = (expression: Expression, inlines: Record<string, Inlin
             if(inlines.hasOwnProperty(name)) return CompileExpression(inlines[name].value["expr"], inlines, vars);
             return name;
         case "sum":
-            return "";
+            return "sum(" + expression.args[0] + "," + expression.args[1] + "," + expression.args[2] + "," + CompileBlock(<Statement[]>expression.args[3], inlines, vars) + ")";
     }
 
     return "";

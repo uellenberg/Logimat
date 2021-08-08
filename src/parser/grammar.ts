@@ -251,7 +251,7 @@ semantic.addOperation("parse", {
         return {type: "if", condition: condition.parse(), ifaction: ifaction.parse(), elseaction: elseaction.parse()};
     },
     Sum(_, _2, v, _3, expr1, _4, expr2, _6, action){
-        return {type: "sum", v: v.parse(), n1: expr1.parse(), n2: expr2.parse()};
+        return {type: "sum", args: [v.parse(), expr1.parse(), expr2.parse(), action.parse()]};
     },
     Statement(e){
         return e.parse();
