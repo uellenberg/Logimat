@@ -9,10 +9,25 @@ const functions = {
     sum(a, b, c, d) {
         return 1;
     },
-    sqrt(a) {
+    mod(a, b){
+        return 1;
+    },
+    abs(a){
+        return 1;
+    },
+    sqrt(a){
         return 1;
     }
 };
+
+functions.sum["toTex"] = "\\left(\\sum_{${args[0]}=${args[1]}}^{${args[2]}}${args[3]}\\right)";
+functions.mod["toTex"] = "\\operatorname{mod}\\left(${args[0]},\\ ${args[1]}\\right)";
+functions.abs["toTex"] = "\\operatorname{abs}\\left(${args[0]}\\right)";
+functions.sqrt["toTex"] = "\\sqrt{${args[0]}}";
+
+math.import(functions, {
+    override: true
+});
 
 math.import(functions, {
     override: true
@@ -21,8 +36,9 @@ math.import(functions, {
 /**
  * Compiles LogiMat to a math function (or multiple). Each function/variable will be on a separate line.
  * @param input {string} - is the input LogiMat code that will be compiled.
+ * @param useTex {boolean} - is a value indicating if the output should be converted to Tex.
  */
-export const Compile = (input: string) : string => {
+export const Compile = (input: string, useTex: boolean = false) : string => {
     const tree = GetTree(input);
 
     let out: string[] = [];
@@ -36,24 +52,27 @@ export const Compile = (input: string) : string => {
     for (const declaration of tree) {
         if (declaration.modifier === "inline") continue;
 
-        if (declaration.type === "function") out.push(declaration.name + "(" + declaration["args"].join(",") + ")" + "=" + SimplifyExpression(CompileBlock((<OuterFunctionDeclaration>declaration).block, inlines)));
-        else out.push(declaration.name + "=" + SimplifyExpression(CompileExpression((<OuterConstDeclaration>declaration).expr, inlines)));
+        if (declaration.type === "function") out.push(declaration.name + "(" + declaration["args"].join(",") + ")" + "=" + SimplifyExpression(CompileBlock((<OuterFunctionDeclaration>declaration).block, inlines), useTex));
+        else out.push(declaration.name + "=" + SimplifyExpression(CompileExpression((<OuterConstDeclaration>declaration).expr, inlines), useTex));
     }
 
     return out.join("\n");
 }
 
-const SimplifyExpression = (input: string) : string => {
-    return math.simplify(input).toString({
-        handler: {
-            sum(node, options){
-                return `(\\sum_{${node.args[0].toString(options)}=${node.args[1].toString(options)}}^{${node.args[2].toString(options)}}{${node.args[3].toString(options)}})`;
-            },
-            sqrt(node, options){
-                return `\\sqrt{${node.args[0]}}`;
-            }
+const options = {
+    handler: {
+        sum(node, options){
+            return `(\\sum_{${node.args[0].toString(options)}=${node.args[1].toString(options)}}^{${node.args[2].toString(options)}}{${node.args[3].toString(options)}})`;
+        },
+        sqrt(node, options){
+            return `\\sqrt{${node.args[0].toString(options)}}`;
         }
-    }).replace(/\s+/g, "");
+    }
+};
+
+const SimplifyExpression = (input: string, useTex: boolean) : string => {
+    const res = math.simplify(input);
+    return useTex ? res.toTex() : res.toString(options).replace(/\s+/g, "");
 }
 
 const GetTree = (input: string) : ParserOutput => {
