@@ -17,7 +17,7 @@ export const Compile = (input: string) : string => {
     };
 
     for (const declaration of tree) {
-        if (declaration.type === "inline") continue;
+        if (declaration.modifier === "inline") continue;
 
         if (declaration.type === "function") out.push(declaration.name + "(" + declaration["args"].join(",") + ")" + "=" + simplify(CompileBlock((<OuterFunctionDeclaration>declaration).block, inlines)).toString().replace(/\s+/g, ""));
         else out.push(declaration.name + "=" + simplify(CompileExpression((<OuterConstDeclaration>declaration).expr, inlines)).toString().replace(/\s+/g, ""));
