@@ -1,4 +1,5 @@
-//Returns on 0 on 0, and 1 for anything else.
+export default
+`//Returns on 0 on 0, and 1 for anything else.
 //
 //Essentially, it works by taking the arctan function, which goes from -(pi/2) to pi/2
 //and applying an abs to it, making it go from pi/2 to pi/2. Then, it scales it to one
@@ -75,4 +76,5 @@ inline function lte(a, b) {
 //Returns 1 if the first input is larger than the second or they are equal, and zero otherwise.
 inline function gte(a, b) {
     state = or(gt(a, b), equal(a, b));
-}
+}`
+;
