@@ -75,7 +75,7 @@ LogiMat {
       | "-" PriExp   -- neg
       | Sum
       | identifierName "(" ListOf<Expression, ","> ")"   -- func
-      | identifier
+      | identifier   -- var
       | number
 
     number  (a number)
@@ -224,6 +224,9 @@ semantic.addOperation("parse", {
     PriExp_func(n, _, l, _2){
         return {type: "f", args: [n.parse(), l.asIteration().parse()]}
     },
+    PriExp_var(e){
+        return {type: "v", args: [e.parse()]};
+    },
     number_fract(_, _2, _3){
         return this.sourceString;
     },
@@ -249,31 +252,31 @@ semantic.addOperation("parse", {
         return e.parse();
     },
     And_and(e, _, e2){
-        return {type: "&&", args: [e.parse(), e2.parse()]};
+        return {type: "f", args: ["and", [e.parse(), e2.parse()]]};
     },
     Or_or(e, _, e2){
-        return {type: "||", args: [e.parse(), e2.parse()]};
+        return {type: "f", args: ["or", [e.parse(), e2.parse()]]};
     },
     NotOperator(_, e){
-        return {type: "!", args: [e.parse()]};
+        return {type: "f", args: ["not", [e.parse()]]};
     },
     EqualOperator(e, _, e2){
-        return {type: "==", args: [e.parse(), e2.parse()]};
+        return {type: "f", args: ["equal", [e.parse(), e2.parse()]]};
     },
     NotEqualOperator(e, _, e2){
-        return {type: "!=", args: [e.parse(), e2.parse()]};
+        return {type: "f", args: ["not", [{type: "f", args: ["equal", [e.parse(), e2.parse()]]}]]};
     },
     LessThanOperator(e, _, e2){
-        return {type: "<", args: [e.parse(), e2.parse()]};
+        return {type: "f", args: ["lt", [e.parse(), e2.parse()]]};
     },
     LessThanEqualOperator(e, _, e2){
-        return {type: "<=", args: [e.parse(), e2.parse()]};
+        return {type: "f", args: ["lte", [e.parse(), e2.parse()]]};
     },
     GreaterThanOperator(e, _, e2){
-        return {type: ">", args: [e.parse(), e2.parse()]};
+        return {type: "f", args: ["gt", [e.parse(), e2.parse()]]};
     },
     GreaterThanEqualOperator(e, _, e2){
-        return {type: "=>", args: [e.parse(), e2.parse()]};
+        return {type: "f", args: ["gte", [e.parse(), e2.parse()]]};
     },
 });
 
