@@ -7,12 +7,25 @@
   resolved "https://registry.yarnpkg.com/@types/node/-/node-16.4.13.tgz#7dfd9c14661edc65cccd43a29eb454174642370d"
   integrity sha512-bLL69sKtd25w7p1nvg9pigE4gtKVpGTPojBFLMkGHXuUgap2sLqQt2qUnqmVCDfzGUL0DRNZP+1prIZJbMeAXg==
 
-parselib@^1.0.0:
-  version "1.0.0"
-  resolved "https://registry.yarnpkg.com/parselib/-/parselib-1.0.0.tgz#681a25a4614c75a8bb211b1786a90e33d1e48c02"
-  integrity sha512-G+pcgRKqcJKODRBJdIKxJh2IQPUUB4/HCNG0uAcubPg1pD1eFEHu66mNnF95jRW/Kv17nnzpeEi69gcWSWteRA==
+is-buffer@^2.0.4:
+  version "2.0.5"
+  resolved "https://registry.yarnpkg.com/is-buffer/-/is-buffer-2.0.5.tgz#ebc252e400d22ff8d77fa09888821a24a658c191"
+  integrity sha512-i2R6zNFDwgEHJyQUtJEk0XFi1i0dPFn/oqjK3/vPCcDeJvW5NQ83V8QbicfF1SupOaB0h8ntgBC2YiE7dfyctQ==
+
+ohm-js@^15.5.0:
+  version "15.5.0"
+  resolved "https://registry.yarnpkg.com/ohm-js/-/ohm-js-15.5.0.tgz#45d23f4bbf52281853d35524ccf62a0a4663f8b4"
+  integrity sha512-pmTx/SXZLMekLXJi0V6TEfESpPCSd5B95pWKaY+1ZIgvV5IEUiP2K3EdkESbLZ4VpO94oNCEJ2OTmQyzxSklmA==
+  dependencies:
+    is-buffer "^2.0.4"
+    util-extend "^1.0.3"
 
 typescript@^4.3.5:
   version "4.3.5"
   resolved "https://registry.yarnpkg.com/typescript/-/typescript-4.3.5.tgz#4d1c37cc16e893973c45a06886b7113234f119f4"
   integrity sha512-DqQgihaQ9cUrskJo9kIyW/+g0Vxsk8cDtZ52a3NGh0YNTfpUSArXSohyUGnvbPazEPLu398C0UxmKSOrPumUzA==
+
+util-extend@^1.0.3:
+  version "1.0.3"
+  resolved "https://registry.yarnpkg.com/util-extend/-/util-extend-1.0.3.tgz#a7c216d267545169637b3b6edc6ca9119e2ff93f"
+  integrity sha1-p8IW0mdUUWljeztu3GypEZ4v+T8=

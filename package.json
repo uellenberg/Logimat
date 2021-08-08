@@ -30,6 +30,6 @@
     "typescript": "^4.3.5"
   },
   "dependencies": {
-    "parselib": "^1.0.0"
+    "ohm-js": "^15.5.0"
   }
 }
