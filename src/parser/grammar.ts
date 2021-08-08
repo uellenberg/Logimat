@@ -77,7 +77,7 @@ LogiMat {
       | identifierName "(" ListOf<Expression, ","> ")"   -- func
       | identifier   -- var
       | number
-      | "state"
+      | "state"   -- state
 
     number  (a number)
       = digit* "." digit+  -- fract
@@ -228,6 +228,9 @@ semantic.addOperation("parse", {
     },
     PriExp_var(e){
         return {type: "v", args: [e.parse()]};
+    },
+    PriExp_state(e){
+        return {type: "v", args: ["state"]};
     },
     number_fract(_, _2, _3){
         return this.sourceString;
