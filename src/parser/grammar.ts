@@ -27,7 +27,7 @@ LogiMat {
 
     IfStatement = "if" "(" Statement ")" Block "else" Block
 
-    Sum = "sum" "(" exportIdentifier "=" Expression ";" exportIdentifier "<" Expression ")" Block
+    Sum = "sum" "(" exportIdentifier "=" Expression ";" Expression ")" Block
 
     Statement = And
 
@@ -245,8 +245,8 @@ semantic.addOperation("parse", {
     IfStatement(_, _2, condition, _3, ifaction, _4, elseaction){
         return {type: "if", condition: condition.parse(), ifaction: ifaction.parse(), elseaction: elseaction.parse()};
     },
-    Sum(_, _2, v1, _3, expr1, _4, v2, _5, expr2, _6, action){
-        return {type: "sum", v1: v1.parse(), v2: v2.parse(), n1: expr1.parse(), n2: expr2.parse()};
+    Sum(_, _2, v, _3, expr1, _4, expr2, _6, action){
+        return {type: "sum", v: v.parse(), n1: expr1.parse(), n2: expr2.parse()};
     },
     Statement(e){
         return e.parse();
@@ -312,8 +312,7 @@ export interface IfStatement {
 }
 export interface Sum {
     type: string;
-    v1: string;
-    v2: string;
+    v: string;
     n1: string;
     n2: string;
 }
