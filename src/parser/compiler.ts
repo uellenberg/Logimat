@@ -17,6 +17,15 @@ const functions = {
     },
     sqrt(a){
         return 1;
+    },
+    pow(a, b){
+        return 1;
+    },
+    log(a){
+        return math.log(a, 10);
+    },
+    ln(a){
+        return math.log(a, math.e);
     }
 };
 
@@ -24,6 +33,7 @@ functions.sum["toTex"] = "\\left(\\sum_{${args[0]}=${args[1]}}^{${args[2]}}${arg
 functions.mod["toTex"] = "\\operatorname{mod}\\left(${args[0]},\\ ${args[1]}\\right)";
 functions.abs["toTex"] = "\\operatorname{abs}\\left(${args[0]}\\right)";
 functions.sqrt["toTex"] = "\\sqrt{${args[0]}}";
+functions.pow["toTex"] = "{${args[0]}}^{${args[1]}}";
 
 math.import(functions, {
     override: true
@@ -66,6 +76,9 @@ const options = {
         },
         sqrt(node, options){
             return `\\sqrt{${node.args[0].toString(options)}}`;
+        },
+        pow(node, options){
+            return `{${node.args[0]}}^{${node.args[1]}}`;
         }
     }
 };
@@ -156,7 +169,7 @@ const CompileExpression = (expression: Expression, inlines: Record<string, Inlin
         case "/":
             return "(" + args[0] + ")/(" + args[1] + ")";
         case "^":
-            return "(" + args[0] + ")^(" + args[1] + ")";
+            return "pow(" + args[0] + "," + args[1] + ")";
         case "n":
             return "-(" + args[0] + ")";
         case "f":
