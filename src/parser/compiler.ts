@@ -29,7 +29,7 @@ const functions = {
     }
 };
 
-functions.sum["toTex"] = "\\left(\\sum_{${args[0]}=${args[1]}}^{${args[2]}}${args[3]}\\right)";
+functions.sum["toTex"] = "{\\sum_{${args[0]}=${args[1]}}^{${args[2]}}${args[3]}}";
 functions.mod["toTex"] = "\\operatorname{mod}\\left(${args[0]},\\ ${args[1]}\\right)";
 functions.abs["toTex"] = "\\operatorname{abs}\\left(${args[0]}\\right)";
 functions.sqrt["toTex"] = "\\sqrt{${args[0]}}";
@@ -72,7 +72,7 @@ export const Compile = (input: string, useTex: boolean = false) : string => {
 const options = {
     handler: {
         sum(node, options){
-            return `(\\sum_{${node.args[0].toString(options)}=${node.args[1].toString(options)}}^{${node.args[2].toString(options)}}{${node.args[3].toString(options)}})`;
+            return `{\\sum_{${node.args[0].toString(options)}=${node.args[1].toString(options)}}^{${node.args[2].toString(options)}}{${node.args[3].toString(options)}}}`;
         },
         sqrt(node, options){
             return `\\sqrt{${node.args[0].toString(options)}}`;
