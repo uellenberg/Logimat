@@ -25,7 +25,7 @@ LogiMat {
 
     SetState = "state" "=" Expression ";"
 
-    IfStatement = "if" "(" Statement ")" Block "else" Block
+    IfStatement = "if" "(" (Statement | Expression) ")" Block "else" Block
 
     Sum = "sum" "(" exportIdentifier "=" Expression ";" Expression ")" Block
 
