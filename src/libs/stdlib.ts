@@ -27,4 +27,9 @@ inline function getDigit(a, b) {
     const pt2 = a/10^(len(a)-b+1);
     
     state = floor(pt1-floor(pt2)*10);
+}
+
+//Returns 1 if the input is an integer, and 0 otherwise.
+inline function isInt(a) {
+    state = a == floor(a);
 }`;
