@@ -6,8 +6,8 @@ LogiMat {
     OuterDeclaration = OuterConstDeclaration | FunctionDeclaration
 
     OuterConstDeclaration = ExportOuterConstDeclaration | InlineOuterConstDeclaration
-    ExportOuterConstDeclaration = "export" #space "const" #space exportIdentifier "=" Expression ";"
-    InlineOuterConstDeclaration = "inline" #space "const" #space identifier "=" Expression ";"
+    ExportOuterConstDeclaration = "export" #space "const" #space exportIdentifier "=" ExpressionStatement ";"
+    InlineOuterConstDeclaration = "inline" #space "const" #space identifier "=" ExpressionStatement ";"
 
     FunctionDeclaration = ExportFunctionDeclaration | InlineFunctionDeclaration
     ExportFunctionDeclaration = "export" #space "function" #space exportIdentifier "(" FunctionArgs ")" Block
@@ -21,13 +21,15 @@ LogiMat {
                      | SetState
                      | IfStatement
 
-    ConstDeclaration = "const" #space identifier "=" Expression ";"
+    ConstDeclaration = "const" #space identifier "=" ExpressionStatement ";"
 
-    SetState = "state" "=" Expression ";"
+    SetState = "state" "=" ExpressionStatement ";"
 
-    IfStatement = "if" "(" (Statement | Expression) ")" Block "else" Block
+    IfStatement = "if" "(" ExpressionStatement ")" Block "else" Block
 
-    Sum = "sum" "(" exportIdentifier "=" Expression ";" Expression ")" Block
+    Sum = "sum" "(" exportIdentifier "=" ExpressionStatement ";" ExpressionStatement ")" Block
+
+    ExpressionStatement = Statement | Expression
 
     Statement = And
 
