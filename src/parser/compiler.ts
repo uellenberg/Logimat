@@ -26,7 +26,8 @@ const functions = {
     },
     ln(a){
         return math.log(a, math.e);
-    }
+    },
+    pi: {}
 };
 
 functions.sum["toTex"] = "{\\sum_{${args[0]}=${args[1]}}^{${args[2]}}${args[3]}}";
@@ -34,6 +35,7 @@ functions.mod["toTex"] = "\\operatorname{mod}\\left(${args[0]},\\ ${args[1]}\\ri
 functions.abs["toTex"] = "\\operatorname{abs}\\left(${args[0]}\\right)";
 functions.sqrt["toTex"] = "\\sqrt{${args[0]}}";
 functions.pow["toTex"] = "{${args[0]}}^{${args[1]}}";
+functions.pi["toTex"] = "\\pi";
 
 math.import(functions, {
     override: true
@@ -75,6 +77,9 @@ const options = {
         },
         pow(node, options){
             return `{${node.args[0]}}^{${node.args[1]}}`;
+        },
+        pi() {
+            return "\\pi";
         }
     }
 };
@@ -183,6 +188,12 @@ const CompileExpression = (expression: Expression, inlines: Record<string, Inlin
 
             if(vars.hasOwnProperty(name)) return vars[name];
             if(inlines.hasOwnProperty(name)) return CompileExpression(inlines[name].value["expr"], inlines, vars);
+
+            switch(name) {
+                case "pi":
+                    return "pi()";
+            }
+
             return name;
         case "sum":
             return "sum(" + args[0] + "," + args[1] + "," + args[2] + "," + CompileBlock(<Statement[]>args[3], inlines, vars) + ")";
