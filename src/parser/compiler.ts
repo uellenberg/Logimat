@@ -7,19 +7,19 @@ const math = create(all);
 
 const functions = {
     sum(a, b, c, d) {
-        return 1;
+        return d*(Math.max(0, c-b));
     },
     mod(a, b){
-        return 1;
+        return a % b;
     },
     abs(a){
-        return 1;
+        return Math.abs(a);
     },
     sqrt(a){
-        return 1;
+        return Math.sqrt(a);
     },
     pow(a, b){
-        return 1;
+        return Math.pow(a, b);
     },
     log(a){
         return math.log(a, 10);
@@ -34,10 +34,6 @@ functions.mod["toTex"] = "\\operatorname{mod}\\left(${args[0]},\\ ${args[1]}\\ri
 functions.abs["toTex"] = "\\operatorname{abs}\\left(${args[0]}\\right)";
 functions.sqrt["toTex"] = "\\sqrt{${args[0]}}";
 functions.pow["toTex"] = "{${args[0]}}^{${args[1]}}";
-
-math.import(functions, {
-    override: true
-});
 
 math.import(functions, {
     override: true
