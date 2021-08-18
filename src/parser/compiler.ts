@@ -27,7 +27,9 @@ const functions = {
     ln(a){
         return math.log(a, math.e);
     },
-    pi: {}
+    pi() {
+        return null;
+    }
 };
 
 functions.sum["toTex"] = "{\\sum_{${args[0]}=${args[1]}}^{${args[2]}}${args[3]}}";
