@@ -25,7 +25,7 @@ LogiMat {
 
     SetState = "state" "=" ExpressionStatement ";"
 
-    IfStatement = "if" "(" ExpressionStatement ")" Block "else" Block
+    IfStatement = "if" "(" ExpressionStatement ")" Block "else" (Block | IfStatement)
 
     Sum = "sum" "(" exportIdentifier "=" ExpressionStatement ";" ExpressionStatement ")" Block
 
@@ -250,7 +250,10 @@ semantic.addOperation("parse", {
         return {type: "state", expr: expr.parse()};
     },
     IfStatement(_, _2, condition, _3, ifaction, _4, elseaction){
-        return {type: "if", condition: condition.parse(), ifaction: ifaction.parse(), elseaction: elseaction.parse()};
+        let elseAction = elseaction.parse();
+        if(!Array.isArray(elseAction)) elseAction = [elseAction];
+
+        return {type: "if", condition: condition.parse(), ifaction: ifaction.parse(), elseaction: elseAction};
     },
     Sum(_, _2, v, _3, expr1, _4, expr2, _6, action){
         return {type: "sum", args: [v.parse(), expr1.parse(), expr2.parse(), action.parse()]};
