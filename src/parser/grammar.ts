@@ -116,6 +116,7 @@ LogiMat {
              | "ln"
              | "log"
              | "sum"
+             | "pi"
 
     exportIdentifier = "a".."z"
 
