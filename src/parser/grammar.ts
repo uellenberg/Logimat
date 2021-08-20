@@ -77,7 +77,7 @@ LogiMat {
       | "-" PriExp   -- neg
       | Sum
       | identifierName "(" ListOf<Expression, ","> ")"   -- func
-      | identifier   -- var
+      | (identifier | builtInVariables)   -- var
       | number
       | "state"   -- state
 
@@ -116,9 +116,11 @@ LogiMat {
              | "ln"
              | "log"
              | "sum"
-             | "pi"
 
-    exportIdentifier = "a".."z"
+    builtInVariables = "pi"
+                     | "e"
+
+    exportIdentifier (a single character identifier) = ~(reservedWord space) "a".."z"
 
     reservedWord = "export"
                   | "inline"
@@ -126,7 +128,8 @@ LogiMat {
                   | "function"
                   | "state"
                   | builtIns
-    identifier (an identifier) = ~reservedWord identifierName
+                  | builtInVariables
+    identifier (an identifier) = ~(reservedWord space) identifierName
     identifierName (an identifier) = letter identifierPart*
 
     identifierPart = letter | unicodeCombiningMark
