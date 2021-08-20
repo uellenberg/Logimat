@@ -87,40 +87,40 @@ LogiMat {
 
     compileOutputDefinition = "export" | "inline"
 
-    builtIns = "sin"
-             | "cos"
-             | "tan"
-             | "csc"
-             | "sec"
-             | "cot"
-             | "arcsin"
-             | "arccos"
-             | "arctan"
-             | "arccsc"
-             | "arcsec"
-             | "arccot"
-             | "sinh"
-             | "cosh"
-             | "tanh"
-             | "csch"
-             | "sech"
-             | "coth"
-             | "lcm"
-             | "gcd"
-             | "mod"
-             | "floor"
-             | "ceil"
-             | "round"
-             | "abs"
-             | "sign"
-             | "ln"
-             | "log"
-             | "sum"
+    builtIns = "sin" ~identifierPart
+             | "cos" ~identifierPart
+             | "tan" ~identifierPart
+             | "csc" ~identifierPart
+             | "sec" ~identifierPart
+             | "cot" ~identifierPart
+             | "arcsin" ~identifierPart
+             | "arccos" ~identifierPart
+             | "arctan" ~identifierPart
+             | "arccsc" ~identifierPart
+             | "arcsec" ~identifierPart
+             | "arccot" ~identifierPart
+             | "sinh" ~identifierPart
+             | "cosh" ~identifierPart
+             | "tanh" ~identifierPart
+             | "csch" ~identifierPart
+             | "sech" ~identifierPart
+             | "coth" ~identifierPart
+             | "lcm" ~identifierPart
+             | "gcd" ~identifierPart
+             | "mod" ~identifierPart
+             | "floor" ~identifierPart
+             | "ceil" ~identifierPart
+             | "round" ~identifierPart
+             | "abs" ~identifierPart
+             | "sign" ~identifierPart
+             | "ln" ~identifierPart
+             | "log" ~identifierPart
+             | "sum" ~identifierPart
 
-    builtInVariables = "pi"
-                     | "e"
+    builtInVariables = "pi" ~identifierPart
+                     | "e" ~identifierPart
 
-    exportIdentifier (a single character identifier) = ~(reservedWord space) "a".."z"
+    exportIdentifier (a single character identifier) = ~reservedWord "a".."z"
 
     reservedWord = "export"
                   | "inline"
@@ -129,7 +129,7 @@ LogiMat {
                   | "state"
                   | builtIns
                   | builtInVariables
-    identifier (an identifier) = ~(reservedWord space) identifierName
+    identifier (an identifier) = ~reservedWord identifierName
     identifierName (an identifier) = letter identifierPart*
 
     identifierPart = letter | unicodeCombiningMark
