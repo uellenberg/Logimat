@@ -73,6 +73,6 @@ inline function gte(a, b) {
 }
 
 //Returns b if a is 1, and c if a is 0.
-inline function if(a, b, c) {
+inline function if_func(a, b, c) {
     state = a*b + not(a)*c;
 }`;

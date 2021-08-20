@@ -145,7 +145,7 @@ const CompileBlock = (input: Statement[], inlines: Record<string, Inline>, vars:
                 });
 
 
-                out = CompileExpression({type: "f", args: ["if", [condition, ifaction, elseaction]]}, inlines, {
+                out = CompileExpression({type: "f", args: ["if_func", [condition, ifaction, elseaction]]}, inlines, {
                     ...newVars,
                     state: out
                 });

@@ -6,12 +6,12 @@ LogiMat {
     OuterDeclaration = OuterConstDeclaration | FunctionDeclaration
 
     OuterConstDeclaration = ExportOuterConstDeclaration | InlineOuterConstDeclaration
-    ExportOuterConstDeclaration = "export" #space "const" #space exportIdentifier "=" ExpressionStatement ";"
-    InlineOuterConstDeclaration = "inline" #space "const" #space identifier "=" ExpressionStatement ";"
+    ExportOuterConstDeclaration = export #space const #space exportIdentifier "=" ExpressionStatement ";"
+    InlineOuterConstDeclaration = inline #space const #space identifier "=" ExpressionStatement ";"
 
     FunctionDeclaration = ExportFunctionDeclaration | InlineFunctionDeclaration
-    ExportFunctionDeclaration = "export" #space "function" #space exportIdentifier "(" FunctionArgs ")" Block
-    InlineFunctionDeclaration = "inline" #space "function" #space identifier "(" FunctionArgs ")" Block
+    ExportFunctionDeclaration = export #space function #space exportIdentifier "(" FunctionArgs ")" Block
+    InlineFunctionDeclaration = inline #space function #space identifier "(" FunctionArgs ")" Block
 
     FunctionArgs = ListOf<exportIdentifier, ",">
     
@@ -21,13 +21,13 @@ LogiMat {
                      | SetState
                      | IfStatement
 
-    ConstDeclaration = "const" #space identifier "=" ExpressionStatement ";"
+    ConstDeclaration = const #space identifier "=" ExpressionStatement ";"
 
-    SetState = "state" "=" ExpressionStatement ";"
+    SetState = state "=" ExpressionStatement ";"
 
-    IfStatement = "if" "(" ExpressionStatement ")" Block "else" (Block | IfStatement)
+    IfStatement = if "(" ExpressionStatement ")" Block else (Block | IfStatement)
 
-    Sum = "sum" "(" exportIdentifier "=" ExpressionStatement ";" ExpressionStatement ")" Block
+    Sum = sum "(" exportIdentifier "=" ExpressionStatement ";" ExpressionStatement ")" Block
 
     ExpressionStatement = Statement | Expression
 
@@ -79,13 +79,11 @@ LogiMat {
       | identifierName "(" ListOf<Expression, ","> ")"   -- func
       | (identifier | builtInVariables)   -- var
       | number
-      | "state"   -- state
+      | state   -- state
 
     number  (a number)
       = digit* "." digit+  -- fract
       | digit+             -- whole
-
-    compileOutputDefinition = "export" | "inline"
 
     builtIns = "sin" ~identifierPart
              | "cos" ~identifierPart
@@ -115,20 +113,34 @@ LogiMat {
              | "sign" ~identifierPart
              | "ln" ~identifierPart
              | "log" ~identifierPart
-             | "sum" ~identifierPart
 
     builtInVariables = "pi" ~identifierPart
                      | "e" ~identifierPart
 
+    export = "export" ~identifierPart
+    inline = "inline" ~identifierPart
+    const = "const" ~identifierPart
+    function = "function" ~identifierPart
+    state = "state" ~identifierPart
+    sum = "sum" ~identifierPart
+    if = "if" ~identifierPart
+    else = "else" ~identifierPart
+
+    keywords = export
+             | inline
+             | const
+             | function
+             | state
+             | sum
+             | if
+             | else
+
+    reservedWord = keywords
+                 | builtIns
+                 | builtInVariables
+
     exportIdentifier (a single character identifier) = ~reservedWord "a".."z"
 
-    reservedWord = "export"
-                  | "inline"
-                  | "const"
-                  | "function"
-                  | "state"
-                  | builtIns
-                  | builtInVariables
     identifier (an identifier) = ~reservedWord identifierName
     identifierName (an identifier) = letter identifierPart*
 
