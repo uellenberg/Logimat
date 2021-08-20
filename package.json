@@ -6,7 +6,7 @@
   "types": "dist/index.d.ts",
   "scripts": {
     "build": "tsc",
-    "postbuild": "copyfiles --exclude .ts$ --exclude .js$ --up 1 src/**/* dist"
+    "postbuild": "copyfiles --exclude src/**/*.{ts,js} --up 1 src/**/* dist"
   },
   "repository": {
     "type": "git",
