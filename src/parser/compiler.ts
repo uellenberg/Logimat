@@ -34,7 +34,7 @@ const functions = {
 
 functions.sum["toTex"] = "{\\sum_{${args[0]}=${args[1]}}^{${args[2]}}${args[3]}}";
 functions.mod["toTex"] = "\\operatorname{mod}\\left(${args[0]},\\ ${args[1]}\\right)";
-functions.abs["toTex"] = "\\operatorname{abs}\\left(${args[0]}\\right)";
+functions.abs["toTex"] = "\\left|${args[0]}\\right|";
 functions.sqrt["toTex"] = "\\sqrt{${args[0]}}";
 functions.pow["toTex"] = "{${args[0]}}^{${args[1]}}";
 functions.pi["toTex"] = "\\pi";
