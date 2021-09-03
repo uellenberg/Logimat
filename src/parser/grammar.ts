@@ -10,10 +10,11 @@ LogiMat {
     InlineOuterConstDeclaration = inline #space const #space identifier "=" ExpressionStatement ";"
 
     FunctionDeclaration = ExportFunctionDeclaration | InlineFunctionDeclaration
-    ExportFunctionDeclaration = export #space function #space exportIdentifier "(" FunctionArgs ")" Block
+    ExportFunctionDeclaration = export #space function #space exportIdentifier "(" ExportFunctionArgs ")" Block
     InlineFunctionDeclaration = inline #space function #space identifier "(" FunctionArgs ")" Block
 
-    FunctionArgs = ListOf<exportIdentifier, ",">
+    ExportFunctionArgs = ListOf<exportIdentifier, ",">
+    FunctionArgs = ListOf<identifier, ",">
     
     Block = "{" InnerDeclaration+ "}"
     
@@ -201,6 +202,9 @@ semantic.addOperation("parse", {
     },
     InlineFunctionDeclaration(_1, _2, _3, _4, name, _6, args, _8, block){
         return {type: "function", modifier: "inline", name: name.parse(), args: args.parse(), block: block.parse()};
+    },
+    ExportFunctionArgs(l){
+        return l.asIteration().parse();
     },
     FunctionArgs(l){
         return l.asIteration().parse();
