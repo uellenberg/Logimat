@@ -26,9 +26,6 @@ const functions = {
     },
     ln(a){
         return math.log(a, math.e);
-    },
-    pi() {
-        return null;
     }
 };
 
@@ -37,7 +34,52 @@ functions.mod["toTex"] = "\\operatorname{mod}\\left(${args[0]},\\ ${args[1]}\\ri
 functions.abs["toTex"] = "\\left|${args[0]}\\right|";
 functions.sqrt["toTex"] = "\\sqrt{${args[0]}}";
 functions.pow["toTex"] = "{${args[0]}}^{${args[1]}}";
-functions.pi["toTex"] = "\\pi";
+
+[
+    "sin",
+    "cos",
+    "tan",
+    "csc",
+    "sec",
+    "cot",
+    "arcsin",
+    "arccos",
+    "arctan",
+    "arccsc",
+    "arcsec",
+    "arccot",
+    "sinh",
+    "cosh",
+    "tanh",
+    "csch",
+    "sech",
+    "coth",
+    "floor",
+    "ceil",
+    "round",
+    "abs",
+    "sign",
+    "ln",
+    "log"
+].forEach(funcName => {
+    if(!functions[funcName]) functions[funcName] = () => null;
+    functions[funcName].toTex = "\\" + funcName + "\\left(${args[0]}\\right)";
+});
+
+[
+    "lcm",
+    "gcd",
+].forEach(funcName => {
+    if(!functions[funcName]) functions[funcName] = () => null;
+    functions[funcName].toTex = "\\" + funcName + "\\left(${args[0]}.\\ ${args[1]}\\right)";
+});
+
+[
+    "pi"
+].forEach(constName => {
+    if(!functions[constName]) functions[constName] = () => null;
+    functions[constName].toTex = "\\" + constName;
+});
 
 math.import(functions, {
     override: true
