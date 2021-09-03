@@ -54,10 +54,7 @@ functions.pow["toTex"] = "{${args[0]}}^{${args[1]}}";
     "csch",
     "sech",
     "coth",
-    "floor",
-    "ceil",
     "round",
-    "abs",
     "sign",
     "ln",
     "log"
@@ -71,7 +68,7 @@ functions.pow["toTex"] = "{${args[0]}}^{${args[1]}}";
     "gcd",
 ].forEach(funcName => {
     if(!functions[funcName]) functions[funcName] = () => null;
-    functions[funcName].toTex = "\\" + funcName + "\\left(${args[0]}.\\ ${args[1]}\\right)";
+    functions[funcName].toTex = "\\" + funcName + "\\left(${args[0]},\\ ${args[1]}\\right)";
 });
 
 [
@@ -114,7 +111,7 @@ export const Compile = (input: string, useTex: boolean = false) : string => {
 const options = {
     handler: {
         sum(node, options){
-            return `{\\sum_{${node.args[0].toString(options)}=${node.args[1].toString(options)}}^{${node.args[2].toString(options)}}{${node.args[3].toString(options)}}}`;
+            return `{\\sum_{${node.args[0].toString(options)}=${node.args[1].toString(options)}}^{${node.args[2].toString(options)}}{(${node.args[3].toString(options)})}}`;
         },
         sqrt(node, options){
             return `\\sqrt{${node.args[0].toString(options)}}`;
