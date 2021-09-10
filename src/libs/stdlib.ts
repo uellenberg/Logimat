@@ -18,12 +18,24 @@ inline function isPrime(a) {
 
 //Returns the number of digits in the input.
 inline function len(a){
-    state = floor(log(a));
+    const val = abs(a);
+
+    if(val < .1) {
+        state = 0;
+    } else {
+        state = floor(log(val)) + 1;
+    }
 }
 
 //Safely returns the number of digits in the input.
 inline function safeLen(a){
-    state = floor(safeLog(a));
+    const val = abs(a);
+
+    if(val < .1) {
+        state = 0;
+    } else {
+        state = floor(safeLog(val)) + 1;
+    }
 }
 
 //Extracts the nth digit (starting at 0) from a number. The first input is the number and the second is the place of the digit.
