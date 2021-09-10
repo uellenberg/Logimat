@@ -54,6 +54,36 @@ inline function safeDivide(a, b) {
     }
 }
 
+//Safely runs the log function, returning 0 if the input is 0.
+inline function safeLog(a) {
+    if(a == 0) {
+        state = 0;
+    } else {
+        if(a == 0) {
+            state = 1;
+        } else {
+            state = a;
+        }
+        
+        state = log(state);
+    }
+}
+
+//Safely runs the ln function, returning 0 if the input is 0.
+inline function safeLN(a) {
+    if(a == 0) {
+        state = 0;
+    } else {
+        if(a == 0) {
+            state = 1;
+        } else {
+            state = a;
+        }
+        
+        state = ln(state);
+    }
+}
+
 //Returns the smallest number.
 inline function min(a, b) {
     if(a < b) {
