@@ -40,16 +40,16 @@ inline function safeLen(a){
 
 //Extracts the nth digit (starting at 0) from a number. The first input is the number and the second is the place of the digit.
 inline function getDigit(a, b) {
-    const pt1 = a/10^(len(a)-b);
-    const pt2 = a/10^(len(a)-b+1);
+    const pt1 = a/10^(len(a)-b-1);
+    const pt2 = a/10^(len(a)-b);
     
     state = floor(pt1-floor(pt2)*10);
 }
 
 //Safely extracts the nth digit (starting at 0) from a number. The first input is the number and the second is the place of the digit.
 inline function safeGetDigit(a, b) {
-    const pt1 = a/10^(safeLen(a)-b);
-    const pt2 = a/10^(safeLen(a)-b+1);
+    const pt1 = a/10^(safeLen(a)-b-1);
+    const pt2 = a/10^(safeLen(a)-b);
     
     state = floor(pt1-floor(pt2)*10);
 }
