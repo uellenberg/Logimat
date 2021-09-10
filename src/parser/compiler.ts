@@ -126,7 +126,7 @@ const options = {
 };
 
 const SimplifyExpression = (input: string, useTex: boolean) : string => {
-    const res = math.simplify(input);
+    const res = math.simplify(input, {}, {exactFractions: false});
     return useTex ? res.toTex() : res.toString(options).replace(/\s+/g, "");
 }
 
