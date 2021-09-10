@@ -1,6 +1,6 @@
 {
   "name": "logimat",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "A language for performing logical operations inside of mathematical functions.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
