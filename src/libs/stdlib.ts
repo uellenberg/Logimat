@@ -32,4 +32,25 @@ inline function getDigit(a, b) {
 //Returns 1 if the input is an integer, and 0 otherwise.
 inline function isInt(a) {
     state = a == floor(a);
-}`;
+}
+
+//Safely divides a number (a/b), such that if b is 0 (a/0), it will return 0 instead of undefined.
+//Normally, if you divide a number by 0 (even if inside a statement that doesn't run) it will return
+//undefined for the entire function. This solves that issue. Use this anywhere that the divisor may
+//be 0.
+inline function safeDivide(a, b) {
+    if(b == 0) {
+        state = 0;
+    } else {
+        //This double check is needed because it will run, and needs to divide by a non-zero number. 1 is a "safe" value, but it's being used arbitrarily here.
+        //No matter what number is used, it won't ever appear, unless it results in undefined (which will only happen if the value is 0 or infinity).
+        if(b == 0) {
+            state = 1;
+        } else {
+            state = b;
+        }
+        
+        state = a/state;
+    }
+}
+`;
