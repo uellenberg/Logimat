@@ -35,6 +35,44 @@ inline function not(a) {
     state = abs(state);
 }
 
+//Returns 0 if a is 1 and b is 1.
+//
+//Because the set of inputs is limited, this is a simple function that satisfies them,
+//but has other behavior on undefined inputs.
+inline function nand(a, b) {
+    state = not(and(a, b));
+}
+
+//Returns 1 if a is 0 and b is 0.
+//
+//Because the set of inputs is limited, this is a simple function that satisfies them,
+//but has other behavior on undefined inputs.
+inline function nor(a, b) {
+    state = not(or(a, b));
+}
+
+//Returns 1 if both inputs are the same.
+//
+//Because the set of inputs is limited, this is a simple function that satisfies them,
+//but has other behavior on undefined inputs.
+inline function xnor(a, b) {
+    const is_00 = nor(a, b);
+    const is_11 = and(a, b);
+    
+    state = or(is_00, is_11);
+}
+
+//Returns 1 if both inputs are different.
+//
+//Because the set of inputs is limited, this is a simple function that satisfies them,
+//but has other behavior on undefined inputs.
+inline function xor(a, b) {
+    const not_00 = or(a, b);
+    const not_11 = nand(a, b);
+    
+    state = and(not_00, not_11);
+}
+
 //Returns 1 when both inputs are the same, and zero otherwise.
 //
 //Essentially, this works because two numbers being subtracted will be zero if they are
