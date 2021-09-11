@@ -1,7 +1,7 @@
 export default
 `//Returns on 0 on 0, and 1 for anything else.
 inline function select(a) {
-    state = a / (abs(a) + 1);
+    state = 1 / 2^abs(a) - 1;
     state = abs(state);
     state = ceil(state);
 }
