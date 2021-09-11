@@ -11,9 +11,7 @@ inline function select(a) {
 //Because the set of inputs is limited, this is a simple function that satisfies them,
 //but has other behavior on undefined inputs.
 inline function and(a, b) {
-    state = a + b;
-    state = state/2;
-    state = floor(state);
+    state = a * b;
 }
 
 //Returns 0 if both inputs are 0, otherwise 1.
@@ -22,8 +20,6 @@ inline function and(a, b) {
 //but has other behavior on undefined inputs.
 inline function or(a, b) {
     state = a + b;
-    state = state/2;
-    state = ceil(state);
 }
 
 //Returns 0 on 1, and 1 on 0.
@@ -51,26 +47,20 @@ inline function nor(a, b) {
     state = not(or(a, b));
 }
 
-//Returns 1 if both inputs are the same.
-//
-//Because the set of inputs is limited, this is a simple function that satisfies them,
-//but has other behavior on undefined inputs.
-inline function xnor(a, b) {
-    const is_00 = nor(a, b);
-    const is_11 = and(a, b);
-    
-    state = or(is_00, is_11);
-}
-
 //Returns 1 if both inputs are different.
 //
 //Because the set of inputs is limited, this is a simple function that satisfies them,
 //but has other behavior on undefined inputs.
 inline function xor(a, b) {
-    const not_00 = or(a, b);
-    const not_11 = nand(a, b);
-    
-    state = and(not_00, not_11);
+    state = abs(a - b);
+}
+
+//Returns 1 if both inputs are the same.
+//
+//Because the set of inputs is limited, this is a simple function that satisfies them,
+//but has other behavior on undefined inputs.
+inline function xnor(a, b) {
+    state = not(xor(a, b));
 }
 
 //Returns 1 when both inputs are the same, and zero otherwise.
