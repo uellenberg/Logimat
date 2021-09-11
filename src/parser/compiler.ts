@@ -117,7 +117,7 @@ const options = {
             return `\\sqrt{${node.args[0].toString(options)}}`;
         },
         pow(node, options){
-            return `{${node.args[0]}}^{${node.args[1]}}`;
+            return `{${node.args[0].toString(options)}}^{${node.args[1].toString(options)}}`;
         },
         pi() {
             return "\\pi";
