@@ -85,14 +85,41 @@ inline function not_equal(a, b) {
     state = select(state);
 }
 
+//Returns a > 0.
+inline function is_positive(a) {
+    state = 2^a;
+    state = 1/state;
+    state = floor(state)+1;
+    state = 1/state;
+    state = floor(state);
+}
+
+//Returns a >= 0.
+inline function is_positive_or_zero(a) {
+    state = is_positive(a^(1/2));
+}
+
+//Returns a < 0.
+inline function is_negative(a) {
+    state = is_positive(-a);
+}
+
+//Returns a <= 0;
+inline function is_negative_or_zero(a) {
+    state = not(is_positive(a));
+}
+
 //Returns 1 if the first input is smaller than the second, and zero otherwise.
 //
 //Essentially, this works because if b is larger than a, their difference will
-//become negative. This is tested by comparing their difference to the absolute value.
-//If the difference returns 1, then a is larger, otherwise b is larger.
-//The not is applied to put the output into the correct format.
+//become negative. This is tested using is_negative.
 inline function lt(a, b) {
-    state = not_equal(abs(a-b), a-b);
+    state = is_negative(a-b);
+}
+
+//Returns 1 if the first input is smaller than the second or they are equal, and zero otherwise.
+inline function lte(a, b) {
+    state = is_negative_or_zero(a-b);
 }
 
 //Returns 1 if the first input is larger than the second, and zero otherwise.
@@ -100,14 +127,9 @@ inline function gt(a, b) {
     state = lt(b, a);
 }
 
-//Returns 1 if the first input is smaller than the second or they are equal, and zero otherwise.
-inline function lte(a, b) {
-    state = or(lt(a, b), equal(a, b));
-}
-
 //Returns 1 if the first input is larger than the second or they are equal, and zero otherwise.
 inline function gte(a, b) {
-    state = or(gt(a, b), equal(a, b));
+    state = lte(b, a);
 }
 
 //Returns b if a is 1, and c if a is 0.
