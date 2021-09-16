@@ -7,7 +7,7 @@ inline function select(a) {
 }
 
 //A more efficient representation of not(select(a)).
-inline function not_select(a) {
+inline function notSelect(a) {
     state = 1 / 2^abs(a);
     state = floor(state);
 }
@@ -76,17 +76,17 @@ inline function xnor(a, b) {
 //the not turns one to zero and zero to one, so the output is in the correct format.
 inline function equal(a, b) {
     state = a - b;
-    state = not_select(state);
+    state = notSelect(state);
 }
 
 //A more efficient representation of not(equal(a, b)).
-inline function not_equal(a, b) {
+inline function notEqual(a, b) {
     state = a - b;
     state = select(state);
 }
 
 //Returns a > 0.
-inline function is_positive(a) {
+inline function isPositive(a) {
     state = 2^a;
     state = 1/state;
     state = floor(state)+1;
@@ -95,31 +95,31 @@ inline function is_positive(a) {
 }
 
 //Returns a >= 0.
-inline function is_positive_or_zero(a) {
-    state = is_positive(a^(1/2));
+inline function isPositiveOrZero(a) {
+    state = isPositive(a^(1/2));
 }
 
 //Returns a < 0.
-inline function is_negative(a) {
-    state = is_positive(-a);
+inline function isNegative(a) {
+    state = isPositive(-a);
 }
 
 //Returns a <= 0;
-inline function is_negative_or_zero(a) {
-    state = not(is_positive(a));
+inline function isNegativeOrZero(a) {
+    state = not(isPositive(a));
 }
 
 //Returns 1 if the first input is smaller than the second, and zero otherwise.
 //
 //Essentially, this works because if b is larger than a, their difference will
-//become negative. This is tested using is_negative.
+//become negative. This is tested using isNegative.
 inline function lt(a, b) {
-    state = is_negative(a-b);
+    state = isNegative(a-b);
 }
 
 //Returns 1 if the first input is smaller than the second or they are equal, and zero otherwise.
 inline function lte(a, b) {
-    state = is_negative_or_zero(a-b);
+    state = isNegativeOrZero(a-b);
 }
 
 //Returns 1 if the first input is larger than the second, and zero otherwise.
