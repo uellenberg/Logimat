@@ -1,5 +1,6 @@
 export default
 `//Returns 1 if the input is prime, and 0 otherwise.
+//Accepts integers greater or equal to zero.
 //
 //All this function does is loop through every number < floor(sqrt(a)), then checks if a is divisible by it.
 //If it is, then it adds 1 to the sum, otherwise zero. This is then put through select, which will make it 0
