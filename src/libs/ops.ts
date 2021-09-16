@@ -6,6 +6,12 @@ inline function select(a) {
     state = ceil(state);
 }
 
+//A more efficient representation of not(select(a)).
+inline function not_select(a) {
+    state = 1 / 2^abs(a);
+    state = floor(state);
+}
+
 //Returns 1 if both inputs are 1, otherwise 0.
 //
 //Because the set of inputs is limited, this is a simple function that satisfies them,
@@ -70,8 +76,13 @@ inline function xnor(a, b) {
 //the not turns one to zero and zero to one, so the output is in the correct format.
 inline function equal(a, b) {
     state = a - b;
+    state = not_select(state);
+}
+
+//A more efficient representation of not(equal(a, b)).
+inline function not_equal(a, b) {
+    state = a - b;
     state = select(state);
-    state = not(state);
 }
 
 //Returns 1 if the first input is smaller than the second, and zero otherwise.
@@ -81,8 +92,7 @@ inline function equal(a, b) {
 //If the difference returns 1, then a is larger, otherwise b is larger.
 //The not is applied to put the output into the correct format.
 inline function lt(a, b) {
-    state = equal(abs(a-b), a-b);
-    state = not(state);
+    state = not_equal(abs(a-b), a-b);
 }
 
 //Returns 1 if the first input is larger than the second, and zero otherwise.
