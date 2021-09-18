@@ -21,6 +21,9 @@ const functions = {
     pow(a, b){
         return Math.pow(a, b);
     },
+    div(a, b) {
+        return a / b;
+    },
     log(a){
         return math.log(a, 10);
     },
@@ -34,6 +37,7 @@ functions.mod["toTex"] = "\\operatorname{mod}\\left(${args[0]},\\ ${args[1]}\\ri
 functions.abs["toTex"] = "\\left|${args[0]}\\right|";
 functions.sqrt["toTex"] = "\\sqrt{${args[0]}}";
 functions.pow["toTex"] = "{${args[0]}}^{${args[1]}}";
+functions.div["toTex"] = "\\frac{${args[0]}}{${args[1]}}";
 
 [
     "sin",
@@ -121,6 +125,9 @@ const options = {
         },
         pi() {
             return "\\pi";
+        },
+        div(node, options){
+            return `\\frac{${node.args[0].toString(options)}}{${node.args[1].toString(options)}}`;
         }
     }
 };
@@ -209,7 +216,7 @@ const CompileExpression = (expression: Expression, inlines: Record<string, Inlin
         case "*":
             return "(" + args[0] + ")*(" + args[1] + ")";
         case "/":
-            return "(" + args[0] + ")/(" + args[1] + ")";
+            return "div(" + args[0] + "," + args[1] + ")";
         case "^":
             return "pow(" + args[0] + "," + args[1] + ")";
         case "n":
