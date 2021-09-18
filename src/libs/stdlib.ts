@@ -126,4 +126,16 @@ inline function max(a, b) {
     } else {
         state = b;
     }
+}
+
+//Simplifies a fraction and returns the numerator.
+inline function simplifyNumerator(numerator, denominator) {
+    const div = gcd(numerator, denominator);
+    state = numerator/div;
+}
+
+//Simplifies a fraction and returns the denominator.
+inline function simplifyDenominator(numerator, denominator) {
+    const div = gcd(numerator, denominator);
+    state = denominator/div;
 }`;
