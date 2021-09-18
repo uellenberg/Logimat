@@ -60,6 +60,11 @@ inline function isInt(a) {
     state = a == floor(a);
 }
 
+//Returns if the dividend can be evenly divided by the divisor.
+inline function isDivisibleBy(dividend, divisor) {
+    state = dividend % divisor == 0;
+}
+
 //Safely divides a number (a/b), such that if b is 0 (a/0), it will return 0 instead of undefined.
 //Normally, if you divide a number by 0 (even if inside a statement that doesn't run) it will return
 //undefined for the entire function. This solves that issue. Use this anywhere that the divisor may
