@@ -68,6 +68,7 @@ LogiMat {
     MulExp
       = MulExp "*" ExpExp  -- times
       | MulExp "/" ExpExp  -- divide
+      | MulExp "%" ExpExp  -- mod
       | ExpExp
     ExpExp
       = PriExp "^" ExpExp  -- power
@@ -232,6 +233,9 @@ semantic.addOperation("parse", {
     },
     MulExp_divide(e, _, e2){
         return {type: "/", args: [e.parse(), e2.parse()]};
+    },
+    MulExp_mod(e, _, e2){
+        return {type: "f", args: ["mod", [e.parse(), e2.parse()]]};
     },
     ExpExp_power(e, _, e2){
         return {type: "^", args: [e.parse(), e2.parse()]};
