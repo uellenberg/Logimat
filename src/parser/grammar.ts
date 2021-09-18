@@ -299,7 +299,7 @@ semantic.addOperation("parse", {
         return {type: "f", args: ["equal", [e.parse(), e2.parse()]]};
     },
     NotEqualOperator(e, _, e2){
-        return {type: "f", args: ["not_equal", [e.parse(), e2.parse()]]};
+        return {type: "f", args: ["notEqual", [e.parse(), e2.parse()]]};
     },
     LessThanOperator(e, _, e2){
         return {type: "f", args: ["lt", [e.parse(), e2.parse()]]};
