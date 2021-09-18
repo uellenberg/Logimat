@@ -49,6 +49,7 @@ LogiMat {
              | LessThanEqualOperator
              | GreaterThanOperator
              | GreaterThanEqualOperator
+             | Expression
              | "(" Operator ")"   -- paren
 
     NotOperator = "!" Operator
