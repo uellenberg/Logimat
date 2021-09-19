@@ -9,3 +9,4 @@ tsconfig.json
 coverage
 .github
 .nyc_output
+examples
