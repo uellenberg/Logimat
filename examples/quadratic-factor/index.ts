@@ -18,9 +18,11 @@ inline function factorQuadratic(a, b, c, selector) {
         const b1 = b/gcd1;
         const c1 = c/gcd1;
         
+        const factorNum = a1*c1;
+        
         //Now, we need to find the factor.
-        const factor = sum(n=1; abs(c1)) {
-            state = checkFactor(b1, c1, n);
+        const factor = sum(n=1; abs(factorNum)) {
+            state = checkFactor(b1, factorNum, n);
         };
         
         //This is special code that will safely return undefined when factor is 0.
