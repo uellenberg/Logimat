@@ -9,7 +9,7 @@ For example, if I wanted to have a sin and cos taking turns for when they'll go 
 export const s = 5;
 
 export function a(x){
-    if(mod(floor(x/s), 2) == 1) {
+    if(floor(x/s) % 2 == 1) {
         state = sin(x);
     } else {
         state = cos(x);
@@ -19,7 +19,7 @@ export function a(x){
 Which will compile to this monstrous function:
 ```
 s=5
-a(x)=abs(ceil(abs((mod(floor(x/s),2)-1)/(abs(mod(floor(x/s),2)-1)+1)))-1)*sin(x)+abs(abs(ceil(abs((mod(floor(x/s),2)-1)/(abs(mod(floor(x/s),2)-1)+1)))-1)-1)*cos(x)
+a(x)=floor(\frac{1}{{2}^{abs(mod(floor(\frac{x}{s}),2)-1)}})*sin(x)+(1-floor(\frac{1}{{2}^{abs(mod(floor(\frac{x}{s}),2)-1)}}))*cos(x)
 ```
 
 You don't need to worry too much about what's going on with the output (that's the compiler's job), but we'll take a look at how the pre-compiled code is set up.
