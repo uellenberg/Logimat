@@ -1,4 +1,4 @@
-# LogiMat
+# Logimat
 First, to preface, this language is not useful for anything. It does not serve any purpose, other than being an interesting concept to mess around with, and making some interesting functions.
 
 ## Logical Math
