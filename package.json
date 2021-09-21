@@ -8,6 +8,7 @@
     "build": "tsc",
     "postbuild": "copyfiles --exclude src/**/*.{ts,js} --up 1 src/**/* dist"
   },
+  "bin": "dist/bin.js",
   "repository": {
     "type": "git",
     "url": "https://github.com/uellenberg/LogiMat.git"
@@ -28,11 +29,13 @@
   ],
   "devDependencies": {
     "@types/node": "^16.4.13",
+    "@types/yargs": "^17.0.2",
     "copyfiles": "^2.4.1",
     "typescript": "^4.3.5"
   },
   "dependencies": {
     "mathjs": "^9.4.4",
-    "ohm-js": "^15.5.0"
+    "ohm-js": "^15.5.0",
+    "yargs": "^17.1.1"
   }
 }
