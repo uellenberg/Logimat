@@ -95,7 +95,7 @@ inline function isPositive(a) {
 
 //Returns a >= 0.
 inline function isPositiveOrZero(a) {
-    state = isPositive(a^(1/2));
+    state = isPositive(a+1);
 }
 
 //Returns a < 0.
