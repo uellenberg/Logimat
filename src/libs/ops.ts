@@ -1,14 +1,14 @@
 export default
 `//Returns on 0 on 0, and 1 for anything else.
 inline function select(a) {
-    state = 1 / 2^abs(a) - 1;
+    state = 2^(-abs(a)) - 1;
     state = abs(state);
     state = ceil(state);
 }
 
 //A more efficient representation of not(select(a)).
 inline function notSelect(a) {
-    state = 1 / 2^abs(a);
+    state = 2^(-abs(a));
     state = floor(state);
 }
 
