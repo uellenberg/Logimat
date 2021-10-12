@@ -87,9 +87,9 @@ inline function notEqual(a, b) {
 //Returns a > 0.
 inline function isPositive(a) {
     state = 2^a;
-    state = 1/state;
+    state = state^-1;
     state = floor(state)+1;
-    state = 1/state;
+    state = state^-1;
     state = floor(state);
 }
 
