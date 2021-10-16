@@ -154,7 +154,14 @@ const options = {
             return `\\sqrt{${node.args[0].toString(options)}}`;
         },
         pow(node, options){
-            return `{${node.args[0].toString(options)}}^{${node.args[1].toString(options)}}`;
+            let base = node.args[0].toString(options);
+            const exp = node.args[1].toString(options);
+
+            if((node.args[0].fn && node.args[0].fn.name === "pow") || /[-+*/]/g.test(base)) {
+                base = "(" + base + ")";
+            }
+
+            return `{${base}}^{${exp}}`;
         },
         pi() {
             return "\\pi";
