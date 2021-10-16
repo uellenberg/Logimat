@@ -1,0 +1,32 @@
+//Adapted from https://www.geeksforgeeks.org/generate-pythagoras-triplet-single-integer/
+
+inline function triplet(num, selector) {
+    if(num == 1 || num == 2) {
+        state = -1;
+    } else if(num % 2 == 0) {
+        state = (num^2) / 4;
+
+        state = outputSwitch(selector, num, state - 1, state + 1);
+    } else {
+        state = (num^2 + 1) / 2;
+
+        state = outputSwitch(selector, num, state - 1, state);
+    }
+}
+
+inline function outputSwitch(selector, a, b, c) {
+    if(selector == 0) {
+        state = a;
+    } else if(selector == 1) {
+        state = b;
+    } else {
+        state = c;
+    }
+}
+
+//Generates a Pythagoras triplet that an input number exists in, or -1 if none exists.
+//a - the number used to create the triplet.
+//s - a selector of 0, 1, or 2 used to select which value of the triplet will be extracted.
+export function p(a, s) {
+    state = triplet(a, s);
+}
