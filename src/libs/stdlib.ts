@@ -55,6 +55,44 @@ inline function safeGetDigit(a, b) {
     state = floor(pt1-floor(pt2)*10);
 }
 
+//Returns the number of digits in the input in a specific base.
+inline function lenBase(a, base){
+    const val = abs(a);
+
+    if(val < base^-1) {
+        state = 0;
+    } else {
+        state = floor(logBase(val, base)) + 1;
+    }
+}
+
+//Safely returns the number of digits in the input in a specific base.
+inline function safeLenBase(a, base){
+    const val = abs(a);
+
+    if(val < base^-1) {
+        state = 0;
+    } else {
+        state = floor(safeLogBase(val, base)) + 1;
+    }
+}
+
+//Extracts the nth digit (starting at 0) from a number in a specific base. The first input is the number and the second is the place of the digit.
+inline function getDigitBase(a, b, base) {
+    const pt1 = a/base^(lenBase(a, base)-b-1);
+    const pt2 = a/base^(lenBase(a, base)-b);
+    
+    state = floor(pt1-floor(pt2)*base);
+}
+
+//Safely extracts the nth digit (starting at 0) from a number in a specific base. The first input is the number and the second is the place of the digit.
+inline function safeGetDigitBase(a, b, base) {
+    const pt1 = a/base^(safeLenBase(a, base)-b-1);
+    const pt2 = a/base^(safeLenBase(a, base)-b);
+    
+    state = floor(pt1-floor(pt2)*base);
+}
+
 //Returns 1 if the input is an integer, and 0 otherwise.
 inline function isInt(a) {
     state = a == floor(a);
@@ -112,6 +150,26 @@ inline function safeLN(a) {
         }
         
         state = ln(state);
+    }
+}
+
+//Gets the log for a certain exponent.
+inline function logBase(num, base) {
+    state = ln(num)/ln(base);
+}
+
+//Safely gets the log for a certain exponent, returning 0 if the input is 0.
+inline function safeLogBase(num, base) {
+    if(a == 0) {
+        state = 0;
+    } else {
+        if(a == 0) {
+            state = 1;
+        } else {
+            state = a;
+        }
+        
+        state = ln(num)/ln(base);
     }
 }
 
