@@ -19,6 +19,9 @@ const functions = {
     sum(a, b, c, d) {
         return d*(Math.max(0, c-b));
     },
+    prod(a, b, c, d) {
+        return Math.pow(d, (Math.max(0, c-b)));
+    },
     mod(a, b){
         return a % b;
     },
@@ -43,6 +46,7 @@ const functions = {
 };
 
 functions.sum["toTex"] = "{\\sum_{${args[0]}=${args[1]}}^{${args[2]}}${args[3]}}";
+functions.prod["toTex"] = "{\\prod_{${args[0]}=${args[1]}}^{${args[2]}}${args[3]}}";
 functions.mod["toTex"] = "\\operatorname{mod}\\left(${args[0]},\\ ${args[1]}\\right)";
 functions.abs["toTex"] = "\\left|${args[0]}\\right|";
 functions.sqrt["toTex"] = "\\sqrt{${args[0]}}";
@@ -142,6 +146,9 @@ const options = {
     handler: {
         sum(node, options){
             return `{\\sum_{${node.args[0].toString(options)}=${node.args[1].toString(options)}}^{${node.args[2].toString(options)}}{(${node.args[3].toString(options)})}}`;
+        },
+        prod(node, options){
+            return `{\\prod_{${node.args[0].toString(options)}=${node.args[1].toString(options)}}^{${node.args[2].toString(options)}}{(${node.args[3].toString(options)})}}`;
         },
         sqrt(node, options){
             return `\\sqrt{${node.args[0].toString(options)}}`;
@@ -271,6 +278,8 @@ const CompileExpression = (expression: Expression, inlines: Record<string, Inlin
             return name;
         case "sum":
             return "sum(" + args[0] + "," + args[1] + "," + args[2] + "," + CompileBlock(<Statement[]>args[3], inlines, vars) + ")";
+        case "prod":
+            return "prod(" + args[0] + "," + args[1] + "," + args[2] + "," + CompileBlock(<Statement[]>args[3], inlines, vars) + ")";
     }
 
     return "";

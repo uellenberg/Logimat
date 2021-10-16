@@ -35,6 +35,7 @@ LogiMat {
     IfStatement = if "(" ExpressionStatement ")" Block else (Block | IfStatement)
 
     Sum = sum "(" exportIdentifier "=" ExpressionStatement ";" ExpressionStatement ")" Block
+    Prod = prod "(" exportIdentifier "=" ExpressionStatement ";" ExpressionStatement ")" Block
 
     ExpressionStatement = Statement | Expression
 
@@ -85,6 +86,7 @@ LogiMat {
       | "+" PriExp   -- pos
       | "-" PriExp   -- neg
       | Sum
+      | Prod
       | identifierName "(" ListOf<Expression, ","> ")"   -- func
       | (identifier | builtInVariables)   -- var
       | number
@@ -134,6 +136,7 @@ LogiMat {
     calculation = "calculation" ~identifierPart
     state = "state" ~identifierPart
     sum = "sum" ~identifierPart
+    prod = "prod" ~identifierPart
     if = "if" ~identifierPart
     else = "else" ~identifierPart
 
@@ -143,6 +146,7 @@ LogiMat {
              | function
              | state
              | sum
+             | prod
              | if
              | else
 
@@ -299,6 +303,9 @@ semantic.addOperation("parse", {
     },
     Sum(_, _2, v, _3, expr1, _4, expr2, _6, action){
         return {type: "sum", args: [v.parse(), expr1.parse(), expr2.parse(), action.parse()]};
+    },
+    Prod(_, _2, v, _3, expr1, _4, expr2, _6, action){
+        return {type: "prod", args: [v.parse(), expr1.parse(), expr2.parse(), action.parse()]};
     },
     Statement(e){
         return e.parse();
