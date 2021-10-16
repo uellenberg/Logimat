@@ -7,7 +7,7 @@ import {
     OuterFunctionDeclaration,
     ParserOutput,
     semantic,
-    Statement
+    Statement, CalculationDeclaration
 } from "./grammar";
 import ops from "../libs/ops";
 import {create, all} from "mathjs";
@@ -115,9 +115,24 @@ export const Compile = (input: string, useTex: boolean = false) : string => {
     for (const declaration of tree) {
         if (declaration.modifier === "inline") continue;
 
-        if (declaration.type === "function") out.push(declaration.name + "(" + declaration["args"].join(",") + ")" + "=" + SimplifyExpression(CompileBlock((<OuterFunctionDeclaration>declaration).block, inlines), useTex));
-        else if(declaration.type === "const") out.push(declaration.name + "=" + SimplifyExpression(CompileExpression((<OuterConstDeclaration>declaration).expr, inlines), useTex));
-        else out.push(((<ActionDeclaration>declaration).funcName ? (<ActionDeclaration>declaration).funcName + "=" : "") + declaration.name + "\\to " + SimplifyExpression(CompileBlock((<ActionDeclaration>declaration).block, inlines), useTex));
+        switch(declaration.type) {
+            case "function":
+                const functionDeclaration = <OuterFunctionDeclaration>declaration;
+                out.push(functionDeclaration.name + "(" + functionDeclaration.args.join(",") + ")" + "=" + SimplifyExpression(CompileBlock(functionDeclaration.block, inlines), useTex));
+                break;
+            case "const":
+                const constDeclaration = <OuterConstDeclaration>declaration;
+                out.push(constDeclaration.name + "=" + SimplifyExpression(CompileExpression(constDeclaration.expr, inlines), useTex));
+                break;
+            case "action":
+                const actionDeclaration = <ActionDeclaration>declaration;
+                out.push((actionDeclaration.funcName ? actionDeclaration.funcName + "=" : "") + actionDeclaration.name + "\\to " + SimplifyExpression(CompileBlock(actionDeclaration.block, inlines), useTex));
+                break;
+            case "calculation":
+                const calculationDeclaration = <CalculationDeclaration>declaration;
+                out.push(SimplifyExpression(CompileBlock(calculationDeclaration.block, inlines), useTex));
+                break;
+        }
     }
 
     return out.join("\n");
@@ -159,7 +174,7 @@ const GetInlines = (tree: ParserOutput) : Record<string, Inline> => {
     const inlines: Record<string, Inline> = {};
 
     for (const declaration of tree) {
-        if(declaration.modifier === "inline") inlines[declaration.name] = {function: declaration.type === "function", value: declaration};
+        if(declaration.modifier === "inline") inlines[declaration["name"]] = {function: declaration.type === "function", value: declaration};
     }
 
     return inlines;
