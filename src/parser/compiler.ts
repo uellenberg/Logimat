@@ -1,4 +1,14 @@
-import {Expression, grammar, OuterConstDeclaration, OuterDeclaration, OuterFunctionDeclaration, ParserOutput, semantic, Statement} from "./grammar";
+import {
+    Expression,
+    grammar,
+    ActionDeclaration,
+    OuterConstDeclaration,
+    OuterDeclaration,
+    OuterFunctionDeclaration,
+    ParserOutput,
+    semantic,
+    Statement
+} from "./grammar";
 import ops from "../libs/ops";
 import {create, all} from "mathjs";
 import stdlib from "../libs/stdlib";
@@ -106,7 +116,8 @@ export const Compile = (input: string, useTex: boolean = false) : string => {
         if (declaration.modifier === "inline") continue;
 
         if (declaration.type === "function") out.push(declaration.name + "(" + declaration["args"].join(",") + ")" + "=" + SimplifyExpression(CompileBlock((<OuterFunctionDeclaration>declaration).block, inlines), useTex));
-        else out.push(declaration.name + "=" + SimplifyExpression(CompileExpression((<OuterConstDeclaration>declaration).expr, inlines), useTex));
+        else if(declaration.type === "const") out.push(declaration.name + "=" + SimplifyExpression(CompileExpression((<OuterConstDeclaration>declaration).expr, inlines), useTex));
+        else out.push(((<ActionDeclaration>declaration).funcName ? (<ActionDeclaration>declaration).funcName + "=" : "") + declaration.name + "\\to " + SimplifyExpression(CompileBlock((<ActionDeclaration>declaration).block, inlines), useTex));
     }
 
     return out.join("\n");

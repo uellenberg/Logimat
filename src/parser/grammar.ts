@@ -3,7 +3,7 @@ import ohm from "ohm-js";
 export const grammar = ohm.grammar(`
 LogiMat {
     Program = OuterDeclaration*
-    OuterDeclaration = OuterConstDeclaration | FunctionDeclaration
+    OuterDeclaration = OuterConstDeclaration | FunctionDeclaration | ActionDeclaration
 
     OuterConstDeclaration = ExportOuterConstDeclaration | InlineOuterConstDeclaration
     ExportOuterConstDeclaration = export #space const #space exportIdentifier "=" ExpressionStatement ";"
@@ -12,6 +12,10 @@ LogiMat {
     FunctionDeclaration = ExportFunctionDeclaration | InlineFunctionDeclaration
     ExportFunctionDeclaration = export #space function #space exportIdentifier "(" ExportFunctionArgs ")" Block
     InlineFunctionDeclaration = inline #space function #space identifier "(" FunctionArgs ")" Block
+
+    ActionDeclaration = UnnamedActionDeclaration | NamedActionDeclaration
+    UnnamedActionDeclaration = action #space exportIdentifier Block
+    NamedActionDeclaration = action #space exportIdentifier "(" exportIdentifier ")" Block
 
     ExportFunctionArgs = ListOf<exportIdentifier, ",">
     FunctionArgs = ListOf<identifier, ",">
@@ -124,6 +128,7 @@ LogiMat {
     inline = "inline" ~identifierPart
     const = "const" ~identifierPart
     function = "function" ~identifierPart
+    action = "action" ~identifierPart
     state = "state" ~identifierPart
     sum = "sum" ~identifierPart
     if = "if" ~identifierPart
@@ -204,6 +209,12 @@ semantic.addOperation("parse", {
     },
     InlineFunctionDeclaration(_1, _2, _3, _4, name, _6, args, _8, block){
         return {type: "function", modifier: "inline", name: name.parse(), args: args.parse(), block: block.parse()};
+    },
+    UnnamedActionDeclaration(_1, _2, name, block){
+        return {type: "action", modifier: "export", name: name.parse(), funcName: "", block: block.parse()};
+    },
+    NamedActionDeclaration(_1, _2, name, _4, funcName, _6, block){
+        return {type: "action", modifier: "export", name: name.parse(), funcName: funcName.parse(), block: block.parse()};
     },
     ExportFunctionArgs(l){
         return l.asIteration().parse();
@@ -316,7 +327,7 @@ semantic.addOperation("parse", {
 });
 
 export type ParserOutput = OuterDeclaration[];
-export type OuterDeclaration = OuterConstDeclaration | OuterFunctionDeclaration;
+export type OuterDeclaration = OuterConstDeclaration | OuterFunctionDeclaration | ActionDeclaration;
 export interface OuterConstDeclaration {
     type: string;
     modifier: string;
@@ -328,6 +339,13 @@ export interface OuterFunctionDeclaration {
     modifier: string;
     name: string;
     args: string[];
+    block: Statement[];
+}
+export interface ActionDeclaration {
+    type: string;
+    modifier: string;
+    name: string;
+    funcName: string;
     block: Statement[];
 }
 export interface Expression {
