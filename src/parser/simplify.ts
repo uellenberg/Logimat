@@ -1,8 +1,9 @@
-import math, {MathNode, simplify} from "mathjs";
+import {MathNode, simplify} from "mathjs";
 
 export const SimplifyExpression = (input: string, useTex: boolean) : string => {
     const res = simplify(input, {}, {exactFractions: false});
-    return useTex ? res.toTex(texOptions) : res.toString(stringOptions).replace(/\s+/g, "");
+    //They say they return a string but they can sometimes return numbers.
+    return useTex ? res.toTex(texOptions).toString() : res.toString(stringOptions).toString().replace(/\s+/g, "");
 }
 
 const builtinOneArg = [
