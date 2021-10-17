@@ -52,6 +52,11 @@ const operatorMap = {
 };
 
 const handle = (node: MathNode, options: object, tex: boolean) : string => {
+    //Handle numerical values.
+    if(node.value) {
+        return node.value;
+    }
+
     //Handle default operators.
     if(node.op) {
         if(node.fn?.startsWith("unary")) {
@@ -95,11 +100,6 @@ const handle = (node: MathNode, options: object, tex: boolean) : string => {
 
         //Otherwise, return a normal operator.
         return `${a1}${op}${a2}`;
-    }
-
-    //Handle numerical values.
-    if(node.value) {
-        return node.value;
     }
 
     //Handle functions.
