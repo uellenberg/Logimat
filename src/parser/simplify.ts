@@ -60,6 +60,10 @@ const handle = (node: MathNode, options: object, tex: boolean) : string => {
     //Handle default operators.
     if(node.op) {
         if(node.fn?.startsWith("unary")) {
+            if(node.args[0]?.op) {
+                return node.op + "(" + HandleNode(node.args[0], options, tex) + ")";
+            }
+
             return node.op + HandleNode(node.args[0], options, tex);
         }
 
