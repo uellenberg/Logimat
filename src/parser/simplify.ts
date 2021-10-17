@@ -53,7 +53,7 @@ const operatorMap = {
 
 const handle = (node: MathNode, options: object, tex: boolean) : string => {
     //Handle numerical values.
-    if(node.value) {
+    if(!isNaN(node.value)) {
         return node.value;
     }
 
