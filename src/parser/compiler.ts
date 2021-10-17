@@ -7,7 +7,7 @@ import {
     OuterFunctionDeclaration,
     ParserOutput,
     semantic,
-    Statement, CalculationDeclaration
+    Statement, CalculationDeclaration, ActionsDeclaration
 } from "./grammar";
 import ops from "../libs/ops";
 import stdlib from "../libs/stdlib";
@@ -44,6 +44,10 @@ export const Compile = (input: string, useTex: boolean = false) : string => {
             case "action":
                 const actionDeclaration = <ActionDeclaration>declaration;
                 out.push((actionDeclaration.funcName ? HandleName(actionDeclaration.funcName) + "=" : "") + HandleName(actionDeclaration.name) + "\\to " + SimplifyExpression(CompileBlock(actionDeclaration.block, inlines), useTex));
+                break;
+            case "actions":
+                const actionsDeclaration = <ActionsDeclaration>declaration;
+                out.push(HandleName(actionsDeclaration.name) + "=" + actionsDeclaration.args.map(HandleName).join(","));
                 break;
             case "calculation":
                 const calculationDeclaration = <CalculationDeclaration>declaration;
