@@ -40,9 +40,9 @@ const constants = [
     "pi"
 ];
 
-const handleFunction = (node: MathNode, options: object) : string => {
+const HandleFunction = (node: MathNode, options: object) : string => {
     return (<MathNode><unknown>node.fn).toString(options) + "(" + node.args.map(arg => arg.toString(options)).join(",") + ")";
-};
+}
 
 const operatorMap = {
     "*": "*",
@@ -60,11 +60,11 @@ const handle = (node: MathNode, options: object, tex: boolean) : string => {
     //Handle default operators.
     if(node.op) {
         if(node.fn?.startsWith("unary")) {
-            return node.op + handleNode(node.args[0], options, tex);
+            return node.op + HandleNode(node.args[0], options, tex);
         }
 
-        let a1 = handleNode(node.args[0], options, tex);
-        let a2 = handleNode(node.args[1], options, tex);
+        let a1 = HandleNode(node.args[0], options, tex);
+        let a2 = HandleNode(node.args[1], options, tex);
 
         let op = node.op;
 
@@ -122,21 +122,21 @@ const handle = (node: MathNode, options: object, tex: boolean) : string => {
                 return `\\${name}\\left(${node.args[0].toTex(options)}\\right)`;
             }
 
-            return handleFunction(node, options);
+            return HandleFunction(node, options);
         }
         if(builtinTwoArgs.includes(name)) {
             if(tex) {
                 return `\\${name}\\left(${node.args[0].toTex(options)},\\ ${node.args[1].toTex(options)}\\right)`;
             }
 
-            return handleFunction(node, options);
+            return HandleFunction(node, options);
         }
 
         if(tex) {
             return (<MathNode><unknown>node.fn).toTex(options) + "\\left(" + node.args.map(arg => arg.toTex(options)).join(",\\ ") + "\\right)";
         }
 
-        return handleFunction(node, options);
+        return HandleFunction(node, options);
     }
 
     //Handle variables.
@@ -154,6 +154,12 @@ const handle = (node: MathNode, options: object, tex: boolean) : string => {
     return "";
 }
 
+const HandleNode = (node: MathNode, options: object, tex: boolean) : string => {
+    if(!node) return "";
+    //They say they return a string but they can sometimes return numbers.
+    return tex ? node.toTex(options).toString() : node.toString(options).toString();
+}
+
 const stringOptions = {
     handler(node, options) {
         return handle(node, options, false);
@@ -166,25 +172,19 @@ const texOptions = {
     }
 };
 
-const handleNode = (node: MathNode, options: object, tex: boolean) : string => {
-    if(!node) return "";
-    //They say they return a string but they can sometimes return numbers.
-    return tex ? node.toTex(options).toString() : node.toString(options).toString();
-};
-
 const functions: Record<string, (node: MathNode, options: object, tex: boolean) => string> = {
     sum(node, options, tex) {
-        return `{\\sum_{${handleNode(node.args[0], options, tex)}=${handleNode(node.args[1], options, tex)}}^{${handleNode(node.args[2], options, tex)}}{${tex ? "" : "("}${handleNode(node.args[3], options, tex)}${tex ? "" : ")"}}}`;
+        return `{\\sum_{${HandleNode(node.args[0], options, tex)}=${HandleNode(node.args[1], options, tex)}}^{${HandleNode(node.args[2], options, tex)}}{${tex ? "" : "("}${HandleNode(node.args[3], options, tex)}${tex ? "" : ")"}}}`;
     },
     prod(node, options, tex) {
-        return `{\\prod_{${handleNode(node.args[0], options, tex)}=${handleNode(node.args[1], options, tex)}}^{${handleNode(node.args[2], options, tex)}}{${tex ? "" : "("}${handleNode(node.args[3], options, tex)}${tex ? "" : ")"}}}`;
+        return `{\\prod_{${HandleNode(node.args[0], options, tex)}=${HandleNode(node.args[1], options, tex)}}^{${HandleNode(node.args[2], options, tex)}}{${tex ? "" : "("}${HandleNode(node.args[3], options, tex)}${tex ? "" : ")"}}}`;
     },
     sqrt(node, options, tex) {
-        return `\\sqrt{${handleNode(node.args[0], options, tex)}}`;
+        return `\\sqrt{${HandleNode(node.args[0], options, tex)}}`;
     },
     pow(node, options, tex) {
-        let base = handleNode(node.args[0], options, tex);
-        const exp = handleNode(node.args[1], options, tex);
+        let base = HandleNode(node.args[0], options, tex);
+        const exp = HandleNode(node.args[1], options, tex);
 
         if((node.args[0].fn && typeof(node.args[0].fn) === "object" && node.args[0].fn["name"] === "pow") || /[-+*/]/g.test(base)) {
             base = "(" + base + ")";
@@ -196,7 +196,7 @@ const functions: Record<string, (node: MathNode, options: object, tex: boolean) 
         return "\\pi";
     },
     div(node, options, tex) {
-        return `\\frac{${handleNode(node.args[0], options, tex)}}{${handleNode(node.args[1], options, tex)}}`;
+        return `\\frac{${HandleNode(node.args[0], options, tex)}}{${HandleNode(node.args[1], options, tex)}}`;
     }
 };
 
