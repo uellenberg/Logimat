@@ -3,7 +3,7 @@ import ohm from "ohm-js";
 export const grammar = ohm.grammar(`
 LogiMat {
     Program = OuterDeclaration*
-    OuterDeclaration = OuterConstDeclaration | FunctionDeclaration | ActionDeclaration | ActionsDeclaration | CalculationDeclaration
+    OuterDeclaration = OuterConstDeclaration | FunctionDeclaration | ActionDeclaration | ActionsDeclaration | ExpressionDeclaration
 
     OuterConstDeclaration = ExportOuterConstDeclaration | InlineOuterConstDeclaration
     ExportOuterConstDeclaration = export #space const #space exportIdentifier "=" ExpressionStatement ";"
@@ -19,7 +19,7 @@ LogiMat {
     
     ActionsDeclaration = actions #space exportIdentifier "=" ExportFunctionArgs ";"
     
-    CalculationDeclaration = calculation #space Block
+    ExpressionDeclaration = expression #space Block
 
     ExportFunctionArgs = ListOf<exportIdentifier, ",">
     FunctionArgs = ListOf<identifier, ",">
@@ -136,7 +136,7 @@ LogiMat {
     function = "function" ~identifierPart
     action = "action" ~identifierPart
     actions = "actions" ~identifierPart
-    calculation = "calculation" ~identifierPart
+    expression = "expression" ~identifierPart
     state = "state" ~identifierPart
     sum = "sum" ~identifierPart
     prod = "prod" ~identifierPart
@@ -229,8 +229,8 @@ semantic.addOperation("parse", {
     ActionsDeclaration(_1, _2, name, _4, args, _6){
         return {type: "actions", modifier: "export", name: name.parse(), args: args.parse()};
     },
-    CalculationDeclaration(_1, _2, block) {
-        return {type: "calculation", modifier: "export", block: block.parse()};
+    ExpressionDeclaration(_1, _2, block) {
+        return {type: "expression", modifier: "export", block: block.parse()};
     },
     ExportFunctionArgs(l){
         return l.asIteration().parse();
@@ -346,7 +346,7 @@ semantic.addOperation("parse", {
 });
 
 export type ParserOutput = OuterDeclaration[];
-export type OuterDeclaration = OuterConstDeclaration | OuterFunctionDeclaration | ActionDeclaration | ActionsDeclaration | CalculationDeclaration;
+export type OuterDeclaration = OuterConstDeclaration | OuterFunctionDeclaration | ActionDeclaration | ActionsDeclaration | ExpressionDeclaration;
 export interface OuterConstDeclaration {
     type: string;
     modifier: string;
@@ -373,7 +373,7 @@ export interface ActionsDeclaration {
     name: string;
     args: string[];
 }
-export interface CalculationDeclaration {
+export interface ExpressionDeclaration {
     type: string;
     modifier: string;
     block: Statement[];
