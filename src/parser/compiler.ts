@@ -43,7 +43,7 @@ export const Compile = (input: string, useTex: boolean = false) : string => {
                 break;
             case "action":
                 const actionDeclaration = <ActionDeclaration>declaration;
-                out.push((actionDeclaration.funcName ? HandleName(actionDeclaration.funcName) + "=" : "") + actionDeclaration.name + "\\to " + SimplifyExpression(CompileBlock(actionDeclaration.block, inlines), useTex));
+                out.push((actionDeclaration.funcName ? HandleName(actionDeclaration.funcName) + "=" : "") + HandleName(actionDeclaration.name) + "\\to " + SimplifyExpression(CompileBlock(actionDeclaration.block, inlines), useTex));
                 break;
             case "calculation":
                 const calculationDeclaration = <CalculationDeclaration>declaration;
