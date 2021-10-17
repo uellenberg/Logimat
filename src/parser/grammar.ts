@@ -154,7 +154,7 @@ LogiMat {
                  | builtIns
                  | builtInVariables
 
-    exportIdentifier (a single character identifier) = ~reservedWord "a".."z"
+    exportIdentifier (a single character identifier) = ~reservedWord "a".."z" ("_" ("a".."z")+)?
 
     identifier (an identifier) = ~reservedWord identifierName
     identifierName (an identifier) = letter identifierPart*
@@ -238,7 +238,7 @@ semantic.addOperation("parse", {
     identifierName(_, _2){
         return this.sourceString;
     },
-    exportIdentifier(_){
+    exportIdentifier(_, _2, _3){
         return this.sourceString;
     },
     Expression(e){

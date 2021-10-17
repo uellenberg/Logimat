@@ -10,95 +10,8 @@ import {
     Statement, CalculationDeclaration
 } from "./grammar";
 import ops from "../libs/ops";
-import {create, all} from "mathjs";
 import stdlib from "../libs/stdlib";
-
-const math = create(all);
-
-const functions = {
-    sum(a, b, c, d) {
-        return d*(Math.max(0, c-b));
-    },
-    prod(a, b, c, d) {
-        return Math.pow(d, (Math.max(0, c-b)));
-    },
-    mod(a, b){
-        return a % b;
-    },
-    abs(a){
-        return Math.abs(a);
-    },
-    sqrt(a){
-        return Math.sqrt(a);
-    },
-    pow(a, b){
-        return Math.pow(a, b);
-    },
-    div(a, b) {
-        return a / b;
-    },
-    log(a){
-        return math.log(a, 10);
-    },
-    ln(a){
-        return math.log(a, math.e);
-    }
-};
-
-functions.sum["toTex"] = "{\\sum_{${args[0]}=${args[1]}}^{${args[2]}}${args[3]}}";
-functions.prod["toTex"] = "{\\prod_{${args[0]}=${args[1]}}^{${args[2]}}${args[3]}}";
-functions.mod["toTex"] = "\\operatorname{mod}\\left(${args[0]},\\ ${args[1]}\\right)";
-functions.abs["toTex"] = "\\left|${args[0]}\\right|";
-functions.sqrt["toTex"] = "\\sqrt{${args[0]}}";
-functions.pow["toTex"] = "{${args[0]}}^{${args[1]}}";
-functions.div["toTex"] = "\\frac{${args[0]}}{${args[1]}}";
-
-[
-    "sin",
-    "cos",
-    "tan",
-    "csc",
-    "sec",
-    "cot",
-    "arcsin",
-    "arccos",
-    "arctan",
-    "arccsc",
-    "arcsec",
-    "arccot",
-    "sinh",
-    "cosh",
-    "tanh",
-    "csch",
-    "sech",
-    "coth",
-    "round",
-    "sign",
-    "ln",
-    "log"
-].forEach(funcName => {
-    if(!functions[funcName]) functions[funcName] = () => null;
-    functions[funcName].toTex = "\\" + funcName + "\\left(${args[0]}\\right)";
-});
-
-[
-    "lcm",
-    "gcd",
-].forEach(funcName => {
-    if(!functions[funcName]) functions[funcName] = () => null;
-    functions[funcName].toTex = "\\" + funcName + "\\left(${args[0]},\\ ${args[1]}\\right)";
-});
-
-[
-    "pi"
-].forEach(constName => {
-    if(!functions[constName]) functions[constName] = () => null;
-    functions[constName].toTex = "\\" + constName;
-});
-
-math.import(functions, {
-    override: true
-});
+import {SimplifyExpression} from "./simplify";
 
 /**
  * Compiles LogiMat to a math function (or multiple). Each function/variable will be on a separate line.
@@ -140,41 +53,6 @@ export const Compile = (input: string, useTex: boolean = false) : string => {
     }
 
     return out.join("\n");
-}
-
-const options = {
-    handler: {
-        sum(node, options){
-            return `{\\sum_{${node.args[0].toString(options)}=${node.args[1].toString(options)}}^{${node.args[2].toString(options)}}{(${node.args[3].toString(options)})}}`;
-        },
-        prod(node, options){
-            return `{\\prod_{${node.args[0].toString(options)}=${node.args[1].toString(options)}}^{${node.args[2].toString(options)}}{(${node.args[3].toString(options)})}}`;
-        },
-        sqrt(node, options){
-            return `\\sqrt{${node.args[0].toString(options)}}`;
-        },
-        pow(node, options){
-            let base = node.args[0].toString(options);
-            const exp = node.args[1].toString(options);
-
-            if((node.args[0].fn && node.args[0].fn.name === "pow") || /[-+*/]/g.test(base)) {
-                base = "(" + base + ")";
-            }
-
-            return `{${base}}^{${exp}}`;
-        },
-        pi() {
-            return "\\pi";
-        },
-        div(node, options){
-            return `\\frac{${node.args[0].toString(options)}}{${node.args[1].toString(options)}}`;
-        }
-    }
-};
-
-const SimplifyExpression = (input: string, useTex: boolean) : string => {
-    const res = math.simplify(input, {}, {exactFractions: false});
-    return useTex ? res.toTex() : res.toString(options).replace(/\s+/g, "");
 }
 
 const GetTree = (input: string) : ParserOutput => {
