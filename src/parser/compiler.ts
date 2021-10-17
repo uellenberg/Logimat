@@ -35,15 +35,15 @@ export const Compile = (input: string, useTex: boolean = false) : string => {
         switch(declaration.type) {
             case "function":
                 const functionDeclaration = <OuterFunctionDeclaration>declaration;
-                out.push(functionDeclaration.name + "(" + functionDeclaration.args.join(",") + ")" + "=" + SimplifyExpression(CompileBlock(functionDeclaration.block, inlines), useTex));
+                out.push(HandleName(functionDeclaration.name) + "(" + functionDeclaration.args.join(",") + ")" + "=" + SimplifyExpression(CompileBlock(functionDeclaration.block, inlines), useTex));
                 break;
             case "const":
                 const constDeclaration = <OuterConstDeclaration>declaration;
-                out.push(constDeclaration.name + "=" + SimplifyExpression(CompileExpression(constDeclaration.expr, inlines), useTex));
+                out.push(HandleName(constDeclaration.name) + "=" + SimplifyExpression(CompileExpression(constDeclaration.expr, inlines), useTex));
                 break;
             case "action":
                 const actionDeclaration = <ActionDeclaration>declaration;
-                out.push((actionDeclaration.funcName ? actionDeclaration.funcName + "=" : "") + actionDeclaration.name + "\\to " + SimplifyExpression(CompileBlock(actionDeclaration.block, inlines), useTex));
+                out.push((actionDeclaration.funcName ? HandleName(actionDeclaration.funcName) + "=" : "") + actionDeclaration.name + "\\to " + SimplifyExpression(CompileBlock(actionDeclaration.block, inlines), useTex));
                 break;
             case "calculation":
                 const calculationDeclaration = <CalculationDeclaration>declaration;
@@ -53,6 +53,15 @@ export const Compile = (input: string, useTex: boolean = false) : string => {
     }
 
     return out.join("\n");
+}
+
+const HandleName = (name: string) : string => {
+    //Correct the variable name if it's in the form of \w_\w+.
+    if(name.substring(1, 2) === "_") {
+        name = name[0] + "_{" + name.substring(2) + "}";
+    }
+
+    return name;
 }
 
 const GetTree = (input: string) : ParserOutput => {
