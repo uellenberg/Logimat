@@ -154,7 +154,7 @@ LogiMat {
                  | builtIns
                  | builtInVariables
 
-    exportIdentifier (a single character identifier) = ~reservedWord "a".."z" ("_" ("a".."z")+)?
+    exportIdentifier (a single character identifier) = ~reservedWord "a".."z" ("_" ("a".."z" | "0".."9")+)?
 
     identifier (an identifier) = ~reservedWord identifierName
     identifierName (an identifier) = letter identifierPart*
