@@ -35,7 +35,7 @@ export const Compile = (input: string, useTex: boolean = false) : string => {
         switch(declaration.type) {
             case "function":
                 const functionDeclaration = <OuterFunctionDeclaration>declaration;
-                out.push(HandleName(functionDeclaration.name) + "(" + functionDeclaration.args.join(",") + ")" + "=" + SimplifyExpression(CompileBlock(functionDeclaration.block, inlines), useTex));
+                out.push(HandleName(functionDeclaration.name) + "(" + functionDeclaration.args.map(HandleName).join(",") + ")" + "=" + SimplifyExpression(CompileBlock(functionDeclaration.block, inlines), useTex));
                 break;
             case "const":
                 const constDeclaration = <OuterConstDeclaration>declaration;
