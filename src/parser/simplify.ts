@@ -117,6 +117,9 @@ const handle = (node: MathNode, options: object, tex: boolean) : string => {
         }
 
         //If we know it's built-in, handle it.
+        if(constants.includes(name)) {
+            return `\\${name}`;
+        }
         if(builtinOneArg.includes(name)) {
             if(tex) {
                 return `\\${name}\\left(${node.args[0].toTex(options)}\\right)`;
