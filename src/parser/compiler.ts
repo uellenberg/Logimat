@@ -7,7 +7,7 @@ import {
     OuterFunctionDeclaration,
     ParserOutput,
     semantic,
-    Statement, ExpressionDeclaration, ActionsDeclaration, GraphDeclaration
+    Statement, ExpressionDeclaration, ActionsDeclaration, GraphDeclaration, PointDeclaration
 } from "./grammar";
 import ops from "../libs/ops";
 import stdlib from "../libs/stdlib";
@@ -65,6 +65,10 @@ export const Compile = (input: string, useTex: boolean = false) : string => {
 
                 const graphDeclaration = <GraphDeclaration>declaration;
                 out.push(SimplifyExpression(CompileExpression(graphDeclaration.p1, inlines), useTex) + opMap[graphDeclaration.op] + SimplifyExpression(CompileExpression(graphDeclaration.p2, inlines), useTex))
+                break;
+            case "point":
+                const pointDeclaration = <PointDeclaration>declaration;
+                out.push((useTex ? "\\left(" : "(") + SimplifyExpression(CompileExpression(pointDeclaration.p1, inlines), useTex) + "," + SimplifyExpression(CompileExpression(pointDeclaration.p2, inlines), useTex) + (useTex ? "\\right)" : ")"));
                 break;
         }
     }

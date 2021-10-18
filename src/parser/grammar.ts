@@ -5,7 +5,7 @@ LogiMat {
     Program = OuterDeclaration*
     OuterDeclaration = OuterConstDeclaration | FunctionDeclaration | ActionDeclaration | ActionsDeclaration | ExpressionDeclaration | GraphDeclaration
 
-    OuterConstDeclaration = ExportOuterConstDeclaration | InlineOuterConstDeclaration
+    OuterConstDeclaration = ExportOuterConstDeclaration | InlineOuterConstDeclaration | PointDeclaration
     ExportOuterConstDeclaration = export #space const #space exportIdentifier "=" ExpressionStatement ";"
     InlineOuterConstDeclaration = inline #space const #space identifier "=" ExpressionStatement ";"
 
@@ -29,6 +29,8 @@ LogiMat {
                   | "="
                   | ">"
                   | "<"
+    
+    PointDeclaration = point "(" ExpressionStatement "," ExpressionStatement ")" ";"
 
     ExportFunctionArgs = ListOf<exportIdentifier, ",">
     FunctionArgs = ListOf<identifier, ",">
@@ -147,6 +149,7 @@ LogiMat {
     actions = "actions" ~identifierPart
     expression = "expression" ~identifierPart
     graph = "graph" ~identifierPart
+    point = "point" ~identifierPart
     state = "state" ~identifierPart
     sum = "sum" ~identifierPart
     prod = "prod" ~identifierPart
@@ -244,6 +247,9 @@ semantic.addOperation("parse", {
     },
     GraphDeclaration(_1, _2, _3, p1, _5, op, _7, p2, _9, _10){
         return {type: "graph", modifier: "export", p1: p1.parse(), p2: p2.parse(), op: op.parse()};
+    },
+    PointDeclaration(_1, _2, p1, _4, p2, _6, _7){
+        return {type: "point", modifier: "export", p1: p1.parse(), p2: p2.parse()};
     },
     ExportFunctionArgs(l){
         return l.asIteration().parse();
@@ -359,7 +365,7 @@ semantic.addOperation("parse", {
 });
 
 export type ParserOutput = OuterDeclaration[];
-export type OuterDeclaration = OuterConstDeclaration | OuterFunctionDeclaration | ActionDeclaration | ActionsDeclaration | ExpressionDeclaration | GraphDeclaration;
+export type OuterDeclaration = OuterConstDeclaration | OuterFunctionDeclaration | ActionDeclaration | ActionsDeclaration | ExpressionDeclaration | GraphDeclaration | PointDeclaration;
 export interface OuterConstDeclaration {
     type: string;
     modifier: string;
@@ -397,6 +403,12 @@ export interface GraphDeclaration {
     p1: Expression;
     p2: Expression;
     op: string;
+}
+export interface PointDeclaration {
+    type: string;
+    modifier: string;
+    p1: Expression;
+    p2: Expression;
 }
 export interface Expression {
     type: string;
