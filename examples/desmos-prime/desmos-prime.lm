@@ -1,0 +1,36 @@
+//Seed
+export const s_eed = 81000;
+
+//Handle updating seed.
+export const o_ldseed = 81000;
+
+action o_ldseed(u_pdateseed) {
+    state = s_eed;
+}
+
+//Primes
+export const a = 0;
+export const b = 0;
+
+action a(u_pdatea) {
+    state = handlePrimes(a, 3874.1244);
+}
+action b(u_pdateb) {
+    state = handlePrimes(b, 8756.6745);
+}
+
+actions u_pdate = u_pdateseed, u_pdatea, u_pdateb;
+
+//Returns val+1 if a is not prime, and a otherwise.
+//If it is not defined, a prime will be generated.
+inline function handlePrimes(val, mul) {
+    if(val == 0 || s_eed != o_ldseed) {
+        state = s_eed*mul;
+    } else if(isPrime(val)) {
+        state = val;
+    } else {
+        state = val + 1;
+    }
+
+    state = floor(state) % 10^3;
+}
