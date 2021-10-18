@@ -48,7 +48,8 @@ const operatorMap = {
     "*": "*",
     "/": "*",
     "+": "+",
-    "-": "+"
+    "-": "+",
+    "^": "^"
 };
 
 const handle = (node: MathNode, options: object, tex: boolean) : string => {
@@ -83,26 +84,24 @@ const handle = (node: MathNode, options: object, tex: boolean) : string => {
             }
         }
         //If the operator is * and they are either 1a, a1, or aa.
-        else if(node.op === "*" && ((!node.args[0].value && !node.args[1].value) || (node.args[0].value && !node.args[1].value) || (!node.args[0].value && node.args[1].value))) {
-            op = "";
+        else if(node.op === "*" && ((node.args[0].name && node.args[1].name) || (node.args[0].value && node.args[1].name) || (node.args[0].name && node.args[1].value))) {
+            return `${a1}${a2}`;
         }
 
         //If any of the ones here are an incompatible operation, encapsulate them.
 
-        //If #1 is an operator and #2 is not, and #1 doesn't have the same operator as this one.
-        if(node.args[0]?.op && operatorMap[node.args[0]?.op] !== operatorMap[node.op] && !node.args[1]?.op) {
-            return tex ? `\\left(${a1}\\right)${op}${a2}` : `(${a1})${op}${a2}`;
+        const operator = node.op;
+        const op1 = node.args[0].op;
+        const op2 = node.args[1].op;
+
+        //We want to group any non-single terms that have an operator that isn't equal to the current operator.
+        if(!IsSingleTerm(op1) && op1 !== operator) {
+            a1 = Encapsulate(a1, tex);
         }
-        //If #2 is an operator and #1 is not, and #2 doesn't have the same operator as this one.
-        if(node.args[1]?.op && operatorMap[node.args[1]?.op] !== operatorMap[node.op] && !node.args[0]?.op) {
-            return tex ? `${a1}${op}\\left(${a2}\\right)` : `${a1}${op}(${a2})`;
-        }
-        //If both are operators, and are incompatible.
-        if(node.args[0]?.op && node.args[1]?.op && ![operatorMap[node.args[0]?.op], operatorMap[node.args[1]?.op], operatorMap[node.op]].every((el, _, arr) => el === arr[0])) {
-            return tex ? `\\left(${a1}\\right)${op}\\left(${a2}\\right)` : `(${a1})${op}(${a2})`;
+        if(!IsSingleTerm(op2) && op2 !== operator) {
+            a2 = Encapsulate(a2, tex);
         }
 
-        //Otherwise, return a normal operator.
         return `${a1}${op}${a2}`;
     }
 
@@ -159,6 +158,15 @@ const handle = (node: MathNode, options: object, tex: boolean) : string => {
     }
 
     return "";
+}
+
+const IsSingleTerm = (op: string) : boolean => {
+    //Single terms are implicitly grouped, and don't need parentheses.
+    return !op || operatorMap[op] !== "+";
+}
+
+const Encapsulate = (val: string, tex: boolean) : string => {
+    return tex ? `\\left(${val}\\right)` : `(${val})`;
 }
 
 const HandleNode = (node: MathNode, options: object, tex: boolean) : string => {
