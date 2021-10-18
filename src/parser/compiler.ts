@@ -7,7 +7,7 @@ import {
     OuterFunctionDeclaration,
     ParserOutput,
     semantic,
-    Statement, ExpressionDeclaration, ActionsDeclaration
+    Statement, ExpressionDeclaration, ActionsDeclaration, GraphDeclaration
 } from "./grammar";
 import ops from "../libs/ops";
 import stdlib from "../libs/stdlib";
@@ -52,6 +52,19 @@ export const Compile = (input: string, useTex: boolean = false) : string => {
             case "expression":
                 const expressionDeclaration = <ExpressionDeclaration>declaration;
                 out.push(SimplifyExpression(CompileBlock(expressionDeclaration.block, inlines), useTex));
+                break;
+            case "graph":
+                const opMap = {
+                    "=": "=",
+                    ">": ">",
+                    ">=": "\\ge ",
+                    "=>": "\\ge ",
+                    "<=": "\\le ",
+                    "=<": "\\le "
+                };
+
+                const graphDeclaration = <GraphDeclaration>declaration;
+                out.push(SimplifyExpression(CompileExpression(graphDeclaration.p1, inlines), useTex) + opMap[graphDeclaration.op] + SimplifyExpression(CompileExpression(graphDeclaration.p2, inlines), useTex))
                 break;
         }
     }
