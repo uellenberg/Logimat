@@ -1,0 +1,6 @@
+test!(1, "test \"string\"", true);
+
+export function a() {
+    //test!(1, "test \"string\"", true);
+    state = 1;
+}

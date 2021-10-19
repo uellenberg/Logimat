@@ -3,7 +3,9 @@ import ohm from "ohm-js";
 export const grammar = ohm.grammar(`
 LogiMat {
     Program = OuterDeclaration*
-    OuterDeclaration = OuterConstDeclaration | FunctionDeclaration | ActionDeclaration | ActionsDeclaration | ExpressionDeclaration
+    OuterDeclaration = Template | OuterConstDeclaration | FunctionDeclaration | ActionDeclaration | ActionsDeclaration | ExpressionDeclaration
+    
+    Template = templateName "(" TemplateArgs ")" ";"
 
     OuterConstDeclaration = ExportOuterConstDeclaration | InlineOuterConstDeclaration
     ExportOuterConstDeclaration = export #space const #space exportIdentifier "=" ExpressionStatement ";"
@@ -23,10 +25,12 @@ LogiMat {
 
     ExportFunctionArgs = ListOf<exportIdentifier, ",">
     FunctionArgs = ListOf<identifier, ",">
+    TemplateArgs = ListOf<templateArg, ",">
     
     Block = "{" InnerDeclaration+ "}"
     
-    InnerDeclaration = ConstDeclaration
+    InnerDeclaration = Template
+                     | ConstDeclaration
                      | SetState
                      | IfStatement
 
@@ -161,6 +165,11 @@ LogiMat {
 
     identifier (an identifier) = ~reservedWord identifierName
     identifierName (an identifier) = letter identifierPart*
+    
+    templateName (an identifier) = identifier "!"
+    templateArg = string -- string
+                | number -- number
+                | boolean -- boolean
 
     identifierPart = letter | unicodeCombiningMark
                    | unicodeDigit | unicodeConnectorPunctuation
@@ -195,6 +204,13 @@ LogiMat {
 
     multiLineComment = "/*" (~"*/" any)* "*/"
     singleLineComment = "//" (~lineTerminator any)*
+    
+    string = "\\"" stringCharacter* "\\""
+    stringCharacter = ~("\\"" | "\\\\" | lineTerminator) any -- nonEscaped
+                    | "\\\\" singleEscapeCharacter          -- escaped
+    singleEscapeCharacter = "\\"" | "\\\\"
+
+    boolean = "true" | "false"
 }
 `);
 
@@ -207,6 +223,9 @@ semantic.addOperation("parse", {
     Program(parts){
         //console.log(parts)
         return parts.children.map(part => part.parse());
+    },
+    Template(name, _2, args, _3, _4){
+        return {type: "template", modifier: "export", name: name.parse(), args: args.parse()};
     },
     ExportOuterConstDeclaration(_1, _2, _3, _4, name, _6, expr, _8){
         return {type: "const", modifier: "export", name: name.parse(), expr: expr.parse()};
@@ -238,6 +257,9 @@ semantic.addOperation("parse", {
     FunctionArgs(l){
         return l.asIteration().parse();
     },
+    TemplateArgs(l){
+        return l.asIteration().parse();
+    },
     identifier(_){
         return this.sourceString;
     },
@@ -246,6 +268,18 @@ semantic.addOperation("parse", {
     },
     exportIdentifier(_, _2, _3){
         return this.sourceString;
+    },
+    templateName(name, _){
+        return name.parse();
+    },
+    templateArg_string(str) {
+        return str.parse();
+    },
+    templateArg_boolean(str) {
+        return str.parse() === "true";
+    },
+    templateArg_number(str) {
+        return parseInt(str.parse());
     },
     Expression(e){
         return e.parse();
@@ -343,10 +377,26 @@ semantic.addOperation("parse", {
     GreaterThanEqualOperator(e, _, e2){
         return {type: "f", args: ["gte", [e.parse(), e2.parse()]]};
     },
+    string(_, str, _3){
+        return str.parse().join("");
+    },
+    stringCharacter_nonEscaped(str){
+        return str.parse();
+    },
+    stringCharacter_escaped(_, str){
+        return str.parse();
+    }
 });
 
 export type ParserOutput = OuterDeclaration[];
-export type OuterDeclaration = OuterConstDeclaration | OuterFunctionDeclaration | ActionDeclaration | ActionsDeclaration | ExpressionDeclaration;
+export type OuterDeclaration = Template | OuterConstDeclaration | OuterFunctionDeclaration | ActionDeclaration | ActionsDeclaration | ExpressionDeclaration;
+export interface Template {
+    type: string;
+    modifier: string;
+    name: string;
+    args: TemplateArgs;
+}
+export type TemplateArgs = (string | number | boolean)[];
 export interface OuterConstDeclaration {
     type: string;
     modifier: string;
@@ -382,7 +432,7 @@ export interface Expression {
     type: string;
     args: (string | object)[];
 }
-export type Statement = SetState | IfStatement | Sum;
+export type Statement = Template | SetState | IfStatement | Sum;
 export interface SetState {
     type: string;
     expr: Expression;

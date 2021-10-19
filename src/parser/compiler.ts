@@ -7,7 +7,7 @@ import {
     OuterFunctionDeclaration,
     ParserOutput,
     semantic,
-    Statement, ExpressionDeclaration, ActionsDeclaration
+    Statement, ExpressionDeclaration, ActionsDeclaration, Template, TemplateArgs
 } from "./grammar";
 import ops from "../libs/ops";
 import stdlib from "../libs/stdlib";
@@ -21,18 +21,37 @@ import {SimplifyExpression} from "./simplify";
 export const Compile = (input: string, useTex: boolean = false) : string => {
     const tree = GetTree(input);
 
-    let out: string[] = [];
-
     const inlines: Record<string, Inline> = {
         ...GetInlines(tree),
         ...GetInlines(GetTree(stdlib)),
         ...GetInlines(GetTree(ops))
     };
 
+    const templates: Record<string, (args: TemplateArgs) => string> = {
+        test(args) {
+            return "export const t_est = " + args[0] + ";";
+        }
+    };
+
+    return InternalCompile(useTex, tree, inlines, templates).join("\n");
+}
+
+const InternalCompile = (useTex: boolean, tree: ParserOutput, inlines: Record<string, Inline>, templates: Record<string, (args: TemplateArgs) => string>) : string[] => {
+    let out: string[] = [];
+
     for (const declaration of tree) {
         if (declaration.modifier === "inline") continue;
 
         switch(declaration.type) {
+            case "template":
+                const templateDeclaration = <Template>declaration;
+                if(!templates.hasOwnProperty(templateDeclaration.name)) throw new Error("Template \"" + templateDeclaration.name + "\" does not exist!");
+
+                const output = templates[templateDeclaration.name](templateDeclaration.args);
+                const templateTree = GetTree(output);
+
+                out.push(...InternalCompile(useTex, templateTree, inlines, templates));
+                break;
             case "function":
                 const functionDeclaration = <OuterFunctionDeclaration>declaration;
                 out.push(HandleName(functionDeclaration.name) + "(" + functionDeclaration.args.map(HandleName).join(",") + ")" + "=" + SimplifyExpression(CompileBlock(functionDeclaration.block, inlines), useTex));
@@ -56,7 +75,7 @@ export const Compile = (input: string, useTex: boolean = false) : string => {
         }
     }
 
-    return out.join("\n");
+    return out;
 }
 
 const HandleName = (name: string) : string => {
