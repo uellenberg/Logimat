@@ -64,7 +64,7 @@ export const Compile = (input: string, useTex: boolean = false, noFS = false, fi
         }
     }
 
-    const declarations = HandleOuterTemplates(tree.declarations, templates, state);
+    const declarations = HandleOuterTemplates<OuterDeclaration>(tree.declarations, templates, state, false);
 
     const inlines: Record<string, Inline> = {
         ...GetInlines(declarations),
@@ -75,8 +75,8 @@ export const Compile = (input: string, useTex: boolean = false, noFS = false, fi
     return InternalCompile(useTex, declarations, inlines, templates, state).join("\n");
 }
 
-const HandleOuterTemplates = (inputDeclarations: OuterDeclaration[], templates: Record<string, TemplateFunction>, state: object) : OuterDeclaration[] => {
-    const declarations: OuterDeclaration[] = [];
+const HandleOuterTemplates = <T extends OuterDeclaration | Statement>(inputDeclarations: T[], templates: Record<string, TemplateFunction>, state: object, statements: boolean) : T[] => {
+    const declarations: T[] = [];
 
     let hasTemplates = false;
 
@@ -92,14 +92,15 @@ const HandleOuterTemplates = (inputDeclarations: OuterDeclaration[], templates: 
         if(!templates.hasOwnProperty(templateDeclaration.name)) throw new Error("Template \"" + templateDeclaration.name + "\" does not exist!");
 
         const output = templates[templateDeclaration.name](templateDeclaration.args, state);
-        const templateTree = GetTree(output);
+        const templateTree = statements ? GetStatementsTree(output) : GetTree(output);
 
         //TODO: Allow templates to import other templates.
-        declarations.push(...templateTree.declarations);
+        //@ts-ignore
+        declarations.push(...(statements ? templateTree : templateTree.declarations));
     }
 
     //Keep handling templates until none are left.
-    if(hasTemplates) return HandleOuterTemplates(declarations, templates, state);
+    if(hasTemplates) return HandleOuterTemplates<T>(declarations, templates, state, statements);
     return declarations;
 }
 
@@ -152,6 +153,13 @@ const GetTree = (input: string) : ParserOutput => {
     return semantic(match).parse();
 }
 
+const GetStatementsTree = (input: string) : Statement[] => {
+    const match = grammar.match(input, "InnerDeclarations");
+    if(match.failed()) throw new Error(match.message);
+
+    return semantic(match).parse();
+}
+
 const GetInlines = (tree: OuterDeclaration[]) : Record<string, Inline> => {
     const inlines: Record<string, Inline> = {};
 
@@ -169,18 +177,10 @@ const CompileBlock = (input: Statement[], inlines: Record<string, Inline>, templ
         ...args
     };
 
-    for (const statement of input) {
+    const declarations: Statement[] = HandleOuterTemplates<Statement>(input, templates, state, true);
+
+    for (const statement of declarations) {
         switch(statement.type) {
-            case "template":
-                const templateDeclaration = <Template>statement;
-                if(!templates.hasOwnProperty(templateDeclaration.name)) throw new Error("Template \"" + templateDeclaration.name + "\" does not exist!");
-
-                const output = templates[templateDeclaration.name](templateDeclaration.args, state);
-                const templateTree = GetTree(output);
-
-                //TODO: Allow templates to import other templates.
-                out.push(...CompileBlock(templateTree, inlines, templates, state, vars, args));
-                break;
             case "const":
                 newVars[statement["name"]] = CompileExpression(statement["expr"], inlines, templates, state, {
                     ...newVars,

@@ -31,7 +31,8 @@ LogiMat {
     FunctionArgs = ListOf<identifier, ",">
     TemplateArgs = ListOf<templateArg, ",">
     
-    Block = "{" InnerDeclaration+ "}"
+    Block = "{" InnerDeclarations "}"
+    InnerDeclarations = InnerDeclaration+
     
     InnerDeclaration = Template
                      | ConstDeclaration
@@ -333,6 +334,9 @@ semantic.addOperation("parse", {
         return this.sourceString;
     },
     Block(_, e, _2){
+        return e.parse();
+    },
+    InnerDeclarations(e){
         return e.children.map(part => part.parse());
     },
     ConstDeclaration(_, _2, id, _3, expr, _4){
