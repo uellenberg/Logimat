@@ -29,11 +29,7 @@ export const Compile = (input: string, useTex: boolean = false, noFS = false, fi
 
     const state: object = {};
 
-    const templates: Record<string, TemplateFunction> = {
-        test(args) {
-            return "export const t_est = " + args[0] + ";";
-        }
-    };
+    const templates: Record<string, TemplateFunction> = {};
 
     if(!noFS && typeof(filePath) === "string") {
         module.paths.push(filePath);

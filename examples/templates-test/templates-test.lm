@@ -1,7 +1,0 @@
-import templates from "test.js";
-
-test1!(1, "test \"string\"", true);
-
-export function a() {
-    test2!(1, "test \"string\"", true);
-}
