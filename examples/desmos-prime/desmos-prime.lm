@@ -4,7 +4,7 @@ export const s_eed = 81000;
 //Handle updating seed.
 export const o_ldseed = 81000;
 
-action o_ldseed(u_pdateseed) {
+action u_pdateseed = o_ldseed {
     state = s_eed;
 }
 
@@ -12,10 +12,10 @@ action o_ldseed(u_pdateseed) {
 export const a = 0;
 export const b = 0;
 
-action a(u_pdatea) {
+action u_pdatea = a {
     state = handlePrimes(a, 3874.1244);
 }
-action b(u_pdateb) {
+action u_pdateb = b {
     state = handlePrimes(b, 8756.6745);
 }
 
