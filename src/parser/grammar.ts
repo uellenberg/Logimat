@@ -1,9 +1,16 @@
 import ohm from "ohm-js";
+import {TemplateArgs} from "../types";
 
 export const grammar = ohm.grammar(`
 LogiMat {
-    Program = OuterDeclaration*
-    OuterDeclaration = OuterConstDeclaration | FunctionDeclaration | ActionDeclaration | ActionsDeclaration | ExpressionDeclaration | GraphDeclaration
+    Program = Import* OuterDeclaration*
+    
+    Import = ImportTemplates
+    ImportTemplates = "import" #space "templates" #space "from" #space string ";"
+    
+    OuterDeclaration = Template | OuterConstDeclaration | FunctionDeclaration | ActionDeclaration | ActionsDeclaration | ExpressionDeclaration | GraphDeclaration | PointDeclaration
+    
+    Template = templateName "(" TemplateArgs ")" ";"
 
     OuterConstDeclaration = ExportOuterConstDeclaration | InlineOuterConstDeclaration | PointDeclaration
     ExportOuterConstDeclaration = export #space const #space exportIdentifier "=" ExpressionStatement ";"
@@ -15,7 +22,7 @@ LogiMat {
 
     ActionDeclaration = UnnamedActionDeclaration | NamedActionDeclaration
     UnnamedActionDeclaration = action #space exportIdentifier Block
-    NamedActionDeclaration = action #space exportIdentifier "(" exportIdentifier ")" Block
+    NamedActionDeclaration = action #space exportIdentifier "=" exportIdentifier Block
     
     ActionsDeclaration = actions #space exportIdentifier "=" ExportFunctionArgs ";"
     
@@ -31,13 +38,21 @@ LogiMat {
                   | "<"
     
     PointDeclaration = point "(" ExpressionStatement "," ExpressionStatement ")" ";"
-
+    
     ExportFunctionArgs = ListOf<exportIdentifier, ",">
     FunctionArgs = ListOf<identifier, ",">
+    TemplateArgs = ListOf<TemplateArg, ",">
     
-    Block = "{" InnerDeclaration+ "}"
+    TemplateArg = string  -- string
+                | number  -- number
+                | boolean -- boolean
+                | Block   -- block
     
-    InnerDeclaration = ConstDeclaration
+    Block = "{" InnerDeclarations "}"
+    InnerDeclarations = InnerDeclaration+
+    
+    InnerDeclaration = Template
+                     | ConstDeclaration
                      | SetState
                      | IfStatement
 
@@ -101,6 +116,7 @@ LogiMat {
       | Sum
       | Prod
       | identifierName "(" ListOf<Expression, ","> ")"   -- func
+      | templateName "(" TemplateArgs ")"   -- template
       | (identifier | builtInVariables)   -- var
       | number
       | state   -- state
@@ -174,6 +190,8 @@ LogiMat {
 
     identifier (an identifier) = ~reservedWord identifierName
     identifierName (an identifier) = letter identifierPart*
+    
+    templateName (an identifier) = identifier "!"
 
     identifierPart = letter | unicodeCombiningMark
                    | unicodeDigit | unicodeConnectorPunctuation
@@ -208,6 +226,13 @@ LogiMat {
 
     multiLineComment = "/*" (~"*/" any)* "*/"
     singleLineComment = "//" (~lineTerminator any)*
+    
+    string = "\\"" stringCharacter* "\\""
+    stringCharacter = ~("\\"" | "\\\\" | lineTerminator) any -- nonEscaped
+                    | "\\\\" singleEscapeCharacter          -- escaped
+    singleEscapeCharacter = "\\"" | "\\\\"
+
+    boolean = "true" | "false"
 }
 `);
 
@@ -217,9 +242,14 @@ semantic.addOperation("parse", {
     _terminal(){
         return this.sourceString;
     },
-    Program(parts){
-        //console.log(parts)
-        return parts.children.map(part => part.parse());
+    Program(imports, declarations){
+        return {imports: imports.children.map(part => part.parse()), declarations: declarations.children.map(part => part.parse())};
+    },
+    ImportTemplates(_, _1, _2, _3, _4, _5, path, _7){
+        return {importType: "template", path: path.parse()};
+    },
+    Template(name, _2, args, _3, _4){
+        return {type: "template", name: name.parse(), args: args.parse()};
     },
     ExportOuterConstDeclaration(_1, _2, _3, _4, name, _6, expr, _8){
         return {type: "const", modifier: "export", name: name.parse(), expr: expr.parse()};
@@ -236,7 +266,7 @@ semantic.addOperation("parse", {
     UnnamedActionDeclaration(_1, _2, name, block){
         return {type: "action", modifier: "export", name: name.parse(), funcName: "", block: block.parse()};
     },
-    NamedActionDeclaration(_1, _2, name, _4, funcName, _6, block){
+    NamedActionDeclaration(_1, _2, funcName, _4, name, block){
         return {type: "action", modifier: "export", name: name.parse(), funcName: funcName.parse(), block: block.parse()};
     },
     ActionsDeclaration(_1, _2, name, _4, args, _6){
@@ -257,6 +287,9 @@ semantic.addOperation("parse", {
     FunctionArgs(l){
         return l.asIteration().parse();
     },
+    TemplateArgs(l){
+        return l.asIteration().parse();
+    },
     identifier(_){
         return this.sourceString;
     },
@@ -265,6 +298,21 @@ semantic.addOperation("parse", {
     },
     exportIdentifier(_, _2, _3){
         return this.sourceString;
+    },
+    templateName(name, _){
+        return name.parse();
+    },
+    TemplateArg_string(str) {
+        return str.parse();
+    },
+    TemplateArg_boolean(str) {
+        return str.parse() === "true";
+    },
+    TemplateArg_number(str) {
+        return parseInt(str.parse());
+    },
+    TemplateArg_block(block) {
+        return block.children[1].sourceString;
     },
     Expression(e){
         return e.parse();
@@ -305,6 +353,9 @@ semantic.addOperation("parse", {
     PriExp_state(e){
         return {type: "v", args: ["state"]};
     },
+    PriExp_template(name, _2, args, _3){
+        return {type: "template", name: name.parse(), args: args.parse()};
+    },
     number_fract(_, _2, _3){
         return this.sourceString;
     },
@@ -312,6 +363,9 @@ semantic.addOperation("parse", {
         return this.sourceString;
     },
     Block(_, e, _2){
+        return e.parse();
+    },
+    InnerDeclarations(e){
         return e.children.map(part => part.parse());
     },
     ConstDeclaration(_, _2, id, _3, expr, _4){
@@ -362,10 +416,32 @@ semantic.addOperation("parse", {
     GreaterThanEqualOperator(e, _, e2){
         return {type: "f", args: ["gte", [e.parse(), e2.parse()]]};
     },
+    string(_, str, _3){
+        return str.parse().join("");
+    },
+    stringCharacter_nonEscaped(str){
+        return str.parse();
+    },
+    stringCharacter_escaped(_, str){
+        return str.parse();
+    }
 });
 
-export type ParserOutput = OuterDeclaration[];
-export type OuterDeclaration = OuterConstDeclaration | OuterFunctionDeclaration | ActionDeclaration | ActionsDeclaration | ExpressionDeclaration | GraphDeclaration | PointDeclaration;
+export interface ParserOutput {
+    imports: Import[],
+    declarations: OuterDeclaration[]
+}
+export interface Import {
+    importType: string;
+    path: string;
+}
+export type OuterDeclaration = Template | OuterConstDeclaration | OuterFunctionDeclaration | ActionDeclaration | ActionsDeclaration | ExpressionDeclaration | GraphDeclaration | PointDeclaration;
+export interface Template {
+    type: string;
+    modifier: string;
+    name: string;
+    args: TemplateArgs;
+}
 export interface OuterConstDeclaration {
     type: string;
     modifier: string;
@@ -414,7 +490,7 @@ export interface Expression {
     type: string;
     args: (string | object)[];
 }
-export type Statement = SetState | IfStatement | Sum;
+export type Statement = Template | SetState | IfStatement | Sum;
 export interface SetState {
     type: string;
     expr: Expression;
