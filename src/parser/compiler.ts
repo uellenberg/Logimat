@@ -156,7 +156,7 @@ const InternalCompile = (useTex: boolean, tree: OuterDeclaration[], inlines: Rec
                 break;
             case "action":
                 const actionDeclaration = <ActionDeclaration>declaration;
-                out.push((actionDeclaration.funcName ? HandleName(actionDeclaration.funcName) + "=" : "") + HandleName(actionDeclaration.name) + "\\to " + SimplifyExpression(CompileBlock(actionDeclaration.block, inlines, templates, state), useTex));
+                out.push((actionDeclaration.funcName ? HandleName(actionDeclaration.funcName) + "=" : "") + HandleName(actionDeclaration.name) + "\\to " + SimplifyExpression(CompileBlock(actionDeclaration.block, inlines, templates, state, actionDeclaration.name), useTex));
                 break;
             case "actions":
                 const actionsDeclaration = <ActionsDeclaration>declaration;
@@ -229,8 +229,8 @@ const GetInlines = (tree: OuterDeclaration[]) : Record<string, Inline> => {
     return inlines;
 }
 
-const CompileBlock = (input: Statement[], inlines: Record<string, Inline>, templates: Record<string, TemplateFunction>, state: TemplateState, vars: Record<string, string> = {}, args: Record<string, string> = {}) : string => {
-    let out = "";
+const CompileBlock = (input: Statement[], inlines: Record<string, Inline>, templates: Record<string, TemplateFunction>, state: TemplateState, defaultOut = "", vars: Record<string, string> = {}, args: Record<string, string> = {}) : string => {
+    let out = defaultOut;
     let newVars = {
         ...vars,
         ...args
@@ -258,11 +258,11 @@ const CompileBlock = (input: Statement[], inlines: Record<string, Inline>, templ
                     ...newVars,
                     state: out
                 });
-                const ifaction = CompileBlock(statement["ifaction"], inlines, templates, state, {
+                const ifaction = CompileBlock(statement["ifaction"], inlines, templates, state, "", {
                     ...newVars,
                     state: out
                 });
-                const elseaction = CompileBlock(statement["elseaction"], inlines, templates, state, {
+                const elseaction = CompileBlock(statement["elseaction"], inlines, templates, state, "", {
                     ...newVars,
                     state: out
                 });
@@ -311,7 +311,7 @@ const CompileExpression = (expression: Expression, inlines: Record<string, Inlin
 
             if(fargnames.length !== fargs.length) throw new Error("Inline function \"" + handledExpression.args[0] + "\" requires " + fargnames.length + ", but only " + fargs.length + " are given.");
 
-            return CompileBlock((<OuterFunctionDeclaration>inlines[<string>handledExpression.args[0]].value).block, inlines, templates, state, vars, Object.fromEntries(fargnames.map((v, i) => [v, fargs[i]])));
+            return CompileBlock((<OuterFunctionDeclaration>inlines[<string>handledExpression.args[0]].value).block, inlines, templates, state, "", vars, Object.fromEntries(fargnames.map((v, i) => [v, fargs[i]])));
         case "v":
             const name = <string>handledExpression.args[0];
 
@@ -325,9 +325,9 @@ const CompileExpression = (expression: Expression, inlines: Record<string, Inlin
 
             return name;
         case "sum":
-            return "sum(" + args[0] + "," + args[1] + "," + args[2] + "," + CompileBlock(<Statement[]>args[3], inlines, templates, state, vars) + ")";
+            return "sum(" + args[0] + "," + args[1] + "," + args[2] + "," + CompileBlock(<Statement[]>args[3], inlines, templates, state, "", vars) + ")";
         case "prod":
-            return "prod(" + args[0] + "," + args[1] + "," + args[2] + "," + CompileBlock(<Statement[]>args[3], inlines, templates, state, vars) + ")";
+            return "prod(" + args[0] + "," + args[1] + "," + args[2] + "," + CompileBlock(<Statement[]>args[3], inlines, templates, state, "", vars) + ")";
     }
 
     return "";
