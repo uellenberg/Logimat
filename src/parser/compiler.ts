@@ -3,11 +3,13 @@ import {
     ActionsDeclaration,
     Expression,
     ExpressionDeclaration,
-    grammar, GraphDeclaration,
+    grammar,
+    GraphDeclaration,
     OuterConstDeclaration,
     OuterDeclaration,
     OuterFunctionDeclaration,
-    ParserOutput, PointDeclaration,
+    ParserOutput,
+    PointDeclaration,
     semantic,
     Statement,
     Template
@@ -16,6 +18,8 @@ import ops from "../libs/ops";
 import stdlib from "../libs/stdlib";
 import {SimplifyExpression} from "./simplify";
 import {TemplateContext, TemplateFunction, TemplateState} from "../types";
+import path from "path";
+import * as fs from "fs";
 
 /**
  * Compiles LogiMat to a math function (or multiple). Each function/variable will be on a separate line.
@@ -29,11 +33,25 @@ export const Compile = (input: string, useTex: boolean = false, noFS = false, fi
 
     const state: TemplateState = {};
 
-    const templates: Record<string, TemplateFunction> = {};
-
     if(!noFS && typeof(filePath) === "string") {
         module.paths.push(filePath);
     }
+
+    const templates: Record<string, TemplateFunction> = {
+        import: (args, state1, context) => {
+            if(noFS) throw new Error("Import failed: filesystem operations have been disabled.");
+            if(context !== TemplateContext.OuterDeclaration) throw new Error("The import template can only be used outside of any methods!");
+            if(args.length < 1 || typeof(args[0]) !== "string" || !args[0]) throw new Error("A path to the file to import must be defined!");
+
+            const importPath = args[0];
+
+            if(path.isAbsolute(importPath)) {
+                return fs.readFileSync(importPath, "utf-8");
+            }
+
+            return fs.readFileSync(path.join(filePath, importPath), "utf-8");
+        }
+    };
 
     for (const declaration of tree.imports) {
         if(noFS) throw new Error("Import failed: filesystem operations have been disabled.");
@@ -90,7 +108,13 @@ const HandleOuterTemplates = <T extends OuterDeclaration | Statement | Expressio
         const templateDeclaration = <Template>declaration;
         if(!templates.hasOwnProperty(templateDeclaration.name)) throw new Error("Template \"" + templateDeclaration.name + "\" does not exist!");
 
-        const output = templates[templateDeclaration.name](templateDeclaration.args, state, type);
+        let output;
+        try {
+            output = templates[templateDeclaration.name](templateDeclaration.args, state, type);
+        } catch(e) {
+            console.error("An error occurred while running the \"" + templateDeclaration.name + "\" template:");
+            throw e;
+        }
 
         //TODO: Allow templates to import other templates.
 
