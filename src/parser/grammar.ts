@@ -29,7 +29,12 @@ LogiMat {
 
     ExportFunctionArgs = ListOf<exportIdentifier, ",">
     FunctionArgs = ListOf<identifier, ",">
-    TemplateArgs = ListOf<templateArg, ",">
+    TemplateArgs = ListOf<TemplateArg, ",">
+    
+    TemplateArg = string  -- string
+                | number  -- number
+                | boolean -- boolean
+                | Block   -- block
     
     Block = "{" InnerDeclarations "}"
     InnerDeclarations = InnerDeclaration+
@@ -172,9 +177,6 @@ LogiMat {
     identifierName (an identifier) = letter identifierPart*
     
     templateName (an identifier) = identifier "!"
-    templateArg = string -- string
-                | number -- number
-                | boolean -- boolean
 
     identifierPart = letter | unicodeCombiningMark
                    | unicodeDigit | unicodeConnectorPunctuation
@@ -279,14 +281,17 @@ semantic.addOperation("parse", {
     templateName(name, _){
         return name.parse();
     },
-    templateArg_string(str) {
+    TemplateArg_string(str) {
         return str.parse();
     },
-    templateArg_boolean(str) {
+    TemplateArg_boolean(str) {
         return str.parse() === "true";
     },
-    templateArg_number(str) {
+    TemplateArg_number(str) {
         return parseInt(str.parse());
+    },
+    TemplateArg_block(block) {
+        return block.children[1].sourceString;
     },
     Expression(e){
         return e.parse();
