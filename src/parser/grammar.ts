@@ -8,7 +8,7 @@ LogiMat {
     Import = ImportTemplates
     ImportTemplates = "import" #space "templates" #space "from" #space string ";"
     
-    OuterDeclaration = Template | OuterConstDeclaration | FunctionDeclaration | ActionDeclaration | ActionsDeclaration | ExpressionDeclaration
+    OuterDeclaration = Template | OuterConstDeclaration | FunctionDeclaration | ActionDeclaration | ActionsDeclaration | ExpressionDeclaration | GraphDeclaration | PointDeclaration
     
     Template = templateName "(" TemplateArgs ")" ";"
 
@@ -27,7 +27,18 @@ LogiMat {
     ActionsDeclaration = actions #space exportIdentifier "=" ExportFunctionArgs ";"
     
     ExpressionDeclaration = expression #space Block
+    
+    GraphDeclaration = graph #space "{" ExpressionStatement "}" GraphOperator "{" ExpressionStatement "}" ";"
+    GraphOperator = ">="
+                  | "=>"
+                  | "<="
+                  | "=<"
+                  | "="
+                  | ">"
+                  | "<"
 
+    PointDeclaration = point "(" ExpressionStatement "," ExpressionStatement ")" ";"
+    
     ExportFunctionArgs = ListOf<exportIdentifier, ",">
     FunctionArgs = ListOf<identifier, ",">
     TemplateArgs = ListOf<TemplateArg, ",">
@@ -153,6 +164,8 @@ LogiMat {
     action = "action" ~identifierPart
     actions = "actions" ~identifierPart
     expression = "expression" ~identifierPart
+    graph = "graph" ~identifierPart
+    point = "point" ~identifierPart
     state = "state" ~identifierPart
     sum = "sum" ~identifierPart
     prod = "prod" ~identifierPart
@@ -261,6 +274,12 @@ semantic.addOperation("parse", {
     },
     ExpressionDeclaration(_1, _2, block) {
         return {type: "expression", modifier: "export", block: block.parse()};
+    },
+    GraphDeclaration(_1, _2, _3, p1, _5, op, _7, p2, _9, _10){
+        return {type: "graph", modifier: "export", p1: p1.parse(), p2: p2.parse(), op: op.parse()};
+    },
+    PointDeclaration(_1, _2, p1, _4, p2, _6, _7){
+        return {type: "point", modifier: "export", p1: p1.parse(), p2: p2.parse()};
     },
     ExportFunctionArgs(l){
         return l.asIteration().parse();
@@ -416,7 +435,7 @@ export interface Import {
     importType: string;
     path: string;
 }
-export type OuterDeclaration = Template | OuterConstDeclaration | OuterFunctionDeclaration | ActionDeclaration | ActionsDeclaration | ExpressionDeclaration;
+export type OuterDeclaration = Template | OuterConstDeclaration | OuterFunctionDeclaration | ActionDeclaration | ActionsDeclaration | ExpressionDeclaration | GraphDeclaration | PointDeclaration;
 export interface Template {
     type: string;
     modifier: string;
@@ -453,6 +472,19 @@ export interface ExpressionDeclaration {
     type: string;
     modifier: string;
     block: Statement[];
+}
+export interface GraphDeclaration {
+    type: string;
+    modifier: string;
+    p1: Expression;
+    p2: Expression;
+    op: string;
+}
+export interface PointDeclaration {
+    type: string;
+    modifier: string;
+    p1: Expression;
+    p2: Expression;
 }
 export interface Expression {
     type: string;

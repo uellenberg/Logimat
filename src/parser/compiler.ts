@@ -3,11 +3,11 @@ import {
     ActionsDeclaration,
     Expression,
     ExpressionDeclaration,
-    grammar,
+    grammar, GraphDeclaration,
     OuterConstDeclaration,
     OuterDeclaration,
     OuterFunctionDeclaration,
-    ParserOutput,
+    ParserOutput, PointDeclaration,
     semantic,
     Statement,
     Template
@@ -141,6 +141,23 @@ const InternalCompile = (useTex: boolean, tree: OuterDeclaration[], inlines: Rec
             case "expression":
                 const expressionDeclaration = <ExpressionDeclaration>declaration;
                 out.push(SimplifyExpression(CompileBlock(expressionDeclaration.block, inlines, templates, state), useTex));
+                break;
+            case "graph":
+                const opMap = {
+                    "=": "=",
+                    ">": ">",
+                    ">=": "\\ge ",
+                    "=>": "\\ge ",
+                    "<=": "\\le ",
+                    "=<": "\\le "
+                };
+
+                const graphDeclaration = <GraphDeclaration>declaration;
+                out.push(SimplifyExpression(CompileExpression(graphDeclaration.p1, inlines, templates, state), useTex) + opMap[graphDeclaration.op] + SimplifyExpression(CompileExpression(graphDeclaration.p2, inlines, templates, state), useTex));
+                break;
+            case "point":
+                const pointDeclaration = <PointDeclaration>declaration;
+                out.push((useTex ? "\\left(" : "(") + SimplifyExpression(CompileExpression(pointDeclaration.p1, inlines, templates, state), useTex) + "," + SimplifyExpression(CompileExpression(pointDeclaration.p2, inlines, templates, state), useTex) + (useTex ? "\\right)" : ")"));
                 break;
         }
     }
