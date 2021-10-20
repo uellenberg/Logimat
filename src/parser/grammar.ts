@@ -1,4 +1,5 @@
 import ohm from "ohm-js";
+import {TemplateArgs} from "../types";
 
 export const grammar = ohm.grammar(`
 LogiMat {
@@ -104,6 +105,7 @@ LogiMat {
       | Sum
       | Prod
       | identifierName "(" ListOf<Expression, ","> ")"   -- func
+      | templateName "(" TemplateArgs ")"   -- template
       | (identifier | builtInVariables)   -- var
       | number
       | state   -- state
@@ -332,6 +334,9 @@ semantic.addOperation("parse", {
     PriExp_state(e){
         return {type: "v", args: ["state"]};
     },
+    PriExp_template(name, _2, args, _3){
+        return {type: "template", name: name.parse(), args: args.parse()};
+    },
     number_fract(_, _2, _3){
         return this.sourceString;
     },
@@ -418,7 +423,6 @@ export interface Template {
     name: string;
     args: TemplateArgs;
 }
-export type TemplateArgs = (string | number | boolean)[];
 export interface OuterConstDeclaration {
     type: string;
     modifier: string;

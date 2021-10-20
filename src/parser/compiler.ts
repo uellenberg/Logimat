@@ -1,21 +1,21 @@
 import {
-    Expression,
-    grammar,
     ActionDeclaration,
+    ActionsDeclaration,
+    Expression,
+    ExpressionDeclaration,
+    grammar,
     OuterConstDeclaration,
     OuterDeclaration,
     OuterFunctionDeclaration,
     ParserOutput,
     semantic,
     Statement,
-    ExpressionDeclaration,
-    ActionsDeclaration,
-    Template,
-    TemplateArgs
+    Template
 } from "./grammar";
 import ops from "../libs/ops";
 import stdlib from "../libs/stdlib";
 import {SimplifyExpression} from "./simplify";
+import {TemplateContext, TemplateFunction, TemplateState} from "../types";
 
 /**
  * Compiles LogiMat to a math function (or multiple). Each function/variable will be on a separate line.
@@ -27,7 +27,7 @@ import {SimplifyExpression} from "./simplify";
 export const Compile = (input: string, useTex: boolean = false, noFS = false, filePath: string = null) : string => {
     const tree = GetTree(input);
 
-    const state: object = {};
+    const state: TemplateState = {};
 
     const templates: Record<string, TemplateFunction> = {};
 
@@ -60,7 +60,7 @@ export const Compile = (input: string, useTex: boolean = false, noFS = false, fi
         }
     }
 
-    const declarations = HandleOuterTemplates<OuterDeclaration>(tree.declarations, templates, state, false);
+    const declarations = HandleOuterTemplates<OuterDeclaration>(tree.declarations, templates, state, TemplateContext.OuterDeclaration);
 
     const inlines: Record<string, Inline> = {
         ...GetInlines(declarations),
@@ -71,7 +71,10 @@ export const Compile = (input: string, useTex: boolean = false, noFS = false, fi
     return InternalCompile(useTex, declarations, inlines, templates, state).join("\n");
 }
 
-const HandleOuterTemplates = <T extends OuterDeclaration | Statement>(inputDeclarations: T[], templates: Record<string, TemplateFunction>, state: object, statements: boolean) : T[] => {
+//0 -> Outer
+//1 -> Inner
+//2 -> Expression
+const HandleOuterTemplates = <T extends OuterDeclaration | Statement | Expression>(inputDeclarations: T[], templates: Record<string, TemplateFunction>, state: TemplateState, type: TemplateContext) : T[] => {
     const declarations: T[] = [];
 
     let hasTemplates = false;
@@ -87,20 +90,32 @@ const HandleOuterTemplates = <T extends OuterDeclaration | Statement>(inputDecla
         const templateDeclaration = <Template>declaration;
         if(!templates.hasOwnProperty(templateDeclaration.name)) throw new Error("Template \"" + templateDeclaration.name + "\" does not exist!");
 
-        const output = templates[templateDeclaration.name](templateDeclaration.args, state);
-        const templateTree = statements ? GetStatementsTree(output) : GetTree(output);
+        const output = templates[templateDeclaration.name](templateDeclaration.args, state, type);
 
         //TODO: Allow templates to import other templates.
-        //@ts-ignore
-        declarations.push(...(statements ? templateTree : templateTree.declarations));
+
+        switch(type) {
+            case TemplateContext.OuterDeclaration:
+                //@ts-ignore
+                declarations.push(...GetTree(output).declarations);
+                break;
+            case TemplateContext.InnerDeclaration:
+                //@ts-ignore
+                declarations.push(...GetStatementsTree(output));
+                break;
+            case TemplateContext.Expression:
+                //@ts-ignore
+                declarations.push(GetExpression(output));
+                break;
+        }
     }
 
     //Keep handling templates until none are left.
-    if(hasTemplates) return HandleOuterTemplates<T>(declarations, templates, state, statements);
+    if(hasTemplates) return HandleOuterTemplates<T>(declarations, templates, state, type);
     return declarations;
 }
 
-const InternalCompile = (useTex: boolean, tree: OuterDeclaration[], inlines: Record<string, Inline>, templates: Record<string, TemplateFunction>, state: object) : string[] => {
+const InternalCompile = (useTex: boolean, tree: OuterDeclaration[], inlines: Record<string, Inline>, templates: Record<string, TemplateFunction>, state: TemplateState) : string[] => {
     let out: string[] = [];
 
     for (const declaration of tree) {
@@ -156,6 +171,13 @@ const GetStatementsTree = (input: string) : Statement[] => {
     return semantic(match).parse();
 }
 
+const GetExpression = (input: string) : Expression => {
+    const match = grammar.match(input, "Expression");
+    if(match.failed()) throw new Error(match.message);
+
+    return semantic(match).parse();
+}
+
 const GetInlines = (tree: OuterDeclaration[]) : Record<string, Inline> => {
     const inlines: Record<string, Inline> = {};
 
@@ -166,14 +188,14 @@ const GetInlines = (tree: OuterDeclaration[]) : Record<string, Inline> => {
     return inlines;
 }
 
-const CompileBlock = (input: Statement[], inlines: Record<string, Inline>, templates: Record<string, TemplateFunction>, state: object, vars: Record<string, string> = {}, args: Record<string, string> = {}) : string => {
+const CompileBlock = (input: Statement[], inlines: Record<string, Inline>, templates: Record<string, TemplateFunction>, state: TemplateState, vars: Record<string, string> = {}, args: Record<string, string> = {}) : string => {
     let out = "";
     let newVars = {
         ...vars,
         ...args
     };
 
-    const declarations: Statement[] = HandleOuterTemplates<Statement>(input, templates, state, true);
+    const declarations: Statement[] = HandleOuterTemplates<Statement>(input, templates, state, TemplateContext.InnerDeclaration);
 
     for (const statement of declarations) {
         switch(statement.type) {
@@ -217,12 +239,16 @@ const CompileBlock = (input: Statement[], inlines: Record<string, Inline>, templ
     return out;
 }
 
-const CompileExpression = (expression: Expression, inlines: Record<string, Inline>, templates: Record<string, TemplateFunction>, state: object, vars: Record<string, string> = {}) : string => {
+const CompileExpression = (expression: Expression, inlines: Record<string, Inline>, templates: Record<string, TemplateFunction>, state: TemplateState, vars: Record<string, string> = {}) : string => {
     if(typeof(expression) !== "object") return expression;
 
-    const args = expression.args.map(arg => typeof(arg) === "object" && arg.hasOwnProperty("type") ? CompileExpression(<Expression>arg, inlines, templates, state, vars) : arg);
+    const handledExpression = HandleOuterTemplates<Expression>([expression], templates, state, TemplateContext.Expression)[0];
 
-    switch(expression.type){
+    if(typeof(handledExpression) !== "object") return handledExpression;
+
+    const args = handledExpression.args.map(arg => typeof(arg) === "object" && arg.hasOwnProperty("type") ? CompileExpression(<Expression>arg, inlines, templates, state, vars) : arg);
+
+    switch(handledExpression.type){
         case "+":
             return "(" + args[0] + ")+(" + args[1] + ")";
         case "-":
@@ -236,17 +262,17 @@ const CompileExpression = (expression: Expression, inlines: Record<string, Inlin
         case "n":
             return "-(" + args[0] + ")";
         case "f":
-            const fargs = (<any[]>expression.args[1]).map(arg => typeof(arg) === "object" && arg.hasOwnProperty("type") ? CompileExpression(<Expression>arg, inlines, templates, state, vars) : arg);
+            const fargs = (<any[]>handledExpression.args[1]).map(arg => typeof(arg) === "object" && arg.hasOwnProperty("type") ? CompileExpression(<Expression>arg, inlines, templates, state, vars) : arg);
 
-            if(!inlines.hasOwnProperty(<string>expression.args[0])) return <string>expression.args[0] + "(" + fargs.join(",") + ")";
+            if(!inlines.hasOwnProperty(<string>handledExpression.args[0])) return <string>handledExpression.args[0] + "(" + fargs.join(",") + ")";
 
-            const fargnames = (<OuterFunctionDeclaration>inlines[<string>expression.args[0]].value).args;
+            const fargnames = (<OuterFunctionDeclaration>inlines[<string>handledExpression.args[0]].value).args;
 
-            if(fargnames.length !== fargs.length) throw new Error("Inline function \"" + expression.args[0] + "\" requires " + fargnames.length + ", but only " + fargs.length + " are given.");
+            if(fargnames.length !== fargs.length) throw new Error("Inline function \"" + handledExpression.args[0] + "\" requires " + fargnames.length + ", but only " + fargs.length + " are given.");
 
-            return CompileBlock((<OuterFunctionDeclaration>inlines[<string>expression.args[0]].value).block, inlines, templates, state, vars, Object.fromEntries(fargnames.map((v, i) => [v, fargs[i]])));
+            return CompileBlock((<OuterFunctionDeclaration>inlines[<string>handledExpression.args[0]].value).block, inlines, templates, state, vars, Object.fromEntries(fargnames.map((v, i) => [v, fargs[i]])));
         case "v":
-            const name = <string>expression.args[0];
+            const name = <string>handledExpression.args[0];
 
             if(vars.hasOwnProperty(name)) return vars[name];
             if(inlines.hasOwnProperty(name)) return CompileExpression(inlines[name].value["expr"], inlines, templates, state, vars);
@@ -270,5 +296,3 @@ interface Inline {
     function: boolean;
     value: OuterDeclaration;
 }
-
-type TemplateFunction = (args: TemplateArgs, state: object) => string;
