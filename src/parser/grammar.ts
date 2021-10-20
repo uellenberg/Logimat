@@ -22,7 +22,7 @@ LogiMat {
 
     ActionDeclaration = UnnamedActionDeclaration | NamedActionDeclaration
     UnnamedActionDeclaration = action #space exportIdentifier Block
-    NamedActionDeclaration = action #space exportIdentifier "(" exportIdentifier ")" Block
+    NamedActionDeclaration = action #space exportIdentifier "=" exportIdentifier Block
     
     ActionsDeclaration = actions #space exportIdentifier "=" ExportFunctionArgs ";"
     
@@ -253,7 +253,7 @@ semantic.addOperation("parse", {
     UnnamedActionDeclaration(_1, _2, name, block){
         return {type: "action", modifier: "export", name: name.parse(), funcName: "", block: block.parse()};
     },
-    NamedActionDeclaration(_1, _2, name, _4, funcName, _6, block){
+    NamedActionDeclaration(_1, _2, funcName, _4, name, block){
         return {type: "action", modifier: "export", name: name.parse(), funcName: funcName.parse(), block: block.parse()};
     },
     ActionsDeclaration(_1, _2, name, _4, args, _6){
