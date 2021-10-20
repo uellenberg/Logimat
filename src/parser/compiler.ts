@@ -33,7 +33,9 @@ export const Compile = (input: string, useTex: boolean = false, noFS = false, fi
         ...GetInlines(GetTree(ops).declarations)
     };
 
-    const templates: Record<string, (args: TemplateArgs) => string> = {
+    const state: object = {};
+
+    const templates: Record<string, (args: TemplateArgs, state: object) => string> = {
         test(args) {
             return "export const t_est = " + args[0] + ";";
         }
@@ -68,10 +70,10 @@ export const Compile = (input: string, useTex: boolean = false, noFS = false, fi
         }
     }
 
-    return InternalCompile(useTex, tree.declarations, inlines, templates).join("\n");
+    return InternalCompile(useTex, tree.declarations, inlines, templates, state).join("\n");
 }
 
-const InternalCompile = (useTex: boolean, tree: OuterDeclaration[], inlines: Record<string, Inline>, templates: Record<string, (args: TemplateArgs) => string>) : string[] => {
+const InternalCompile = (useTex: boolean, tree: OuterDeclaration[], inlines: Record<string, Inline>, templates: Record<string, (args: TemplateArgs, state: object) => string>, state: object) : string[] => {
     let out: string[] = [];
 
     for (const declaration of tree) {
@@ -82,11 +84,11 @@ const InternalCompile = (useTex: boolean, tree: OuterDeclaration[], inlines: Rec
                 const templateDeclaration = <Template>declaration;
                 if(!templates.hasOwnProperty(templateDeclaration.name)) throw new Error("Template \"" + templateDeclaration.name + "\" does not exist!");
 
-                const output = templates[templateDeclaration.name](templateDeclaration.args);
+                const output = templates[templateDeclaration.name](templateDeclaration.args, state);
                 const templateTree = GetTree(output);
 
                 //TODO: Allow templates to import other templates.
-                out.push(...InternalCompile(useTex, templateTree.declarations, inlines, templates));
+                out.push(...InternalCompile(useTex, templateTree.declarations, inlines, templates, state));
                 break;
             case "function":
                 const functionDeclaration = <OuterFunctionDeclaration>declaration;
