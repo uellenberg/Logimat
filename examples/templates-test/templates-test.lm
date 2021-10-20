@@ -1,4 +1,6 @@
-test!(1, "test \"string\"", true);
+import templates from "test.js";
+
+test1!(1, "test \"string\"", true);
 
 export function a() {
     //test!(1, "test \"string\"", true);

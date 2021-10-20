@@ -7,7 +7,11 @@ import {
     OuterFunctionDeclaration,
     ParserOutput,
     semantic,
-    Statement, ExpressionDeclaration, ActionsDeclaration, Template, TemplateArgs
+    Statement,
+    ExpressionDeclaration,
+    ActionsDeclaration,
+    Template,
+    TemplateArgs
 } from "./grammar";
 import ops from "../libs/ops";
 import stdlib from "../libs/stdlib";
@@ -17,14 +21,16 @@ import {SimplifyExpression} from "./simplify";
  * Compiles LogiMat to a math function (or multiple). Each function/variable will be on a separate line.
  * @param input {string} - is the input LogiMat code that will be compiled.
  * @param useTex {boolean} - is a value indicating if the output should be converted to Tex.
+ * @param noFS {boolean} - is a valid indicating if untrusted filesystem operations should be blocked (for example, code telling the compiler to load an NPM module). This is not a security feature.
+ * @param filePath {string} - is a path to the file currently being compiled.
  */
-export const Compile = (input: string, useTex: boolean = false) : string => {
+export const Compile = (input: string, useTex: boolean = false, noFS = false, filePath: string = null) : string => {
     const tree = GetTree(input);
 
     const inlines: Record<string, Inline> = {
-        ...GetInlines(tree),
-        ...GetInlines(GetTree(stdlib)),
-        ...GetInlines(GetTree(ops))
+        ...GetInlines(tree.declarations),
+        ...GetInlines(GetTree(stdlib).declarations),
+        ...GetInlines(GetTree(ops).declarations)
     };
 
     const templates: Record<string, (args: TemplateArgs) => string> = {
@@ -33,10 +39,39 @@ export const Compile = (input: string, useTex: boolean = false) : string => {
         }
     };
 
-    return InternalCompile(useTex, tree, inlines, templates).join("\n");
+    if(!noFS && typeof(filePath) === "string") {
+        module.paths.push(filePath);
+    }
+
+    for (const declaration of tree.imports) {
+        if(noFS) throw new Error("Import failed: filesystem operations have been disabled.");
+
+        if(declaration.importType === "template") {
+            try {
+                const module = require(declaration.path);
+                if(!module.hasOwnProperty("templates")) throw new Error("Module does not contain templates!");
+                if(typeof(module.templates) !== "object" || Array.isArray(module.templates)) throw new Error("Templates is not an object!");
+
+                for (const templateKey of Object.keys(module.templates)) {
+                    const template = module.templates[templateKey];
+
+                    if(typeof(template) !== "object" || Array.isArray(module.templates) || !template.hasOwnProperty("function") || typeof(template.function) !== "function") {
+                        throw new Error("Template \"" + templateKey + "\" on module \"" + declaration.path + "\" is not defined correctly!");
+                    }
+
+                    templates[templateKey] = template.function;
+                }
+            } catch(e) {
+                console.error("An error occurred while loading module \"" + declaration.path + "\".");
+                throw e;
+            }
+        }
+    }
+
+    return InternalCompile(useTex, tree.declarations, inlines, templates).join("\n");
 }
 
-const InternalCompile = (useTex: boolean, tree: ParserOutput, inlines: Record<string, Inline>, templates: Record<string, (args: TemplateArgs) => string>) : string[] => {
+const InternalCompile = (useTex: boolean, tree: OuterDeclaration[], inlines: Record<string, Inline>, templates: Record<string, (args: TemplateArgs) => string>) : string[] => {
     let out: string[] = [];
 
     for (const declaration of tree) {
@@ -50,7 +85,8 @@ const InternalCompile = (useTex: boolean, tree: ParserOutput, inlines: Record<st
                 const output = templates[templateDeclaration.name](templateDeclaration.args);
                 const templateTree = GetTree(output);
 
-                out.push(...InternalCompile(useTex, templateTree, inlines, templates));
+                //TODO: Allow templates to import other templates.
+                out.push(...InternalCompile(useTex, templateTree.declarations, inlines, templates));
                 break;
             case "function":
                 const functionDeclaration = <OuterFunctionDeclaration>declaration;
@@ -94,7 +130,7 @@ const GetTree = (input: string) : ParserOutput => {
     return semantic(match).parse();
 }
 
-const GetInlines = (tree: ParserOutput) : Record<string, Inline> => {
+const GetInlines = (tree: OuterDeclaration[]) : Record<string, Inline> => {
     const inlines: Record<string, Inline> = {};
 
     for (const declaration of tree) {

@@ -2,7 +2,11 @@ import ohm from "ohm-js";
 
 export const grammar = ohm.grammar(`
 LogiMat {
-    Program = OuterDeclaration*
+    Program = Import* OuterDeclaration*
+    
+    Import = ImportTemplates
+    ImportTemplates = "import" #space "templates" #space "from" #space string ";"
+    
     OuterDeclaration = Template | OuterConstDeclaration | FunctionDeclaration | ActionDeclaration | ActionsDeclaration | ExpressionDeclaration
     
     Template = templateName "(" TemplateArgs ")" ";"
@@ -220,12 +224,14 @@ semantic.addOperation("parse", {
     _terminal(){
         return this.sourceString;
     },
-    Program(parts){
-        //console.log(parts)
-        return parts.children.map(part => part.parse());
+    Program(imports, declarations){
+        return {imports: imports.children.map(part => part.parse()), declarations: declarations.children.map(part => part.parse())};
+    },
+    ImportTemplates(_, _1, _2, _3, _4, _5, path, _7){
+        return {importType: "template", path: path.parse()};
     },
     Template(name, _2, args, _3, _4){
-        return {type: "template", modifier: "export", name: name.parse(), args: args.parse()};
+        return {type: "template", name: name.parse(), args: args.parse()};
     },
     ExportOuterConstDeclaration(_1, _2, _3, _4, name, _6, expr, _8){
         return {type: "const", modifier: "export", name: name.parse(), expr: expr.parse()};
@@ -388,7 +394,14 @@ semantic.addOperation("parse", {
     }
 });
 
-export type ParserOutput = OuterDeclaration[];
+export interface ParserOutput {
+    imports: Import[],
+    declarations: OuterDeclaration[]
+}
+export interface Import {
+    importType: string;
+    path: string;
+}
 export type OuterDeclaration = Template | OuterConstDeclaration | OuterFunctionDeclaration | ActionDeclaration | ActionsDeclaration | ExpressionDeclaration;
 export interface Template {
     type: string;
