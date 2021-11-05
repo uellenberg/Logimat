@@ -256,10 +256,10 @@ const CompileBlock = (input: Statement[], inlines: Record<string, Inline>, templ
                     ...newVars,
                     state: out
                 });
-                const elseaction = CompileBlock(statement["elseaction"], inlines, templates, state, "", {
+                const elseaction = statement["elseaction"] ? CompileBlock(statement["elseaction"], inlines, templates, state, "", {
                     ...newVars,
                     state: out
-                });
+                }) : out;
 
 
                 out = CompileExpression({type: "f", args: ["if_func", [condition, ifaction, elseaction]]}, inlines, templates, state, {
