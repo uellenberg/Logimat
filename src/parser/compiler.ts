@@ -95,15 +95,11 @@ export const Compile = (input: string, useTex: boolean = false, noFS = false, fi
 const HandleOuterTemplates = <T extends OuterDeclaration | Statement | Expression>(inputDeclarations: T[], templates: Record<string, TemplateFunction>, state: TemplateState, type: TemplateContext) : T[] => {
     const declarations: T[] = [];
 
-    let hasTemplates = false;
-
     for (const declaration of inputDeclarations) {
         if(declaration.type !== "template") {
             declarations.push(declaration);
             continue;
         }
-
-        hasTemplates = true;
 
         const templateDeclaration = <Template>declaration;
         if(!templates.hasOwnProperty(templateDeclaration.name)) throw new Error("Template \"" + templateDeclaration.name + "\" does not exist!");
@@ -121,21 +117,19 @@ const HandleOuterTemplates = <T extends OuterDeclaration | Statement | Expressio
         switch(type) {
             case TemplateContext.OuterDeclaration:
                 //@ts-ignore
-                declarations.push(...GetTree(output).declarations);
+                declarations.push(...HandleOuterTemplates<T>(GetTree(output).declarations, templates, state, type));
                 break;
             case TemplateContext.InnerDeclaration:
                 //@ts-ignore
-                declarations.push(...GetStatementsTree(output));
+                declarations.push(...HandleOuterTemplates<T>(GetStatementsTree(output), templates, state, type));
                 break;
             case TemplateContext.Expression:
                 //@ts-ignore
-                declarations.push(GetExpression(output));
+                declarations.push(...HandleOuterTemplates<T>([GetExpression(output)], templates, state, type));
                 break;
         }
     }
 
-    //Keep handling templates until none are left.
-    if(hasTemplates) return HandleOuterTemplates<T>(declarations, templates, state, type);
     return declarations;
 }
 
