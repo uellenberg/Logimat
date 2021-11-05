@@ -33,7 +33,7 @@ inline function or(a, b) {
 //Because the set of inputs is limited, this is a simple function that satisfies them,
 //but has other behavior on undefined inputs.
 inline function not(a) {
-    state = -a + 1;
+    state = 1 - a;
 }
 
 //Returns 0 if a is 1 and b is 1.
