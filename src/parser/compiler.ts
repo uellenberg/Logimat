@@ -131,6 +131,8 @@ const TraverseTemplatesObj = (input: object, templates: Record<string, TemplateF
 const HandleTemplate = (templateDeclaration: Template, templates: Record<string, TemplateFunction>, state: TemplateState) : any[] | object => {
     if(!templates.hasOwnProperty(templateDeclaration.name)) throw new Error("Template \"" + templateDeclaration.name + "\" does not exist!");
 
+    templateDeclaration.args = TraverseTemplatesArr(templateDeclaration.args, templates, state);
+
     let output;
     try {
         output = templates[templateDeclaration.name](templateDeclaration.args, state, templateDeclaration.context);
