@@ -12,7 +12,6 @@ LogiMat {
     
     Template = templateName "(" TemplateArgs ")" ";"
     InnerTemplate = templateName "(" TemplateArgs ")" ";"
-    ExpressionTemplate = templateName "(" TemplateArgs ")"
 
     OuterConstDeclaration = ExportOuterConstDeclaration | InlineOuterConstDeclaration | PointDeclaration
     ExportOuterConstDeclaration = export #space const #space exportIdentifier "=" ExpressionStatement ";"
@@ -49,7 +48,6 @@ LogiMat {
                 | number  -- number
                 | boolean -- boolean
                 | Block   -- block
-                | ExpressionTemplate
     
     Block = "{" InnerDeclarations "}"
     InnerDeclarations = InnerDeclaration+
@@ -119,7 +117,7 @@ LogiMat {
       | Sum
       | Prod
       | identifierName "(" ListOf<Expression, ","> ")"   -- func
-      | ExpressionTemplate
+      | templateName "(" TemplateArgs ")"   -- template
       | (identifier | builtInVariables)   -- var
       | number
       | state   -- state
@@ -257,7 +255,7 @@ semantic.addOperation("parse", {
     InnerTemplate(name, _2, args, _3, _4){
         return {type: "template", name: name.parse(), args: args.parse(), context: TemplateContext.InnerDeclaration};
     },
-    ExpressionTemplate(name, _2, args, _3){
+    PriExp_template(name, _2, args, _3){
         return {type: "template", name: name.parse(), args: args.parse(), context: TemplateContext.Expression};
     },
     ExportOuterConstDeclaration(_1, _2, _3, _4, name, _6, expr, _8){
