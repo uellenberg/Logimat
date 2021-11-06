@@ -78,7 +78,7 @@ export const Compile = (input: string, useTex: boolean = false, noFS = false, fi
         }
     }
 
-    const declarations = HandleOuterTemplates<OuterDeclaration>(tree.declarations, templates, state, TemplateContext.OuterDeclaration);
+    const declarations = TraverseTemplatesArr(tree.declarations, templates, state);
 
     const inlines: Record<string, Inline> = {
         ...GetInlines(declarations),
@@ -89,48 +89,68 @@ export const Compile = (input: string, useTex: boolean = false, noFS = false, fi
     return InternalCompile(useTex, declarations, inlines, templates, state).join("\n");
 }
 
-//0 -> Outer
-//1 -> Inner
-//2 -> Expression
-const HandleOuterTemplates = <T extends OuterDeclaration | Statement | Expression>(inputDeclarations: T[], templates: Record<string, TemplateFunction>, state: TemplateState, type: TemplateContext) : T[] => {
-    const declarations: T[] = [];
+const TraverseTemplatesArr = (input: any[], templates: Record<string, TemplateFunction>, state: TemplateState) : any[] => {
+    const output: any[] = [];
 
-    for (const declaration of inputDeclarations) {
-        if(declaration.type !== "template") {
-            declarations.push(declaration);
-            continue;
-        }
-
-        const templateDeclaration = <Template>declaration;
-        if(!templates.hasOwnProperty(templateDeclaration.name)) throw new Error("Template \"" + templateDeclaration.name + "\" does not exist!");
-
-        let output;
-        try {
-            output = templates[templateDeclaration.name](templateDeclaration.args, state, type);
-        } catch(e) {
-            console.error("An error occurred while running the \"" + templateDeclaration.name + "\" template:");
-            throw e;
-        }
-
-        //TODO: Allow templates to import other templates.
-
-        switch(type) {
-            case TemplateContext.OuterDeclaration:
-                //@ts-ignore
-                declarations.push(...HandleOuterTemplates<T>(GetTree(output).declarations, templates, state, type));
-                break;
-            case TemplateContext.InnerDeclaration:
-                //@ts-ignore
-                declarations.push(...HandleOuterTemplates<T>(GetStatementsTree(output), templates, state, type));
-                break;
-            case TemplateContext.Expression:
-                //@ts-ignore
-                declarations.push(...HandleOuterTemplates<T>([GetExpression(output)], templates, state, type));
-                break;
+    for (const val of input) {
+        if(Array.isArray(val)) {
+            output.push([...TraverseTemplatesArr(val, templates, state)]);
+        } else if(typeof(val) === "object") {
+            const newVal = TraverseTemplatesObj(val, templates, state);
+            if(Array.isArray(newVal)) output.push(...newVal);
+            else output.push(newVal);
+        } else {
+            output.push(val);
         }
     }
 
-    return declarations;
+    return output;
+}
+
+const TraverseTemplatesObj = (input: object, templates: Record<string, TemplateFunction>, state: TemplateState) : object | any[] => {
+    if(input.hasOwnProperty("type") && input["type"] === "template") {
+        return HandleTemplate(<Template>input, templates, state);
+    }
+
+    const output: object = {};
+
+    for (const key in input) {
+        const val = input[key];
+        if(Array.isArray(val)) {
+            output[key] = TraverseTemplatesArr(val, templates, state);
+        } else if(typeof(val) === "object") {
+            output[key] = TraverseTemplatesObj(val, templates, state);
+        } else {
+            output[key] = val;
+        }
+    }
+
+    return output;
+}
+
+const HandleTemplate = (templateDeclaration: Template, templates: Record<string, TemplateFunction>, state: TemplateState) : any[] | object => {
+    if(!templates.hasOwnProperty(templateDeclaration.name)) throw new Error("Template \"" + templateDeclaration.name + "\" does not exist!");
+
+    let output;
+    try {
+        output = templates[templateDeclaration.name](templateDeclaration.args, state, templateDeclaration.context);
+    } catch(e) {
+        console.error("An error occurred while running the \"" + templateDeclaration.name + "\" template:");
+        throw e;
+    }
+
+    //TODO: Allow templates to import other templates.
+
+    switch(templateDeclaration.context) {
+        case TemplateContext.OuterDeclaration:
+            return TraverseTemplatesArr(GetTree(output).declarations, templates, state);
+        case TemplateContext.InnerDeclaration:
+            return TraverseTemplatesArr(GetStatementsTree(output), templates, state);
+        case TemplateContext.Expression:
+            return TraverseTemplatesObj(GetExpression(output), templates, state);
+    }
+
+    return [];
 }
 
 const InternalCompile = (useTex: boolean, tree: OuterDeclaration[], inlines: Record<string, Inline>, templates: Record<string, TemplateFunction>, state: TemplateState) : string[] => {
@@ -230,9 +250,7 @@ const CompileBlock = (input: Statement[], inlines: Record<string, Inline>, templ
         ...args
     };
 
-    const declarations: Statement[] = HandleOuterTemplates<Statement>(input, templates, state, TemplateContext.InnerDeclaration);
-
-    for (const statement of declarations) {
+    for (const statement of input) {
         switch(statement.type) {
             case "const":
                 newVars[statement["name"]] = CompileExpression(statement["expr"], inlines, templates, state, {
@@ -277,13 +295,11 @@ const CompileBlock = (input: Statement[], inlines: Record<string, Inline>, templ
 const CompileExpression = (expression: Expression, inlines: Record<string, Inline>, templates: Record<string, TemplateFunction>, state: TemplateState, vars: Record<string, string> = {}) : string => {
     if(typeof(expression) !== "object") return expression;
 
-    const handledExpression = HandleOuterTemplates<Expression>([expression], templates, state, TemplateContext.Expression)[0];
+    if(typeof(expression) !== "object") return expression;
 
-    if(typeof(handledExpression) !== "object") return handledExpression;
+    const args = expression.args.map(arg => typeof(arg) === "object" && arg.hasOwnProperty("type") ? CompileExpression(<Expression>arg, inlines, templates, state, vars) : arg);
 
-    const args = handledExpression.args.map(arg => typeof(arg) === "object" && arg.hasOwnProperty("type") ? CompileExpression(<Expression>arg, inlines, templates, state, vars) : arg);
-
-    switch(handledExpression.type){
+    switch(expression.type){
         case "+":
             return "(" + args[0] + ")+(" + args[1] + ")";
         case "-":
@@ -297,17 +313,17 @@ const CompileExpression = (expression: Expression, inlines: Record<string, Inlin
         case "n":
             return "-(" + args[0] + ")";
         case "f":
-            const fargs = (<any[]>handledExpression.args[1]).map(arg => typeof(arg) === "object" && arg.hasOwnProperty("type") ? CompileExpression(<Expression>arg, inlines, templates, state, vars) : arg);
+            const fargs = (<any[]>expression.args[1]).map(arg => typeof(arg) === "object" && arg.hasOwnProperty("type") ? CompileExpression(<Expression>arg, inlines, templates, state, vars) : arg);
 
-            if(!inlines.hasOwnProperty(<string>handledExpression.args[0])) return <string>handledExpression.args[0] + "(" + fargs.join(",") + ")";
+            if(!inlines.hasOwnProperty(<string>expression.args[0])) return <string>expression.args[0] + "(" + fargs.join(",") + ")";
 
-            const fargnames = (<OuterFunctionDeclaration>inlines[<string>handledExpression.args[0]].value).args;
+            const fargnames = (<OuterFunctionDeclaration>inlines[<string>expression.args[0]].value).args;
 
-            if(fargnames.length !== fargs.length) throw new Error("Inline function \"" + handledExpression.args[0] + "\" requires " + fargnames.length + ", but only " + fargs.length + " are given.");
+            if(fargnames.length !== fargs.length) throw new Error("Inline function \"" + expression.args[0] + "\" requires " + fargnames.length + ", but only " + fargs.length + " are given.");
 
-            return CompileBlock((<OuterFunctionDeclaration>inlines[<string>handledExpression.args[0]].value).block, inlines, templates, state, "", vars, Object.fromEntries(fargnames.map((v, i) => [v, fargs[i]])));
+            return CompileBlock((<OuterFunctionDeclaration>inlines[<string>expression.args[0]].value).block, inlines, templates, state, "", vars, Object.fromEntries(fargnames.map((v, i) => [v, fargs[i]])));
         case "v":
-            const name = <string>handledExpression.args[0];
+            const name = <string>expression.args[0];
 
             if(vars.hasOwnProperty(name)) return vars[name];
             if(inlines.hasOwnProperty(name)) return CompileExpression(inlines[name].value["expr"], inlines, templates, state, vars);

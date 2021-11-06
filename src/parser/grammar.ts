@@ -1,5 +1,5 @@
 import ohm from "ohm-js";
-import {TemplateArgs} from "../types";
+import {TemplateArgs, TemplateContext} from "../types";
 
 export const grammar = ohm.grammar(`
 LogiMat {
@@ -11,6 +11,7 @@ LogiMat {
     OuterDeclaration = Template | OuterConstDeclaration | FunctionDeclaration | ActionDeclaration | ActionsDeclaration | ExpressionDeclaration | GraphDeclaration | PointDeclaration
     
     Template = templateName "(" TemplateArgs ")" ";"
+    InnerTemplate = templateName "(" TemplateArgs ")" ";"
 
     OuterConstDeclaration = ExportOuterConstDeclaration | InlineOuterConstDeclaration | PointDeclaration
     ExportOuterConstDeclaration = export #space const #space exportIdentifier "=" ExpressionStatement ";"
@@ -51,7 +52,7 @@ LogiMat {
     Block = "{" InnerDeclarations "}"
     InnerDeclarations = InnerDeclaration+
     
-    InnerDeclaration = Template
+    InnerDeclaration = InnerTemplate
                      | ConstDeclaration
                      | SetState
                      | IfStatement
@@ -249,7 +250,13 @@ semantic.addOperation("parse", {
         return {importType: "template", path: path.parse()};
     },
     Template(name, _2, args, _3, _4){
-        return {type: "template", name: name.parse(), args: args.parse()};
+        return {type: "template", name: name.parse(), args: args.parse(), context: TemplateContext.OuterDeclaration};
+    },
+    InnerTemplate(name, _2, args, _3, _4){
+        return {type: "template", name: name.parse(), args: args.parse(), context: TemplateContext.InnerDeclaration};
+    },
+    PriExp_template(name, _2, args, _3){
+        return {type: "template", name: name.parse(), args: args.parse(), context: TemplateContext.Expression};
     },
     ExportOuterConstDeclaration(_1, _2, _3, _4, name, _6, expr, _8){
         return {type: "const", modifier: "export", name: name.parse(), expr: expr.parse()};
@@ -353,9 +360,6 @@ semantic.addOperation("parse", {
     PriExp_state(e){
         return {type: "v", args: ["state"]};
     },
-    PriExp_template(name, _2, args, _3){
-        return {type: "template", name: name.parse(), args: args.parse()};
-    },
     number_fract(_, _2, _3){
         return this.sourceString;
     },
@@ -443,6 +447,7 @@ export interface Template {
     modifier: string;
     name: string;
     args: TemplateArgs;
+    context: TemplateContext;
 }
 export interface OuterConstDeclaration {
     type: string;
