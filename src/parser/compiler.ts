@@ -108,6 +108,8 @@ const TraverseTemplatesArr = (input: any[], templates: Record<string, TemplateFu
 }
 
 const TraverseTemplatesObj = (input: object, templates: Record<string, TemplateFunction>, state: TemplateState) : object | any[] => {
+    if(input == null) return null;
+
     if(input.hasOwnProperty("type") && input["type"] === "template") {
         return HandleTemplate(<Template>input, templates, state);
     }
