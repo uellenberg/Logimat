@@ -25,7 +25,7 @@ inline function and(a, b) {
 //Because the set of inputs is limited, this is a simple function that satisfies them,
 //but has other behavior on undefined inputs.
 inline function or(a, b) {
-    state = a + b;
+    state = ceil((a + b)/2);
 }
 
 //Returns 0 on 1, and 1 on 0.
