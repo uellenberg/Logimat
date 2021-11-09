@@ -149,7 +149,12 @@ const HandleTemplate = (templateDeclaration: Template, templates: Record<string,
         case TemplateContext.InnerDeclaration:
             return TraverseTemplatesArr(GetStatementsTree(output), templates, state);
         case TemplateContext.Expression:
-            return TraverseTemplatesObj(GetExpression(output), templates, state);
+            const expr = GetExpression(output);
+            if(typeof(expr) === "object") {
+                return TraverseTemplatesObj(expr, templates, state);
+            }
+
+            return expr;
     }
 
     return [];
