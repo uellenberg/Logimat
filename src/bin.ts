@@ -22,15 +22,19 @@ yargs(hideBin(process.argv))
             describe: "Blocks untrusted filesystem operations  (for example, code telling the compiler to load an NPM module). This is not a security feature."
         }
     }, (args) => {
-        const file: string = <string>args.file;
+        try {
+            const file: string = <string>args.file;
 
-        if(!fs.existsSync(file)) return console.error("Error: The specified file does not exist!");
-        fs.accessSync(file, fs.constants.R_OK);
+            if(!fs.existsSync(file)) return console.error("Error: The specified file does not exist!");
+            fs.accessSync(file, fs.constants.R_OK);
 
-        const data = fs.readFileSync(file, "utf-8");
-        const compiled = Compile(data, args.latex, args.nofs, path.resolve(path.dirname(file)));
+            const data = fs.readFileSync(file, "utf-8");
+            const compiled = Compile(data, args.latex, args.nofs, path.resolve(path.dirname(file)));
 
-        process.stdout.write(compiled);
+            process.stdout.write(compiled);
+        } catch(e) {
+            process.stderr.write(e.stack);
+        }
     })
     .showHelpOnFail(true)
     .help()
