@@ -14,7 +14,7 @@ inline function isPrime(a) {
         }
     };
 
-    state = not(select(state));
+    state = notSelect(state));
 }
 
 //Returns the number of digits in the input.
