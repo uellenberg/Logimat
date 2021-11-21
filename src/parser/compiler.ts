@@ -213,10 +213,10 @@ const InternalCompile = (useTex: boolean, tree: OuterDeclaration[], inlines: Rec
 const HandleName = (name: string) : string => {
     //Correct the variable name if it's in the form of \w_\w+.
     if(name.substring(1, 2) === "_") {
-        name = name[0] + "_{" + name.substring(2) + "}";
+        name = name[0] + "_{" + name.substring(2).replace(/_/g, "") + "}";
     }
 
-    return name;
+    return name.replace(/_/g, "");
 }
 
 const GetTree = (input: string) : ParserOutput => {
