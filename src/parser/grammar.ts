@@ -47,7 +47,7 @@ LogiMat {
     TemplateArg = string  -- string
                 | number  -- number
                 | boolean -- boolean
-                | Block   -- block
+                | "{" (InnerDeclaration+ | OuterDeclaration+) "}"   -- block
     
     Block = "{" InnerDeclarations "}"
     InnerDeclarations = InnerDeclaration+
@@ -187,7 +187,7 @@ LogiMat {
                  | builtIns
                  | builtInVariables
 
-    exportIdentifier (a single character identifier) = ~reservedWord "a".."z" ("_" ("a".."z" | "0".."9 | "_")+)?
+    exportIdentifier (a single character identifier) = ~reservedWord "a".."z" ("_" ("a".."z" | "0".."9" | "_")+)?
 
     identifier (an identifier) = ~reservedWord identifierName
     identifierName (an identifier) = letter identifierPart*
@@ -318,8 +318,8 @@ semantic.addOperation("parse", {
     TemplateArg_number(str) {
         return parseInt(str.parse());
     },
-    TemplateArg_block(block) {
-        return block.children[1].sourceString;
+    TemplateArg_block(_, block, _2) {
+        return block.sourceString;
     },
     Expression(e){
         return e.parse();
