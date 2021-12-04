@@ -226,7 +226,7 @@ LogiMat {
     comment = multiLineComment | singleLineComment
 
     multiLineComment = "/*" (~"*/" any)* "*/"
-    singleLineComment = "//" (~lineTerminator any)*
+    singleLineComment = ("//" | "#") (~lineTerminator any)*
     
     string = "\\"" stringCharacter* "\\""
     stringCharacter = ~("\\"" | "\\\\" | lineTerminator) any -- nonEscaped
