@@ -86,7 +86,7 @@ LogiMat {
              | GreaterThanOperator
              | GreaterThanEqualOperator
              | Expression
-             | "(" Operator ")"   -- paren
+             | "(" Statement ")"   -- paren
 
     NotOperator = "!" Operator
     EqualOperator = Expression "==" Expression
@@ -421,6 +421,9 @@ semantic.addOperation("parse", {
     },
     GreaterThanEqualOperator(e, _, e2){
         return {type: "f", args: ["gte", [e.parse(), e2.parse()]]};
+    },
+    Operator_paren(_, e, _1){
+        return e.parse();
     },
     string(_, str, _3){
         return str.parse().join("");
