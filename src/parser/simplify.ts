@@ -1,9 +1,14 @@
 import {MathNode, simplify} from "mathjs";
 
 export const SimplifyExpression = (input: string, useTex: boolean) : string => {
-    const res = simplify(input, {}, {exactFractions: false});
-    //They say they return a string but they can sometimes return numbers.
-    return useTex ? res.toTex(texOptions).toString() : res.toString(stringOptions).toString().replace(/\s+/g, "");
+    try {
+        const res = simplify(input, {}, {exactFractions: false});
+        //They say they return a string but they can sometimes return numbers.
+        return useTex ? res.toTex(texOptions).toString() : res.toString(stringOptions).toString().replace(/\s+/g, "");
+    } catch(e) {
+        console.error("An error has occurred while attempting to simplify \"" + input + "\":");
+        throw e;
+    }
 }
 
 const builtinOneArg = [
