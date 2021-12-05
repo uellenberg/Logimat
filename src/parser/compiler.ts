@@ -292,34 +292,34 @@ const CompileBlock = (input: Statement[], inlines: Record<string, Inline>, templ
             case "const":
                 newVars[statement["name"]] = CompileExpression(statement["expr"], inlines, templates, state, {
                     ...newVars,
-                    state: out
+                    state: out || vars["state"] || ""
                 });
 
                 break;
             case "state":
                 out = CompileExpression(statement["expr"], inlines, templates, state, {
                     ...newVars,
-                    state: out
+                    state: out || vars["state"] || ""
                 });
                 break;
             case "if":
                 const condition = CompileExpression(statement["condition"], inlines, templates, state, {
                     ...newVars,
-                    state: out
+                    state: out || vars["state"] || ""
                 });
                 const ifaction = CompileBlock(statement["ifaction"], inlines, templates, state, "", {
                     ...newVars,
-                    state: out
+                    state: out || vars["state"] || ""
                 });
                 const elseaction = statement["elseaction"] ? CompileBlock(statement["elseaction"], inlines, templates, state, "", {
                     ...newVars,
-                    state: out
+                    state: out || vars["state"] || ""
                 }) : out;
 
 
                 out = CompileExpression({type: "f", args: ["if_func", [condition, ifaction, elseaction]]}, inlines, templates, state, {
                     ...newVars,
-                    state: out
+                    state: out || vars["state"] || ""
                 });
                 break;
         }
