@@ -1,5 +1,6 @@
 export type TemplateArgs = (string | number | boolean)[];
-export type TemplateFunction = (args: TemplateArgs, state: TemplateState, context: TemplateContext) => string;
+export type TemplateReturn = string | ((state: object) => TemplateReturn);
+export type TemplateFunction = (args: TemplateArgs, state: TemplateState, context: TemplateContext) => TemplateReturn;
 
 export interface TemplateState {}
 

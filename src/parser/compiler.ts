@@ -53,6 +53,8 @@ export const Compile = (input: string, useTex: boolean = false, noFS = false, fi
         }
     };
 
+    const postTemplates: string[] = [];
+
     for (const declaration of tree.imports) {
         if(noFS) throw new Error("Import failed: filesystem operations have been disabled.");
 
@@ -71,6 +73,11 @@ export const Compile = (input: string, useTex: boolean = false, noFS = false, fi
 
                     templates[templateKey] = template.function;
                 }
+
+                if(!module.hasOwnProperty("postTemplates")) continue;
+                if(typeof(module.postTemplates) !== "string") throw new Error("PostTemplates is not a string!");
+
+                postTemplates.push(module.postTemplates);
             } catch(e) {
                 console.error("An error occurred while loading module \"" + declaration.path + "\".");
                 throw e;
@@ -78,7 +85,18 @@ export const Compile = (input: string, useTex: boolean = false, noFS = false, fi
         }
     }
 
-    const declarations = TraverseTemplatesArr(tree.declarations, templates, state);
+    let declarations = TraverseTemplatesArr(tree.declarations, templates, state);
+
+    //Allow up to 50 layers of functions.
+    for(let i = 0; i < 50; i++) {
+        declarations = TraverseTemplatesArr(declarations, templates, state);
+    }
+
+    declarations.push(...GetTree(postTemplates.join("\n")).declarations);
+
+    for(let i = 0; i < 50; i++) {
+        declarations = TraverseTemplatesArr(declarations, templates, state);
+    }
 
     const inlines: Record<string, Inline> = {
         ...GetInlines(declarations),
@@ -110,7 +128,7 @@ const TraverseTemplatesArr = (input: any[], templates: Record<string, TemplateFu
 const TraverseTemplatesObj = (input: object, templates: Record<string, TemplateFunction>, state: TemplateState) : object | any[] => {
     if(input == null) return null;
 
-    if(input.hasOwnProperty("type") && input["type"] === "template") {
+    if(input.hasOwnProperty("type") && ["template", "templatefunction"].includes(input["type"])) {
         return HandleTemplate(<Template>input, templates, state);
     }
 
@@ -131,14 +149,24 @@ const TraverseTemplatesObj = (input: object, templates: Record<string, TemplateF
 }
 
 const HandleTemplate = (templateDeclaration: Template, templates: Record<string, TemplateFunction>, state: TemplateState) : any[] | object => {
-    if(!templates.hasOwnProperty(templateDeclaration.name)) throw new Error("Template \"" + templateDeclaration.name + "\" does not exist!");
-
     let output;
-    try {
-        output = templates[templateDeclaration.name](templateDeclaration.args, state, templateDeclaration.context);
-    } catch(e) {
-        console.error("An error occurred while running the \"" + templateDeclaration.name + "\" template:");
-        throw e;
+
+    if(templateDeclaration.type === "templatefunction") {
+        // @ts-ignore
+        output = templateDeclaration.function(state)
+    } else {
+        if(!templates.hasOwnProperty(templateDeclaration.name)) throw new Error("Template \"" + templateDeclaration.name + "\" does not exist!");
+
+        try {
+            output = templates[templateDeclaration.name](templateDeclaration.args, state, templateDeclaration.context);
+        } catch(e) {
+            console.error("An error occurred while running the \"" + templateDeclaration.name + "\" template:");
+            throw e;
+        }
+    }
+
+    if(output instanceof Function) {
+        return {type: "templatefunction", context: templateDeclaration.context, function: output};
     }
 
     //TODO: Allow templates to import other templates.
@@ -227,6 +255,8 @@ const GetTree = (input: string) : ParserOutput => {
 }
 
 const GetStatementsTree = (input: string) : Statement[] => {
+    if(input.trim() === "") return [];
+
     const match = grammar.match(input, "InnerDeclarations");
     if(match.failed()) throw new Error(match.message);
 
