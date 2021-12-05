@@ -107,7 +107,12 @@ const handle = (node: MathNode, options: object, tex: boolean) : string => {
             a2 = Encapsulate(a2, tex);
         }
 
-        return `${a1}${op}${a2}`;
+        switch(op) {
+            case "/":
+                return `\\frac{${a1}}{${a2}}`;
+            default:
+                return `${a1}${op}${a2}`;
+        }
     }
 
     //Handle functions.
@@ -214,9 +219,6 @@ const functions: Record<string, (node: MathNode, options: object, tex: boolean) 
     },
     pi() {
         return "\\pi";
-    },
-    div(node, options, tex) {
-        return `\\frac{${HandleNode(node.args[0], options, tex)}}{${HandleNode(node.args[1], options, tex)}}`;
     }
 };
 

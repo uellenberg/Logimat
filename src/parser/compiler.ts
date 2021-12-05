@@ -348,7 +348,7 @@ const CompileExpression = (expression: Expression, inlines: Record<string, Inlin
         case "*":
             return "(" + args[0] + ")*(" + args[1] + ")";
         case "/":
-            return "div(" + args[0] + "," + args[1] + ")";
+            return "(" + args[0] + ")/(" + args[1] + ")";
         case "^":
             return "pow(" + args[0] + "," + args[1] + ")";
         case "n":
