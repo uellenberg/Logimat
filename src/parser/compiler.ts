@@ -303,6 +303,10 @@ const CompileBlock = (input: Statement[], inlines: Record<string, Inline>, templ
                 });
                 break;
             case "if":
+                if(!statement["elseaction"] && !out) {
+                    throw new Error("The state must be set before an else-less if can be used.");
+                }
+
                 const condition = CompileExpression(statement["condition"], inlines, templates, state, {
                     ...newVars,
                     state: out || vars["state"] || ""
