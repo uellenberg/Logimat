@@ -309,15 +309,15 @@ const CompileBlock = (input: Statement[], inlines: Record<string, Inline>, templ
 
                 const condition = CompileExpression(statement["condition"], inlines, templates, state, {
                     ...newVars,
-                    state: out || vars["state"] || ""
+                    state: out
                 });
-                const ifaction = CompileBlock(statement["ifaction"], inlines, templates, state, "", {
+                const ifaction = CompileBlock(statement["ifaction"], inlines, templates, state, out, {
                     ...newVars,
-                    state: out || vars["state"] || ""
+                    state: out
                 });
-                const elseaction = statement["elseaction"] ? CompileBlock(statement["elseaction"], inlines, templates, state, "", {
+                const elseaction = statement["elseaction"] ? CompileBlock(statement["elseaction"], inlines, templates, state, out, {
                     ...newVars,
-                    state: out || vars["state"] || ""
+                    state: out
                 }) : out;
 
 
