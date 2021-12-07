@@ -47,6 +47,7 @@ LogiMat {
     TemplateArg = string  -- string
                 | number  -- number
                 | boolean -- boolean
+                | null    -- null
                 | "{" (InnerDeclaration+ | OuterDeclaration+) "}"   -- block
     
     Block = "{" InnerDeclarations "}"
@@ -234,6 +235,8 @@ LogiMat {
     singleEscapeCharacter = "\\"" | "\\\\"
 
     boolean = "true" | "false"
+    
+    null = "null"
 }
 `);
 
@@ -314,6 +317,9 @@ semantic.addOperation("parse", {
     },
     TemplateArg_boolean(str) {
         return str.parse() === "true";
+    },
+    TemplateArg_null(_) {
+        return null;
     },
     TemplateArg_number(str) {
         return parseInt(str.parse());
