@@ -20,6 +20,7 @@ import {SimplifyExpression} from "./simplify";
 import {TemplateContext, TemplateFunction, TemplateState} from "../types";
 import path from "path";
 import * as fs from "fs";
+import {HandleName} from "./util";
 
 /**
  * Compiles LogiMat to a math function (or multiple). Each function/variable will be on a separate line.
@@ -236,15 +237,6 @@ const InternalCompile = (useTex: boolean, tree: OuterDeclaration[], inlines: Rec
     }
 
     return out;
-}
-
-const HandleName = (name: string) : string => {
-    //Correct the variable name if it's in the form of \w_\w+.
-    if(name.substring(1, 2) === "_") {
-        return name[0] + "_{" + name.substring(2).replace(/_/g, "") + "}";
-    }
-
-    return name.replace(/_/g, "");
 }
 
 const GetTree = (input: string) : ParserOutput => {

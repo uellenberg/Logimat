@@ -1,4 +1,5 @@
 import {MathNode, simplify} from "mathjs";
+import {HandleName} from "./util";
 
 export const SimplifyExpression = (input: string, useTex: boolean) : string => {
     try {
@@ -157,14 +158,8 @@ const handle = (node: MathNode, options: object, tex: boolean) : string => {
 
     //Handle variables.
     if(node.name) {
-        let name: string = node.name;
-
         //Correct the variable name if it's in the form of \w_\w+.
-        if(name.substring(1, 2) === "_") {
-            name = name[0] + "_{" + name.substring(2) + "}";
-        }
-
-        return name;
+        return HandleName(node.name);
     }
 
     return "";
