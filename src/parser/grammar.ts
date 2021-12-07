@@ -45,7 +45,7 @@ LogiMat {
     TemplateArgs = ListOf<TemplateArg, ",">
     
     TemplateArg = string  -- string
-                | number  -- number
+                | ("+" | "-")? number  -- number
                 | boolean -- boolean
                 | null    -- null
                 | "{" (InnerDeclaration+ | OuterDeclaration+) "}"   -- block
@@ -315,14 +315,14 @@ semantic.addOperation("parse", {
     TemplateArg_string(str) {
         return str.parse();
     },
-    TemplateArg_boolean(str) {
-        return str.parse() === "true";
+    TemplateArg_boolean(_) {
+        return this.sourceString === "true";
     },
     TemplateArg_null(_) {
         return null;
     },
-    TemplateArg_number(str) {
-        return parseInt(str.parse());
+    TemplateArg_number(_, _1) {
+        return parseFloat(this.sourceString);
     },
     TemplateArg_block(_, block, _2) {
         return block.sourceString;
