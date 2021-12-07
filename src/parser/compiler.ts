@@ -386,6 +386,8 @@ const CompileExpression = (expression: Expression, inlines: Record<string, Inlin
             return "sum(" + args[0] + "," + args[1] + "," + args[2] + "," + CompileBlock(<Statement[]>args[3], inlines, templates, state, "", vars, {}, stack) + ")";
         case "prod":
             return "prod(" + args[0] + "," + args[1] + "," + args[2] + "," + CompileBlock(<Statement[]>args[3], inlines, templates, state, "", vars, {}, stack) + ")";
+        case "b":
+            return CompileBlock(<Statement[]>expression.args[0], inlines, templates, state, "", vars, {}, stack);
     }
 
     return "";

@@ -130,6 +130,7 @@ LogiMat {
       | state   -- state
       | Point   -- point
       | Array   -- array
+      | Block   -- block
 
     number  (a number)
       = digit* "." digit+  -- fract
@@ -397,6 +398,9 @@ semantic.addOperation("parse", {
     },
     PriExp_array(e){
         return {type: "f", args: ["array", e.parse()]};
+    },
+    PriExp_block(e){
+        return {type: "b", args: [e.parse()]};
     },
     number_fract(_, _2, _3){
         return this.sourceString;
