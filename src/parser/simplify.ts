@@ -214,6 +214,12 @@ const functions: Record<string, (node: MathNode, options: object, tex: boolean) 
     },
     pi() {
         return "\\pi";
+    },
+    point(node, options, tex) {
+        return `(${node.args.map(arg => HandleNode(arg, options, tex)).join(",")})`;
+    },
+    array(node, options, tex) {
+        return `[${node.args.map(arg => HandleNode(arg, options, tex)).join(",")}]`;
     }
 };
 
@@ -229,5 +235,11 @@ const texFunctions: Record<string, (node: MathNode, options: object) => string> 
     },
     ceil(node, options) {
         return `\\left\\lceil ${node.args[0].toTex(options)}\\right\\rceil `;
+    },
+    point(node, options) {
+        return `\\left(${node.args.map(arg => arg.toTex(options)).join(",")}\\right)`
+    },
+    array(node, options) {
+        return `\\left[${node.args.map(arg => arg.toTex(options)).join(",")}\\right]`
     }
 };

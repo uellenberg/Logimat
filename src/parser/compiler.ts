@@ -238,11 +238,11 @@ const InternalCompile = (useTex: boolean, tree: OuterDeclaration[], inlines: Rec
                 break;
             case "point":
                 const pointDeclaration = <PointDeclaration>declaration;
-                out.push((useTex ? "\\left(" : "(") + SimplifyExpression(CompileExpression(pointDeclaration.p1, inlines, templates, state, {}, stack), useTex) + "," + SimplifyExpression(CompileExpression(pointDeclaration.p2, inlines, templates, state, {}, stack), useTex) + (useTex ? "\\right)" : ")"));
+                out.push(SimplifyExpression(CompileExpression(pointDeclaration.point, inlines, templates, state, {}, stack), useTex));
                 break;
             case "polygon":
                 const polygonDeclaration = <PolygonDeclaration>declaration;
-                out.push("\\operatorname{polygon}" + (useTex ? "\\left(" : "(") + polygonDeclaration.points.map(pair => (useTex ? "\\left(" : "(") + pair.map(expr => SimplifyExpression(CompileExpression(expr, inlines, templates, state, {}, stack), useTex)).join(",") + (useTex ? "\\right)" : ")")).join(",") + (useTex ? "\\right)" : ")"));
+                out.push("\\operatorname{polygon}" + (useTex ? "\\left(" : "(") + polygonDeclaration.points.map(point => SimplifyExpression(CompileExpression(point, inlines, templates, state, {}, stack), useTex)).join(",") + (useTex ? "\\right)" : ")"));
                 break;
         }
     }

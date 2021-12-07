@@ -38,11 +38,12 @@ LogiMat {
                   | ">"
                   | "<"
     
-    PointDeclaration = point Point ";"
+    PointDeclaration = point ExpressionStatement ";"
     
-    PolygonDeclaration = polygon NonemptyListOf<Point, ","> ";"
+    PolygonDeclaration = polygon "(" ListOf<ExpressionStatement, ","> ")" ";"
     
     Point = "(" ExpressionStatement "," ExpressionStatement ")"
+    Array = "[" ListOf<ExpressionStatement, ","> "]"
     
     ExportFunctionArgs = ListOf<exportIdentifier, ",">
     FunctionArgs = ListOf<identifier, ",">
@@ -127,6 +128,8 @@ LogiMat {
       | (identifier | builtInVariables)   -- var
       | number
       | state   -- state
+      | Point   -- point
+      | Array   -- array
 
     number  (a number)
       = digit* "." digit+  -- fract
@@ -173,6 +176,7 @@ LogiMat {
     expression = "expression" ~identifierPart
     graph = "graph" ~identifierPart
     point = "point" ~identifierPart
+    array = "array" ~identifierPart
     polygon = "polygon" ~identifierPart
     state = "state" ~identifierPart
     sum = "sum" ~identifierPart
@@ -184,6 +188,13 @@ LogiMat {
              | inline
              | const
              | function
+             | action
+             | actions
+             | expression
+             | graph
+             | point
+             | array
+             | polygon
              | state
              | sum
              | prod
@@ -295,14 +306,16 @@ semantic.addOperation("parse", {
         return {type: "graph", modifier: "export", p1: p1.parse(), p2: p2.parse(), op: op.parse()};
     },
     PointDeclaration(_1, point, _2){
-        const parsedPoint = point.parse();
-        return {type: "point", modifier: "export", p1: parsedPoint[0], p2: parsedPoint[1]};
+        return {type: "point", modifier: "export", point: point.parse()};
     },
-    PolygonDeclaration(_1, points, _2){
+    PolygonDeclaration(_1, _2, points, _3, _4){
         return {type: "polygon", modifier: "export", points: points.asIteration().parse()};
     },
     Point(_1, p1, _2, p2, _3){
         return [p1.parse(), p2.parse()];
+    },
+    Array(_1, arr, _2){
+        return arr.asIteration().parse();
     },
     ExportFunctionArgs(l){
         return l.asIteration().parse();
@@ -378,6 +391,12 @@ semantic.addOperation("parse", {
     },
     PriExp_state(e){
         return {type: "v", args: ["state"]};
+    },
+    PriExp_point(e){
+        return {type: "f", args: ["point", e.parse()]};
+    },
+    PriExp_array(e){
+        return {type: "f", args: ["array", e.parse()]};
     },
     number_fract(_, _2, _3){
         return this.sourceString;
@@ -515,13 +534,12 @@ export interface GraphDeclaration {
 export interface PointDeclaration {
     type: string;
     modifier: string;
-    p1: Expression;
-    p2: Expression;
+    point: Expression;
 }
 export interface PolygonDeclaration {
     type: string;
     modifier: string;
-    points: [Expression, Expression][];
+    points: Expression[];
 }
 export interface Expression {
     type: string;
