@@ -27,9 +27,9 @@ LogiMat {
     
     ActionsDeclaration = actions #space exportIdentifier "=" ExportFunctionArgs ";"
     
-    ExpressionDeclaration = expression #space Block
+    ExpressionDeclaration = expression Block
     
-    GraphDeclaration = graph #space "{" ExpressionStatement "}" GraphOperator "{" ExpressionStatement "}" ";"
+    GraphDeclaration = graph "{" ExpressionStatement "}" GraphOperator "{" ExpressionStatement "}" ";"
     GraphOperator = ">="
                   | "=>"
                   | "<="
