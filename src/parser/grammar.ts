@@ -8,7 +8,7 @@ LogiMat {
     Import = ImportTemplates
     ImportTemplates = "import" #space "templates" #space "from" #space string ";"
     
-    OuterDeclaration = Template | OuterConstDeclaration | FunctionDeclaration | ActionDeclaration | ActionsDeclaration | ExpressionDeclaration | GraphDeclaration | PointDeclaration
+    OuterDeclaration = Template | OuterConstDeclaration | FunctionDeclaration | ActionDeclaration | ActionsDeclaration | ExpressionDeclaration | GraphDeclaration | PointDeclaration | PolygonDeclaration
     
     Template = templateName "(" TemplateArgs ")" ";"
     InnerTemplate = templateName "(" TemplateArgs ")" ";"
@@ -29,7 +29,7 @@ LogiMat {
     
     ExpressionDeclaration = expression Block
     
-    GraphDeclaration = graph "{" ExpressionStatement "}" GraphOperator "{" ExpressionStatement "}" ";"
+    GraphDeclaration = graph ExpressionStatementBlock GraphOperator ExpressionStatementBlock ";"
     GraphOperator = ">="
                   | "=>"
                   | "<="
@@ -38,7 +38,11 @@ LogiMat {
                   | ">"
                   | "<"
     
-    PointDeclaration = point "(" ExpressionStatement "," ExpressionStatement ")" ";"
+    PointDeclaration = point Point ";"
+    
+    PolygonDeclaration = polygon NonemptyListOf<Point, ","> ";"
+    
+    Point = "(" ExpressionStatement "," ExpressionStatement ")"
     
     ExportFunctionArgs = ListOf<exportIdentifier, ",">
     FunctionArgs = ListOf<identifier, ",">
@@ -50,6 +54,7 @@ LogiMat {
                 | null    -- null
                 | "{" (InnerDeclaration+ | OuterDeclaration+) "}"   -- block
     
+    ExpressionStatementBlock = "{" ExpressionStatement "}"
     Block = "{" InnerDeclarations "}"
     InnerDeclarations = InnerDeclaration+
     
@@ -168,6 +173,7 @@ LogiMat {
     expression = "expression" ~identifierPart
     graph = "graph" ~identifierPart
     point = "point" ~identifierPart
+    polygon = "polygon" ~identifierPart
     state = "state" ~identifierPart
     sum = "sum" ~identifierPart
     prod = "prod" ~identifierPart
@@ -282,14 +288,21 @@ semantic.addOperation("parse", {
     ActionsDeclaration(_1, _2, name, _4, args, _6){
         return {type: "actions", modifier: "export", name: name.parse(), args: args.parse()};
     },
-    ExpressionDeclaration(_1, _2, block) {
+    ExpressionDeclaration(_1, block) {
         return {type: "expression", modifier: "export", block: block.parse()};
     },
-    GraphDeclaration(_1, _2, _3, p1, _5, op, _7, p2, _9, _10){
+    GraphDeclaration(_1, p1, op, p2, _2){
         return {type: "graph", modifier: "export", p1: p1.parse(), p2: p2.parse(), op: op.parse()};
     },
-    PointDeclaration(_1, _2, p1, _4, p2, _6, _7){
-        return {type: "point", modifier: "export", p1: p1.parse(), p2: p2.parse()};
+    PointDeclaration(_1, point, _2){
+        const parsedPoint = point.parse();
+        return {type: "point", modifier: "export", p1: parsedPoint[0], p2: parsedPoint[1]};
+    },
+    PolygonDeclaration(_1, points, _2){
+        return {type: "polygon", modifier: "export", points: points.asIteration().parse()};
+    },
+    Point(_1, p1, _2, p2, _3){
+        return [p1.parse(), p2.parse()];
     },
     ExportFunctionArgs(l){
         return l.asIteration().parse();
@@ -372,6 +385,9 @@ semantic.addOperation("parse", {
     number_whole(_){
         return this.sourceString;
     },
+    ExpressionStatementBlock(_, e, _2){
+        return e.parse();
+    },
     Block(_, e, _2){
         return e.parse();
     },
@@ -450,7 +466,7 @@ export interface Import {
     importType: string;
     path: string;
 }
-export type OuterDeclaration = Template | OuterConstDeclaration | OuterFunctionDeclaration | ActionDeclaration | ActionsDeclaration | ExpressionDeclaration | GraphDeclaration | PointDeclaration;
+export type OuterDeclaration = Template | OuterConstDeclaration | OuterFunctionDeclaration | ActionDeclaration | ActionsDeclaration | ExpressionDeclaration | GraphDeclaration | PointDeclaration | PolygonDeclaration;
 export interface Template {
     type: string;
     modifier: string;
@@ -501,6 +517,11 @@ export interface PointDeclaration {
     modifier: string;
     p1: Expression;
     p2: Expression;
+}
+export interface PolygonDeclaration {
+    type: string;
+    modifier: string;
+    points: [Expression, Expression][];
 }
 export interface Expression {
     type: string;
