@@ -89,8 +89,12 @@ const handle = (node: MathNode, options: object, tex: boolean) : string => {
                 op = "+";
             }
         }
-        //If the operator is * and they are either 1a, a1, or aa.
-        else if(node.op === "*" && ((node.args[0].name && node.args[1].name) || (node.args[0].value && node.args[1].name) || (node.args[0].name && node.args[1].value))) {
+        //If the operator is * and they are either 1a, a1, or aa, and neither operand is a point or list.
+        else if(
+            node.op === "*" &&
+            ((node.args[0].name && node.args[1].name) || (node.args[0].value && node.args[1].name) || (node.args[0].name && node.args[1].value)) &&
+            !((node.args[0].fn && typeof(node.args[0].fn) === "object" && ["point", "array"].includes(node.args[0].fn["name"])) || (node.args[1].fn && typeof(node.args[1].fn) === "object" && ["point", "array"].includes(node.args[1].fn["name"])))
+        ) {
             return `${a1}${a2}`;
         }
 
