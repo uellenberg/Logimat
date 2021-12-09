@@ -5,7 +5,7 @@ export const SimplifyExpression = (input: string, useTex: boolean) : string => {
     try {
         const res = simplify(input, {}, {exactFractions: false});
         //They say they return a string but they can sometimes return numbers.
-        return useTex ? res.toTex(texOptions).toString() : res.toString(stringOptions).toString().replace(/\s+/g, "");
+        return useTex ? res.toTex(texOptions).toString() : res.toString(stringOptions).toString();
     } catch(e) {
         console.error("An error has occurred while attempting to simplify \"" + input + "\":");
         throw e;
@@ -235,13 +235,13 @@ const functions: Record<string, (node: MathNode, options: object, tex: boolean) 
         return `\\left\\{${HandleNode(node.args[0], options, tex)}<${HandleNode(node.args[1], options, tex)},0\\right\\}`;
     },
     lte(node, options, tex) {
-        return `\\left\\{${HandleNode(node.args[0], options, tex)}<=${HandleNode(node.args[1], options, tex)},0\\right\\}`;
+        return `\\left\\{${HandleNode(node.args[0], options, tex)}\\le ${HandleNode(node.args[1], options, tex)},0\\right\\}`;
     },
     gt(node, options, tex) {
         return `\\left\\{${HandleNode(node.args[0], options, tex)}>${HandleNode(node.args[1], options, tex)},0\\right\\}`;
     },
     gte(node, options, tex) {
-        return `\\left\\{${HandleNode(node.args[0], options, tex)}>=${HandleNode(node.args[1], options, tex)},0\\right\\}`;
+        return `\\left\\{${HandleNode(node.args[0], options, tex)}\\ge ${HandleNode(node.args[1], options, tex)},0\\right\\}`;
     },
     if_func(node, options, tex) {
         return `\\left\\{${HandleNode(node.args[0], options, tex)}=1:${HandleNode(node.args[1], options, tex)},${HandleNode(node.args[2], options, tex)}\\right\\}`;
@@ -277,13 +277,13 @@ const texFunctions: Record<string, (node: MathNode, options: object) => string> 
         return `\\left\\{${node.args[0].toTex(options)}<${node.args[1].toTex(options)},0\\right\\}`;
     },
     lte(node, options) {
-        return `\\left\\{${node.args[0].toTex(options)}\\le${node.args[1].toTex(options)},0\\right\\}`;
+        return `\\left\\{${node.args[0].toTex(options)}\\le ${node.args[1].toTex(options)},0\\right\\}`;
     },
     gt(node, options) {
         return `\\left\\{${node.args[0].toTex(options)}>${node.args[1].toTex(options)},0\\right\\}`;
     },
     gte(node, options) {
-        return `\\left\\{${node.args[0].toTex(options)}\\ge${node.args[1].toTex(options)},0\\right\\}`;
+        return `\\left\\{${node.args[0].toTex(options)}\\ge ${node.args[1].toTex(options)},0\\right\\}`;
     },
     if_func(node, options) {
         return `\\left\\{${node.args[0].toTex(options)}=1:${node.args[1].toTex(options)},${node.args[2].toTex(options)}\\right\\}`;
