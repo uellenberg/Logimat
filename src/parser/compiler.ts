@@ -211,9 +211,7 @@ const InternalCompile = (useTex: boolean, tree: OuterDeclaration[], inlines: Rec
         switch(declaration.type) {
             case "function":
                 const functionDeclaration = <OuterFunctionDeclaration>declaration;
-
-                const argNames = functionDeclaration.args.map(HandleName);
-                out.push(HandleName(functionDeclaration.name) + "(" + argNames.join(",") + ")" + "=" + SimplifyExpression(CompileBlock(functionDeclaration.block, inlines, templates, state, "", {}, {}, stack), useTex, strict, names.concat(argNames)));
+                out.push(HandleName(functionDeclaration.name) + "(" + functionDeclaration.args.map(HandleName).join(",") + ")" + "=" + SimplifyExpression(CompileBlock(functionDeclaration.block, inlines, templates, state, "", {}, {}, stack), useTex, strict, names.concat(functionDeclaration.args)));
                 break;
             case "const":
                 const constDeclaration = <OuterConstDeclaration>declaration;
