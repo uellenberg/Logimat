@@ -290,7 +290,11 @@ const GetDeclaredNames = (tree: OuterDeclaration[]) : string[] => {
     const output: string[] = [];
 
     for (const declaration of tree) {
-        if(declaration["name"]) output.push(declaration["name"]);
+        if(declaration.type === "action") {
+            if(declaration["funcName"]) output.push(declaration["funcName"]);
+        } else {
+            if(declaration["name"]) output.push(declaration["name"]);
+        }
     }
 
     return output;
