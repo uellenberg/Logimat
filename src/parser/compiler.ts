@@ -113,7 +113,7 @@ export const Compile = (input: string, useTex: boolean = false, noFS = false, fi
     try {
         return InternalCompile(useTex, declarations, inlines, templates, state, stack).join("\n");
     } catch(e) {
-        console.error("Call stack: " + stack.slice(0, Math.min(20, stack.length)).join(" -> "));
+        if(stack.length > 0) console.error("Call stack: " + stack.slice(0, Math.min(20, stack.length)).join(" -> "));
         throw e;
     }
 }
