@@ -6,3 +6,12 @@ export const HandleName = (name: string): string => {
 
     return name.replace(/_/g, "");
 }
+
+export const opMap = {
+    "=": "=",
+    ">": ">",
+    ">=": "\\ge ",
+    "=>": "\\ge ",
+    "<=": "\\le ",
+    "=<": "\\le "
+};

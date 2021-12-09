@@ -9,7 +9,8 @@ import {
     OuterDeclaration,
     OuterFunctionDeclaration,
     ParserOutput,
-    PointDeclaration, PolygonDeclaration,
+    PointDeclaration,
+    PolygonDeclaration,
     semantic,
     Statement,
     Template
@@ -20,7 +21,8 @@ import {SimplifyExpression} from "./simplify";
 import {TemplateContext, TemplateFunction, TemplateState} from "../types";
 import path from "path";
 import * as fs from "fs";
-import {HandleName} from "./util";
+import {HandleName, opMap} from "./util";
+import piecewiseOps from "../libs/piecewiseOps";
 
 /**
  * Compiles LogiMat to a math function (or multiple). Each function/variable will be on a separate line.
@@ -28,8 +30,9 @@ import {HandleName} from "./util";
  * @param useTex {boolean} - is a value indicating if the output should be converted to Tex.
  * @param noFS {boolean} - is a valid indicating if untrusted filesystem operations should be blocked (for example, code telling the compiler to load an NPM module). This is not a security feature.
  * @param filePath {string} - is a path to the file currently being compiled.
+ * @param piecewise {boolean} - is a value indicating if the output should use piecewise instead of pure math for logic.
  */
-export const Compile = (input: string, useTex: boolean = false, noFS = false, filePath: string = null) : string => {
+export const Compile = (input: string, useTex: boolean = false, noFS = false, filePath: string = null, piecewise: boolean = false) : string => {
     const tree = GetTree(input);
 
     const state: TemplateState = {};
@@ -102,7 +105,7 @@ export const Compile = (input: string, useTex: boolean = false, noFS = false, fi
     const inlines: Record<string, Inline> = {
         ...GetInlines(declarations),
         ...GetInlines(GetTree(stdlib).declarations),
-        ...GetInlines(GetTree(ops).declarations)
+        ...GetInlines(GetTree((piecewise ? piecewiseOps : ops)).declarations)
     };
 
     const stack = [];
@@ -224,15 +227,6 @@ const InternalCompile = (useTex: boolean, tree: OuterDeclaration[], inlines: Rec
                 out.push(SimplifyExpression(CompileBlock(expressionDeclaration.block, inlines, templates, state, "", {}, {}, stack), useTex));
                 break;
             case "graph":
-                const opMap = {
-                    "=": "=",
-                    ">": ">",
-                    ">=": "\\ge ",
-                    "=>": "\\ge ",
-                    "<=": "\\le ",
-                    "=<": "\\le "
-                };
-
                 const graphDeclaration = <GraphDeclaration>declaration;
                 out.push(SimplifyExpression(CompileExpression(graphDeclaration.p1, inlines, templates, state, {}, stack), useTex) + opMap[graphDeclaration.op] + SimplifyExpression(CompileExpression(graphDeclaration.p2, inlines, templates, state, {}, stack), useTex));
                 break;

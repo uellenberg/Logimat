@@ -19,7 +19,13 @@ yargs(hideBin(process.argv))
             alias: "n",
             default: false,
             type: "boolean",
-            describe: "Blocks untrusted filesystem operations  (for example, code telling the compiler to load an NPM module). This is not a security feature."
+            describe: "Blocks untrusted filesystem operations (for example, code telling the compiler to load an NPM module). This is not a security feature."
+        },
+        piecewise: {
+            alias: "p",
+            default: false,
+            type: "boolean",
+            describe: "Compiles using piecewise instead of raw math. This can improve performance and readability in Desmos."
         }
     }, (args) => {
         try {
@@ -29,7 +35,7 @@ yargs(hideBin(process.argv))
             fs.accessSync(file, fs.constants.R_OK);
 
             const data = fs.readFileSync(file, "utf-8");
-            const compiled = Compile(data, args.latex, args.nofs, path.resolve(path.dirname(file)));
+            const compiled = Compile(data, args.latex, args.nofs, path.resolve(path.dirname(file)), args.piecewise);
 
             process.stdout.write(compiled);
         } catch(e) {
