@@ -34,7 +34,8 @@ const builtinOneArg = [
     "round",
     "sign",
     "ln",
-    "log"
+    "log",
+    "abs"
 ];
 
 const builtinTwoArgs = [
@@ -46,8 +47,8 @@ const constants = [
     "pi"
 ];
 
-const HandleFunction = (node: MathNode, options: object) : string => {
-    return (<MathNode><unknown>node.fn).toString(options) + "(" + node.args.map(arg => arg.toString(options)).join(",") + ")";
+const HandleFunction = (node: MathNode, options: object, builtIn: boolean = false) : string => {
+    return (builtIn ? "\\operatorname{" : "") + (<MathNode><unknown>node.fn).toString(options) + (builtIn ? "}" : "") + "(" + node.args.map(arg => arg.toString(options)).join(",") + ")";
 }
 
 const operatorMap = {
@@ -136,21 +137,21 @@ const handle = (node: MathNode, options: object, tex: boolean) : string => {
 
         //If we know it's built-in, handle it.
         if(constants.includes(name)) {
-            return `\\${name}`;
+            return `\\${name} `;
         }
         if(builtinOneArg.includes(name)) {
             if(tex) {
-                return `\\${name}\\left(${node.args[0].toTex(options)}\\right)`;
+                return `\\operatorname{${name}}\\left(${node.args[0].toTex(options)}\\right)`;
             }
 
-            return HandleFunction(node, options);
+            return HandleFunction(node, options, true);
         }
         if(builtinTwoArgs.includes(name)) {
             if(tex) {
-                return `\\${name}\\left(${node.args[0].toTex(options)},\\ ${node.args[1].toTex(options)}\\right)`;
+                return `\\operatorname{${name}}\\left(${node.args[0].toTex(options)},\\ ${node.args[1].toTex(options)}\\right)`;
             }
 
-            return HandleFunction(node, options);
+            return HandleFunction(node, options, true);
         }
 
         if(tex) {
