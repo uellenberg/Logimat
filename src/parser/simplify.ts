@@ -243,7 +243,7 @@ const functions: Record<string, (node: MathNode, options: object, tex: boolean) 
         return `{${base}}^{${exp}}`;
     },
     pi() {
-        return "\\pi";
+        return "\\pi ";
     },
     point(node, options, tex) {
         return `(${node.args.map(arg => HandleNode(arg, options, tex)).join(",")})`;
