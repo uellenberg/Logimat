@@ -31,8 +31,9 @@ import piecewiseOps from "../libs/piecewiseOps";
  * @param noFS {boolean} - is a valid indicating if untrusted filesystem operations should be blocked (for example, code telling the compiler to load an NPM module). This is not a security feature.
  * @param filePath {string} - is a path to the file currently being compiled.
  * @param piecewise {boolean} - is a value indicating if the output should use piecewise instead of pure math for logic.
+ * @param strict {boolean} - is a value indicating if an error should be thrown if an undefined function/variable is used.
  */
-export const Compile = (input: string, useTex: boolean = false, noFS = false, filePath: string = null, piecewise: boolean = false) : string => {
+export const Compile = (input: string, useTex: boolean = false, noFS = false, filePath: string = null, piecewise: boolean = false, strict: boolean = false) : string => {
     const tree = GetTree(input);
 
     const state: TemplateState = {};
@@ -111,7 +112,7 @@ export const Compile = (input: string, useTex: boolean = false, noFS = false, fi
     const stack = [];
 
     try {
-        return InternalCompile(useTex, declarations, inlines, templates, state, stack).join("\n");
+        return InternalCompile(useTex, declarations, inlines, templates, state, stack, strict).join("\n");
     } catch(e) {
         if(stack.length > 0) console.error("Call stack: " + stack.slice(0, Math.min(20, stack.length)).join(" -> "));
         throw e;
@@ -199,8 +200,10 @@ const HandleTemplate = (templateDeclaration: Template, templates: Record<string,
     return [];
 }
 
-const InternalCompile = (useTex: boolean, tree: OuterDeclaration[], inlines: Record<string, Inline>, templates: Record<string, TemplateFunction>, state: TemplateState, stack: string[]) : string[] => {
+const InternalCompile = (useTex: boolean, tree: OuterDeclaration[], inlines: Record<string, Inline>, templates: Record<string, TemplateFunction>, state: TemplateState, stack: string[], strict: boolean) : string[] => {
     let out: string[] = [];
+
+    const names = GetDeclaredNames(tree);
 
     for (const declaration of tree) {
         if (declaration.modifier === "inline") continue;
@@ -208,35 +211,43 @@ const InternalCompile = (useTex: boolean, tree: OuterDeclaration[], inlines: Rec
         switch(declaration.type) {
             case "function":
                 const functionDeclaration = <OuterFunctionDeclaration>declaration;
-                out.push(HandleName(functionDeclaration.name) + "(" + functionDeclaration.args.map(HandleName).join(",") + ")" + "=" + SimplifyExpression(CompileBlock(functionDeclaration.block, inlines, templates, state, "", {}, {}, stack), useTex));
+
+                const argNames = functionDeclaration.args.map(HandleName);
+                out.push(HandleName(functionDeclaration.name) + "(" + argNames.join(",") + ")" + "=" + SimplifyExpression(CompileBlock(functionDeclaration.block, inlines, templates, state, "", {}, {}, stack), useTex, strict, names.concat(argNames)));
                 break;
             case "const":
                 const constDeclaration = <OuterConstDeclaration>declaration;
-                out.push(HandleName(constDeclaration.name) + "=" + SimplifyExpression(CompileExpression(constDeclaration.expr, inlines, templates, state, {}, stack), useTex));
+                out.push(HandleName(constDeclaration.name) + "=" + SimplifyExpression(CompileExpression(constDeclaration.expr, inlines, templates, state, {}, stack), useTex, strict, names));
                 break;
             case "action":
                 const actionDeclaration = <ActionDeclaration>declaration;
-                out.push((actionDeclaration.funcName ? HandleName(actionDeclaration.funcName) + "=" : "") + HandleName(actionDeclaration.name) + "\\to " + SimplifyExpression(CompileBlock(actionDeclaration.block, inlines, templates, state, actionDeclaration.name, {}, {}, stack), useTex));
+                out.push((actionDeclaration.funcName ? HandleName(actionDeclaration.funcName) + "=" : "") + HandleName(actionDeclaration.name) + "\\to " + SimplifyExpression(CompileBlock(actionDeclaration.block, inlines, templates, state, actionDeclaration.name, {}, {}, stack), useTex, strict, names));
                 break;
             case "actions":
                 const actionsDeclaration = <ActionsDeclaration>declaration;
+
+                const badActions = actionsDeclaration.args.filter(action => !names.includes(action));
+                if(strict && badActions.length > 0) {
+                    throw new Error("The following actions have not been defined: " + badActions.map(action => "\"" + action + "\"").join(", ") + ".");
+                }
+
                 out.push(HandleName(actionsDeclaration.name) + "=" + actionsDeclaration.args.map(HandleName).join(","));
                 break;
             case "expression":
                 const expressionDeclaration = <ExpressionDeclaration>declaration;
-                out.push(SimplifyExpression(CompileBlock(expressionDeclaration.block, inlines, templates, state, "", {}, {}, stack), useTex));
+                out.push(SimplifyExpression(CompileBlock(expressionDeclaration.block, inlines, templates, state, "", {}, {}, stack), useTex, strict, names));
                 break;
             case "graph":
                 const graphDeclaration = <GraphDeclaration>declaration;
-                out.push(SimplifyExpression(CompileExpression(graphDeclaration.p1, inlines, templates, state, {}, stack), useTex) + opMap[graphDeclaration.op] + SimplifyExpression(CompileExpression(graphDeclaration.p2, inlines, templates, state, {}, stack), useTex));
+                out.push(SimplifyExpression(CompileExpression(graphDeclaration.p1, inlines, templates, state, {}, stack), useTex, strict, names) + opMap[graphDeclaration.op] + SimplifyExpression(CompileExpression(graphDeclaration.p2, inlines, templates, state, {}, stack), useTex, strict, names));
                 break;
             case "point":
                 const pointDeclaration = <PointDeclaration>declaration;
-                out.push(SimplifyExpression(CompileExpression(pointDeclaration.point, inlines, templates, state, {}, stack), useTex));
+                out.push(SimplifyExpression(CompileExpression(pointDeclaration.point, inlines, templates, state, {}, stack), useTex, strict, names));
                 break;
             case "polygon":
                 const polygonDeclaration = <PolygonDeclaration>declaration;
-                out.push("\\operatorname{polygon}" + (useTex ? "\\left(" : "(") + polygonDeclaration.points.map(point => SimplifyExpression(CompileExpression(point, inlines, templates, state, {}, stack), useTex)).join(",") + (useTex ? "\\right)" : ")"));
+                out.push("\\operatorname{polygon}" + (useTex ? "\\left(" : "(") + polygonDeclaration.points.map(point => SimplifyExpression(CompileExpression(point, inlines, templates, state, {}, stack), useTex, strict, names)).join(",") + (useTex ? "\\right)" : ")"));
                 break;
         }
     }
@@ -275,6 +286,16 @@ const GetInlines = (tree: OuterDeclaration[]) : Record<string, Inline> => {
     }
 
     return inlines;
+}
+
+const GetDeclaredNames = (tree: OuterDeclaration[]) : string[] => {
+    const output: string[] = [];
+
+    for (const declaration of tree) {
+        if(declaration["name"]) output.push(declaration["name"]);
+    }
+
+    return output;
 }
 
 const CompileBlock = (input: Statement[], inlines: Record<string, Inline>, templates: Record<string, TemplateFunction>, state: TemplateState, defaultOut = "", vars: Record<string, string> = {}, args: Record<string, string> = {}, stack: string[]) : string => {

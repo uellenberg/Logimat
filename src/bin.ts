@@ -26,6 +26,12 @@ yargs(hideBin(process.argv))
             default: false,
             type: "boolean",
             describe: "Compiles using piecewise instead of raw math. This can improve performance and readability in Desmos."
+        },
+        strict: {
+            alias: "s",
+            default: false,
+            type: "boolean",
+            describe: "Throws an error if any undefined functions or variables are used."
         }
     }, (args) => {
         try {
@@ -35,7 +41,7 @@ yargs(hideBin(process.argv))
             fs.accessSync(file, fs.constants.R_OK);
 
             const data = fs.readFileSync(file, "utf-8");
-            const compiled = Compile(data, args.latex, args.nofs, path.resolve(path.dirname(file)), args.piecewise);
+            const compiled = Compile(data, args.latex, args.nofs, path.resolve(path.dirname(file)), args.piecewise, args.strict);
 
             process.stdout.write(compiled);
         } catch(e) {

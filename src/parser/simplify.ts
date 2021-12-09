@@ -1,11 +1,13 @@
 import {MathNode, simplify} from "mathjs";
 import {HandleName} from "./util";
 
-export const SimplifyExpression = (input: string, useTex: boolean) : string => {
+export const SimplifyExpression = (input: string, useTex: boolean, strict: boolean, names: string[]) : string => {
+    const newNames = names.concat(builtinOneArg).concat(builtinTwoArgs).concat(constants).concat(Object.keys(functions)).concat(Object.keys(texFunctions));
+
     try {
         const res = simplify(input, {}, {exactFractions: false});
         //They say they return a string but they can sometimes return numbers.
-        return useTex ? res.toTex(texOptions).toString() : res.toString(stringOptions).toString();
+        return useTex ? res.toTex(getTexOptions(strict, newNames)).toString() : res.toString(getStringOptions(strict, newNames)).toString();
     } catch(e) {
         console.error("An error has occurred while attempting to simplify \"" + input + "\":");
         throw e;
@@ -59,7 +61,7 @@ const operatorMap = {
     "^": "^"
 };
 
-const handle = (node: MathNode, options: object, tex: boolean) : string => {
+const handle = (node: MathNode, options: Options, tex: boolean) : string => {
     //Handle numerical values.
     if(!isNaN(node.value)) {
         return node.value;
@@ -154,6 +156,10 @@ const handle = (node: MathNode, options: object, tex: boolean) : string => {
             return HandleFunction(node, options, true);
         }
 
+        if(options.strict && !options.names.includes(name)) {
+            throw new Error("The function \"" + name + "\" does not exist.");
+        }
+
         if(tex) {
             return (<MathNode><unknown>node.fn).toTex(options) + "\\left(" + node.args.map(arg => arg.toTex(options)).join(",\\ ") + "\\right)";
         }
@@ -163,6 +169,11 @@ const handle = (node: MathNode, options: object, tex: boolean) : string => {
 
     //Handle variables.
     if(node.name) {
+        if(options.strict && !options.names.includes(node.name)) {
+            console.log(node);
+            throw new Error("The function or variable \"" + node.name + "\" does not exist.");
+        }
+
         //Correct the variable name if it's in the form of \w_\w+.
         return HandleName(node.name);
     }
@@ -185,17 +196,31 @@ const HandleNode = (node: MathNode, options: object, tex: boolean) : string => {
     return tex ? node.toTex(options).toString() : node.toString(options).toString();
 }
 
-const stringOptions = {
-    handler(node, options) {
-        return handle(node, options, false);
-    }
-};
+const getStringOptions = (strict: boolean, names: string[]) : Options => {
+    return {
+        handler(node, options) {
+            return handle(node, options, false);
+        },
+        strict,
+        names
+    };
+}
 
-const texOptions = {
-    handler(node, options) {
-        return handle(node, options, true);
-    }
-};
+const getTexOptions = (strict: boolean, names: string[]) : Options => {
+    return {
+        handler(node, options) {
+            return handle(node, options, true);
+        },
+        strict,
+        names
+    };
+}
+
+interface Options {
+    handler: (node: any, options: Options) => string;
+    strict: boolean;
+    names: string[];
+}
 
 const functions: Record<string, (node: MathNode, options: object, tex: boolean) => string> = {
     sum(node, options, tex) {
