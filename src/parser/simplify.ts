@@ -37,7 +37,8 @@ const builtinOneArg = [
     "sign",
     "ln",
     "log",
-    "abs"
+    "abs",
+    "mod"
 ];
 
 const builtinTwoArgs = [
