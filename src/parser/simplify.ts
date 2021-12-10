@@ -1,11 +1,11 @@
-import {MathNode, simplify} from "mathjs";
+import {MathNode, sec, simplify} from "mathjs";
 import {HandleName} from "./util";
 
 export const SimplifyExpression = (input: string, useTex: boolean, strict: boolean, names: string[]) : string => {
     const newNames = names.concat(builtinOneArg).concat(builtinTwoArgs).concat(constants).concat(Object.keys(functions)).concat(Object.keys(texFunctions));
 
     try {
-        const res = simplify(input, {}, {exactFractions: false});
+        const res = simplify(input, simplifyRules, {exactFractions: false});
         //They say they return a string but they can sometimes return numbers.
         return useTex ? res.toTex(getTexOptions(strict, newNames)).toString() : res.toString(getStringOptions(strict, newNames)).toString();
     } catch(e) {
@@ -13,6 +13,19 @@ export const SimplifyExpression = (input: string, useTex: boolean, strict: boole
         throw e;
     }
 }
+
+const simplifyRules = simplify["rules"].concat([
+    //Or
+    "n | 1 -> 1",
+    "1 | n -> 1",
+    "n | 0 -> n",
+    "0 | n -> n",
+    //And
+    "n & 1 -> n",
+    "1 & n -> n",
+    "n & 0 -> 0",
+    "0 & n -> 0"
+]);
 
 const builtinOneArg = [
     "sin",
@@ -63,6 +76,12 @@ const operatorMap = {
 };
 
 const handle = (node: MathNode, options: Options, tex: boolean) : string => {
+    const encaseLogicalOperators = options.encaseLogicalOperators;
+    options.encaseLogicalOperators = true;
+
+    const secondaryBinary = options.secondaryBinary;
+    options.secondaryBinary = false;
+
     //Handle numerical values.
     if(!isNaN(node.value)) {
         return node.value;
@@ -78,10 +97,119 @@ const handle = (node: MathNode, options: Options, tex: boolean) : string => {
             return node.op + HandleNode(node.args[0], options, tex);
         }
 
+        let op = node.op;
+
+        if(op === "|") {
+            const opOptions = Object.assign({}, options);
+            opOptions.secondaryBinary = true;
+            opOptions.encaseLogicalOperators = false;
+
+            const normalOptions = Object.assign({}, options);
+            normalOptions.encaseLogicalOperators = false;
+
+            let a1txt, a2txt, a1, a2;
+
+            if(node.args[0].type === "OperatorNode" && node.args[0].op === "|") {
+                a1txt = HandleNode(node.args[0], Object.assign({}, opOptions), tex);
+                a1 = a1txt;
+            } else {
+                a1txt = HandleNode(node.args[0], Object.assign({}, normalOptions), tex);
+                a1 = a1txt + (node.args[0].type !== "OperatorNode" ? "=1" : "");
+            }
+
+            if(node.args[1].type === "OperatorNode" && node.args[1].op === "|") {
+                a2txt = HandleNode(node.args[1], Object.assign({}, opOptions), tex);
+                a2 = a2txt;
+            } else {
+                a2txt = HandleNode(node.args[1], Object.assign({}, normalOptions), tex);
+                a2 = a2txt + (node.args[1].type !== "OperatorNode" ? "=1" : "");
+            }
+
+            if(a1txt === "1" || a2txt === "1") {
+                return "1";
+            }
+
+            if(!secondaryBinary) {
+                if(encaseLogicalOperators) {
+                    return `\\left\\{${a1},${a2},0\\right\\}`;
+                }
+
+                return `\\left\\{${a1},${a2},0\\right\\}=1`;
+            }
+
+            return `${a1},${a2}`;
+        }
+
+        if(op === "&") {
+            const opOptions = Object.assign({}, options);
+            opOptions.secondaryBinary = true;
+            opOptions.encaseLogicalOperators = false;
+
+            const normalOptions = Object.assign({}, options);
+            normalOptions.encaseLogicalOperators = false;
+
+            let a1txt, a2txt, a1, a2;
+
+            if(node.args[0].type === "OperatorNode" && node.args[0].op === "&") {
+                a1txt = HandleNode(node.args[0], Object.assign({}, opOptions), tex);
+                a1 = a1txt;
+            } else {
+                a1txt = HandleNode(node.args[0], Object.assign({}, normalOptions), tex);
+                a1 = "\\left\\{" + a1txt + (node.args[0].type !== "OperatorNode" ? "=1" : "") + "\\right\\}";
+            }
+
+            if(node.args[1].type === "OperatorNode" && node.args[1].op === "&") {
+                a2txt = HandleNode(node.args[1], Object.assign({}, opOptions), tex);
+                a2 = a2txt;
+            } else {
+                a2txt = HandleNode(node.args[1], Object.assign({}, normalOptions), tex);
+                a2 = "\\left\\{" + a2txt + (node.args[1].type !== "OperatorNode" ? "=1" : "") + "\\right\\}";
+            }
+
+            if(a1txt === "0" || a2txt === "0") {
+                return "0";
+            }
+
+            if(!secondaryBinary) {
+                if(encaseLogicalOperators) {
+                    return `${a1}${a2}`;
+                }
+
+                return `${a1}${a2}=1`;
+            }
+
+            return `${a1}${a2}`;
+        }
+
+        if(op === "!=") {
+            node.op = "=";
+            node.args = [node.args[1], node.args[0]];
+            return functions["if_func"](<MathNode>{args: [node, {value: 0}, {value: 1}]}, options, tex);
+        }
+
         let a1 = HandleNode(node.args[0], options, tex);
         let a2 = HandleNode(node.args[1], options, tex);
 
-        let op = node.op;
+        //Handle logical operators.
+        if(["==", ">", ">=", "<", "<="].includes(op)) {
+            switch(op) {
+                case "==":
+                    op = "=";
+                    break;
+                case ">=":
+                    op = "\\ge ";
+                    break;
+                case "<=":
+                    op = "\\le ";
+                    break;
+            }
+
+            if(encaseLogicalOperators) {
+                return `\\left\\{${a1}${op}${a2},0\\right\\}`;
+            }
+
+            return `${a1}${op}${a2}`;
+        }
 
         //Handle special cases like a+-b to a-b and a*b to ab.
         if(a2.startsWith("-") && operatorMap[node.op] === "+") {
@@ -203,7 +331,9 @@ const getStringOptions = (strict: boolean, names: string[]) : Options => {
             return handle(node, options, false);
         },
         strict,
-        names
+        names,
+        encaseLogicalOperators: true,
+        secondaryBinary: false
     };
 }
 
@@ -213,7 +343,9 @@ const getTexOptions = (strict: boolean, names: string[]) : Options => {
             return handle(node, options, true);
         },
         strict,
-        names
+        names,
+        encaseLogicalOperators: true,
+        secondaryBinary: false
     };
 }
 
@@ -221,6 +353,8 @@ interface Options {
     handler: (node: any, options: Options) => string;
     strict: boolean;
     names: string[];
+    encaseLogicalOperators: boolean;
+    secondaryBinary: boolean;
 }
 
 const functions: Record<string, (node: MathNode, options: object, tex: boolean) => string> = {
@@ -270,8 +404,19 @@ const functions: Record<string, (node: MathNode, options: object, tex: boolean) 
     gte(node, options, tex) {
         return `\\left\\{${HandleNode(node.args[0], options, tex)}\\ge ${HandleNode(node.args[1], options, tex)},0\\right\\}`;
     },
-    if_func(node, options, tex) {
-        return `\\left\\{${HandleNode(node.args[0], options, tex)}=1:${HandleNode(node.args[1], options, tex)},${HandleNode(node.args[2], options, tex)}\\right\\}`;
+    if_func(node, options: Options, tex) {
+        const nonEnclosedOptions = Object.assign({}, options);
+        nonEnclosedOptions.encaseLogicalOperators = false;
+
+        const cond = HandleNode(node.args[0], nonEnclosedOptions, tex);
+        const ifVal = HandleNode(node.args[1], options, tex);
+        const elseVal = HandleNode(node.args[2], options, tex);
+
+        if(cond === "1") return ifVal;
+        if(cond === "0") return elseVal;
+        if(ifVal === elseVal) return ifVal;
+
+        return `\\left\\{${cond + (node.args[0].type !== "OperatorNode" ? "=1" : "")}${ifVal !== "1" ? `:${ifVal}` : ""},${elseVal}\\right\\}`;
     }
 };
 
@@ -311,8 +456,5 @@ const texFunctions: Record<string, (node: MathNode, options: object) => string> 
     },
     gte(node, options) {
         return `\\left\\{${node.args[0].toTex(options)}\\ge ${node.args[1].toTex(options)},0\\right\\}`;
-    },
-    if_func(node, options) {
-        return `\\left\\{${node.args[0].toTex(options)}=1:${node.args[1].toTex(options)},${node.args[2].toTex(options)}\\right\\}`;
     }
 };

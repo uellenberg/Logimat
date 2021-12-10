@@ -353,6 +353,46 @@ const CompileBlock = (input: Statement[], inlines: Record<string, Inline>, templ
     return out;
 }
 
+/**
+ * Handles a logic function and transforms it to a string, for when piecewise output is enabled.
+ * @param name {string} - is the name of the function.
+ * @param args {(string | object)[]} - is the array of arguments to the function.
+ * @returns {string} The resultant string.
+ */
+const HandlePiecewise = (name: string, args: (string | object)[]) : string => {
+    switch (name) {
+        case "and":
+            return `((${args[0]}) & (${args[1]}))`;
+        case "or":
+            return `((${args[0]}) | (${args[1]}))`;
+        case "equal":
+            return `((${args[0]}) == (${args[1]}))`;
+        case "notEqual":
+            return `if_func((${args[0]}) == (${args[1]}), 0, 1)`;
+        case "lt":
+            return `((${args[0]}) < (${args[1]}))`;
+        case "lte":
+            return `((${args[0]}) <= (${args[1]}))`;
+        case "gt":
+            return `((${args[0]}) > (${args[1]}))`;
+        case "gte":
+            return `((${args[0]}) >= (${args[1]}))`;
+        default:
+            return "";
+    }
+}
+
+const piecewiseFunctions = [
+    "and",
+    "or",
+    "equal",
+    "notEqual",
+    "lt",
+    "lte",
+    "gt",
+    "gte"
+];
+
 const CompileExpression = (expression: Expression, inlines: Record<string, Inline>, templates: Record<string, TemplateFunction>, state: TemplateState, vars: Record<string, string> = {}, stack: string[]) : string => {
     if(typeof(expression) !== "object") return expression;
 
@@ -376,7 +416,10 @@ const CompileExpression = (expression: Expression, inlines: Record<string, Inlin
         case "f":
             const fargs = (<any[]>expression.args[1]).map(arg => typeof(arg) === "object" && arg.hasOwnProperty("type") ? CompileExpression(<Expression>arg, inlines, templates, state, vars, stack) : arg);
 
-            if(!inlines.hasOwnProperty(<string>expression.args[0])) return <string>expression.args[0] + "(" + fargs.join(",") + ")";
+            if(!inlines.hasOwnProperty(<string>expression.args[0])) {
+                if(piecewiseFunctions.includes(<string>expression.args[0])) return HandlePiecewise(<string>expression.args[0], fargs);
+                return <string>expression.args[0] + "(" + fargs.join(",") + ")";
+            }
 
             const fargnames = (<OuterFunctionDeclaration>inlines[<string>expression.args[0]].value).args;
 

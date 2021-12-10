@@ -9,22 +9,6 @@ inline function notSelect(a) {
     state = a == 0;
 }
 
-inline function and(a, b) {
-    if(a) {
-        state = b;
-    } else {
-        state = 0;
-    }
-}
-
-inline function or(a, b) {
-    if(a) {
-        state = 1;
-    } else {
-        state = b;
-    }
-}
-
 inline function not(a) {
     state = a == 0;
 }
