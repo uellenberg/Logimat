@@ -419,10 +419,10 @@ semantic.addOperation("parse", {
         return {type: "f", args: ["lt", [e.parse(), e2.parse()]]};
     },
     RelationalExpression_gt(e, _, e2){
-        return {type: "f", args: ["lte", [e.parse(), e2.parse()]]};
+        return {type: "f", args: ["gt", [e.parse(), e2.parse()]]};
     },
     RelationalExpression_lte(e, _, e2){
-        return {type: "f", args: ["gt", [e.parse(), e2.parse()]]};
+        return {type: "f", args: ["lte", [e.parse(), e2.parse()]]};
     },
     RelationalExpression_gte(e, _, e2){
         return {type: "f", args: ["gte", [e.parse(), e2.parse()]]};
