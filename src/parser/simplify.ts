@@ -24,7 +24,10 @@ const simplifyRules = simplify["rules"].concat([
     "n & 1 -> n",
     "1 & n -> n",
     "n & 0 -> 0",
-    "0 & n -> 0"
+    "0 & n -> 0",
+    //Func
+    "if_func(0,n1,n2) -> n2",
+    "if_func(1,n1,n2) -> n1"
 ]);
 
 const builtinOneArg = [
