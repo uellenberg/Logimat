@@ -76,12 +76,12 @@ LogiMat {
     Prod = prod "(" exportIdentifier "=" Expression ";" Expression ")" Block
     
     PrimaryExpression = state -- state
+                      | templateName "(" TemplateArgs ")"   -- template
                       | identifierName "(" ListOf<Expression, ","> ")"   -- func
                       | (identifier | builtInVariables)  -- var
                       | literal
                       | Sum
                       | Prod
-                      | templateName "(" TemplateArgs ")"   -- template
                       | Block  -- block
                       | Array  -- array
                       | Point  -- point
