@@ -2,6 +2,8 @@ import ohm from "ohm-js";
 import {TemplateArgs, TemplateContext} from "../types";
 
 export const grammar = ohm.grammar(`
+//Based on https://github.com/harc/ohm/blob/master/examples/ecmascript/src/es5.ohm.
+
 LogiMat {
     Program = Import* OuterDeclaration*
     
@@ -14,8 +16,8 @@ LogiMat {
     InnerTemplate = templateName "(" TemplateArgs ")" ";"
 
     OuterConstDeclaration = ExportOuterConstDeclaration | InlineOuterConstDeclaration | PointDeclaration
-    ExportOuterConstDeclaration = export #space const #space exportIdentifier "=" ExpressionStatement ";"
-    InlineOuterConstDeclaration = inline #space const #space identifier "=" ExpressionStatement ";"
+    ExportOuterConstDeclaration = export #space const #space exportIdentifier "=" Expression ";"
+    InlineOuterConstDeclaration = inline #space const #space identifier "=" Expression ";"
 
     FunctionDeclaration = ExportFunctionDeclaration | InlineFunctionDeclaration
     ExportFunctionDeclaration = export #space function #space exportIdentifier "(" ExportFunctionArgs ")" Block
@@ -29,7 +31,7 @@ LogiMat {
     
     ExpressionDeclaration = expression Block
     
-    GraphDeclaration = graph ExpressionStatementBlock GraphOperator ExpressionStatementBlock ";"
+    GraphDeclaration = graph ExpressionBlock GraphOperator ExpressionBlock ";"
     GraphOperator = ">="
                   | "=>"
                   | "<="
@@ -38,24 +40,24 @@ LogiMat {
                   | ">"
                   | "<"
     
-    PointDeclaration = point ExpressionStatement ";"
+    PointDeclaration = point Expression ";"
     
-    PolygonDeclaration = polygon "(" ListOf<ExpressionStatement, ","> ")" ";"
+    PolygonDeclaration = polygon "(" ListOf<Expression, ","> ")" ";"
     
-    Point = "(" ExpressionStatement "," ExpressionStatement ")"
-    Array = "[" ListOf<ExpressionStatement, ","> "]"
+    Point = "(" Expression "," Expression ")"
+    Array = "[" ListOf<Expression, ","> "]"
     
     ExportFunctionArgs = ListOf<exportIdentifier, ",">
     FunctionArgs = ListOf<identifier, ",">
     TemplateArgs = ListOf<TemplateArg, ",">
     
     TemplateArg = string  -- string
-                | ("+" | "-")? number  -- number
+                | ("+" | "-")? numericLiteral  -- number
                 | boolean -- boolean
                 | null    -- null
                 | "{" (InnerDeclaration+ | OuterDeclaration+) "}"   -- block
     
-    ExpressionStatementBlock = "{" ExpressionStatement "}"
+    ExpressionBlock = "{" Expression "}"
     Block = "{" InnerDeclarations "}"
     InnerDeclarations = InnerDeclaration+
     
@@ -64,77 +66,79 @@ LogiMat {
                      | SetState
                      | IfStatement
 
-    ConstDeclaration = const #space identifier "=" ExpressionStatement ";"
+    ConstDeclaration = const #space identifier "=" Expression ";"
 
-    SetState = state "=" ExpressionStatement ";"
+    SetState = state "=" Expression ";"
 
-    IfStatement = if "(" ExpressionStatement ")" Block (else (Block | IfStatement))?
+    IfStatement = if "(" Expression ")" Block (else (Block | IfStatement))?
 
-    Sum = sum "(" exportIdentifier "=" ExpressionStatement ";" ExpressionStatement ")" Block
-    Prod = prod "(" exportIdentifier "=" ExpressionStatement ";" ExpressionStatement ")" Block
+    Sum = sum "(" exportIdentifier "=" Expression ";" Expression ")" Block
+    Prod = prod "(" exportIdentifier "=" Expression ";" Expression ")" Block
+    
+    PrimaryExpression = state -- state
+                      | identifierName "(" ListOf<Expression, ","> ")"   -- func
+                      | (identifier | builtInVariables)  -- var
+                      | literal
+                      | Sum
+                      | Prod
+                      | templateName "(" TemplateArgs ")"   -- template
+                      | Block  -- block
+                      | Array  -- array
+                      | Point  -- point
+                      | "(" Expression ")"  -- paren
+    
+    MemberExpression = MemberExpression "[" Expression "]" -- arrayIdx
+                     | MemberExpression "." ("x" | "y")    -- pointIdx
+                     | PrimaryExpression
+    
+    UnaryExpression = "+" UnaryExpression -- plus
+                    | "-" UnaryExpression -- neg
+                    | "!" UnaryExpression -- not
+                    | MemberExpression
+    
+    ExponentialExpression = ExponentialExpression "^" UnaryExpression -- exp
+                          | UnaryExpression
+    
+    MultiplicativeExpression = MultiplicativeExpression "*" ExponentialExpression -- mul
+                             | MultiplicativeExpression "/" ExponentialExpression -- div
+                             | MultiplicativeExpression "%" ExponentialExpression -- mod
+                             | ExponentialExpression
+    
+    AdditiveExpression = AdditiveExpression "+" MultiplicativeExpression -- add
+                       | AdditiveExpression "-" MultiplicativeExpression -- sub
+                       | MultiplicativeExpression 
+    
+    RelationalExpression = RelationalExpression "<" AdditiveExpression            -- lt
+                         | RelationalExpression ">" AdditiveExpression            -- gt
+                         | RelationalExpression ("<=" | "=<") AdditiveExpression  -- lte
+                         | RelationalExpression (">=" | "=>") AdditiveExpression  -- gte
+                         | AdditiveExpression
+    
+    EqualityExpression = EqualityExpression "==" RelationalExpression -- equal
+                       | EqualityExpression "!=" RelationalExpression -- notEqual
+                       | RelationalExpression
+    
+    AndExpression = AndExpression "&&" EqualityExpression -- and
+                  | EqualityExpression
+    
+    OrExpression = OrExpression "||" AndExpression -- or
+                 | AndExpression
+    
+    Expression = OrExpression
 
-    ExpressionStatement = Statement | Expression
+    literal = numericLiteral
 
-    Statement = And
+    numericLiteral = decimalLiteral
 
-    And
-      = And "&&" Or   -- and
-      | Or
+    decimalLiteral = decimalIntegerLiteral "." decimalDigit* -- bothParts
+                   |                       "." decimalDigit+ -- decimalsOnly
+                   | decimalIntegerLiteral                   -- integerOnly
 
-    Or
-      = Or "||" Operator   -- or
-      | Operator
+    decimalIntegerLiteral = nonZeroDigit decimalDigit*  -- nonZero
+                          | "0"                         -- zero
+    decimalDigit = "0".."9"
+    nonZeroDigit = "1".."9"
 
-    Operator = NotOperator
-             | EqualOperator
-             | NotEqualOperator
-             | LessThanOperator
-             | LessThanEqualOperator
-             | GreaterThanOperator
-             | GreaterThanEqualOperator
-             | Expression
-             | "(" Statement ")"   -- paren
-
-    NotOperator = "!" Operator
-    EqualOperator = Expression "==" Expression
-    NotEqualOperator = Expression "!=" Expression
-    LessThanOperator = Expression "<" Expression
-    LessThanEqualOperator = Expression ("<=" | "=<") Expression
-    GreaterThanOperator = Expression ">" Expression
-    GreaterThanEqualOperator = Expression (">=" | "=>") Expression
-
-    Expression = AddExp
-
-    AddExp
-      = AddExp "+" MulExp  -- plus
-      | AddExp "-" MulExp  -- minus
-      | MulExp
-    MulExp
-      = MulExp "*" ExpExp  -- times
-      | MulExp "/" ExpExp  -- divide
-      | MulExp "%" ExpExp  -- mod
-      | ExpExp
-    ExpExp
-      = PriExp "^" ExpExp  -- power
-      | PriExp
-    PriExp
-      = "(" Expression ")"  -- paren
-      | "+" PriExp   -- pos
-      | "-" PriExp   -- neg
-      | Sum
-      | Prod
-      | identifierName "(" ListOf<Expression, ","> ")"   -- func
-      | templateName "(" TemplateArgs ")"   -- template
-      | (identifier | builtInVariables)   -- var
-      | number
-      | state   -- state
-      | Point   -- point
-      | Array   -- array
-      | Block   -- block
-
-    number  (a number)
-      = digit* "." digit+  -- fract
-      | digit+             -- whole
 
     builtIns = "sin" ~identifierPart
              | "cos" ~identifierPart
@@ -184,6 +188,8 @@ LogiMat {
     prod = "prod" ~identifierPart
     if = "if" ~identifierPart
     else = "else" ~identifierPart
+    boolean = ("true" | "false") ~identifierPart
+    null = "null" ~identifierPart
 
     keywords = export
              | inline
@@ -201,6 +207,8 @@ LogiMat {
              | prod
              | if
              | else
+             | boolean
+             | null
 
     reservedWord = keywords
                  | builtIns
@@ -251,10 +259,6 @@ LogiMat {
     stringCharacter = ~("\\"" | "\\\\" | lineTerminator) any -- nonEscaped
                     | "\\\\" singleEscapeCharacter          -- escaped
     singleEscapeCharacter = "\\"" | "\\\\"
-
-    boolean = "true" | "false"
-    
-    null = "null"
 }
 `);
 
@@ -276,7 +280,7 @@ semantic.addOperation("parse", {
     InnerTemplate(name, _2, args, _3, _4){
         return {type: "template", name: name.parse(), args: args.parse(), context: TemplateContext.InnerDeclaration};
     },
-    PriExp_template(name, _2, args, _3){
+    PrimaryExpression_template(name, _2, args, _3){
         return {type: "template", name: name.parse(), args: args.parse(), context: TemplateContext.Expression};
     },
     ExportOuterConstDeclaration(_1, _2, _3, _4, name, _6, expr, _8){
@@ -357,58 +361,100 @@ semantic.addOperation("parse", {
     Expression(e){
         return e.parse();
     },
-    AddExp_plus(e, _, e2){
-        return {type: "+", args: [e.parse(), e2.parse()]};
-    },
-    AddExp_minus(e, _, e2){
-        return {type: "-", args: [e.parse(), e2.parse()]};
-    },
-    MulExp_times(e, _, e2){
-        return {type: "*", args: [e.parse(), e2.parse()]};
-    },
-    MulExp_divide(e, _, e2){
-        return {type: "/", args: [e.parse(), e2.parse()]};
-    },
-    MulExp_mod(e, _, e2){
-        return {type: "f", args: ["mod", [e.parse(), e2.parse()]]};
-    },
-    ExpExp_power(e, _, e2){
-        return {type: "^", args: [e.parse(), e2.parse()]};
-    },
-    PriExp_paren(_, e, _2){
+    PrimaryExpression_paren(_, e, _2){
         return e.parse();
     },
-    PriExp_pos(_, e){
-        return e.parse();
-    },
-    PriExp_neg(_, e){
-        return {type: "n", args: [e.parse()]};
-    },
-    PriExp_func(n, _, l, _2){
+    PrimaryExpression_func(n, _, l, _2){
         return {type: "f", args: [n.parse(), l.asIteration().parse()]}
     },
-    PriExp_var(e){
+    PrimaryExpression_var(e){
         return {type: "v", args: [e.parse()]};
     },
-    PriExp_state(e){
+    PrimaryExpression_state(e){
         return {type: "v", args: ["state"]};
     },
-    PriExp_point(e){
+    PrimaryExpression_point(e){
         return {type: "f", args: ["point", e.parse()]};
     },
-    PriExp_array(e){
+    PrimaryExpression_array(e){
         return {type: "f", args: ["array", e.parse()]};
     },
-    PriExp_block(e){
+    PrimaryExpression_block(e){
         return {type: "b", args: [e.parse()]};
     },
-    number_fract(_, _2, _3){
+    MemberExpression_arrayIdx(e, _, e1, _2){
+        return {type: "f", args: ["array_idx", [e.parse(), e1.parse()]]};
+    },
+    MemberExpression_pointIdx(e, _, e1){
+        return {type: "f", args: ["point_idx", [e.parse(), e1.parse()]]};
+    },
+    UnaryExpression_plus(_, e){
+        return e.parse();
+    },
+    UnaryExpression_neg(_, e){
+        return {type: "n", args: [e.parse()]};
+    },
+    UnaryExpression_not(_, e){
+        return {type: "f", args: ["not", [e.parse()]]};
+    },
+    ExponentialExpression_exp(e, _, e2){
+        return {type: "^", args: [e.parse(), e2.parse()]};
+    },
+    MultiplicativeExpression_mul(e, _, e2){
+        return {type: "*", args: [e.parse(), e2.parse()]};
+    },
+    MultiplicativeExpression_div(e, _, e2){
+        return {type: "/", args: [e.parse(), e2.parse()]};
+    },
+    MultiplicativeExpression_mod(e, _, e2){
+        return {type: "f", args: ["mod", [e.parse(), e2.parse()]]};
+    },
+    AdditiveExpression_add(e, _, e2){
+        return {type: "+", args: [e.parse(), e2.parse()]};
+    },
+    AdditiveExpression_sub(e, _, e2){
+        return {type: "-", args: [e.parse(), e2.parse()]};
+    },
+    RelationalExpression_lt(e, _, e2){
+        return {type: "f", args: ["lt", [e.parse(), e2.parse()]]};
+    },
+    RelationalExpression_gt(e, _, e2){
+        return {type: "f", args: ["lte", [e.parse(), e2.parse()]]};
+    },
+    RelationalExpression_lte(e, _, e2){
+        return {type: "f", args: ["gt", [e.parse(), e2.parse()]]};
+    },
+    RelationalExpression_gte(e, _, e2){
+        return {type: "f", args: ["gte", [e.parse(), e2.parse()]]};
+    },
+    EqualityExpression_equal(e, _, e2){
+        return {type: "f", args: ["equal", [e.parse(), e2.parse()]]};
+    },
+    EqualityExpression_notEqual(e, _, e2){
+        return {type: "f", args: ["notEqual", [e.parse(), e2.parse()]]};
+    },
+    AndExpression_and(e, _, e2){
+        return {type: "f", args: ["and", [e.parse(), e2.parse()]]};
+    },
+    OrExpression_or(e, _, e2){
+        return {type: "f", args: ["or", [e.parse(), e2.parse()]]};
+    },
+    decimalLiteral_bothParts(_, _2, _3){
         return this.sourceString;
     },
-    number_whole(_){
+    decimalLiteral_decimalsOnly(_, _2){
         return this.sourceString;
     },
-    ExpressionStatementBlock(_, e, _2){
+    decimalLiteral_integerOnly(_){
+        return this.sourceString;
+    },
+    decimalIntegerLiteral_nonZero(_, _1){
+        return this.sourceString;
+    },
+    decimalIntegerLiteral_zero(_){
+        return this.sourceString;
+    },
+    ExpressionBlock(_, e, _2){
         return e.parse();
     },
     Block(_, e, _2){
@@ -436,39 +482,6 @@ semantic.addOperation("parse", {
     },
     Prod(_, _2, v, _3, expr1, _4, expr2, _6, action){
         return {type: "prod", args: [v.parse(), expr1.parse(), expr2.parse(), action.parse()]};
-    },
-    Statement(e){
-        return e.parse();
-    },
-    And_and(e, _, e2){
-        return {type: "f", args: ["and", [e.parse(), e2.parse()]]};
-    },
-    Or_or(e, _, e2){
-        return {type: "f", args: ["or", [e.parse(), e2.parse()]]};
-    },
-    NotOperator(_, e){
-        return {type: "f", args: ["not", [e.parse()]]};
-    },
-    EqualOperator(e, _, e2){
-        return {type: "f", args: ["equal", [e.parse(), e2.parse()]]};
-    },
-    NotEqualOperator(e, _, e2){
-        return {type: "f", args: ["notEqual", [e.parse(), e2.parse()]]};
-    },
-    LessThanOperator(e, _, e2){
-        return {type: "f", args: ["lt", [e.parse(), e2.parse()]]};
-    },
-    LessThanEqualOperator(e, _, e2){
-        return {type: "f", args: ["lte", [e.parse(), e2.parse()]]};
-    },
-    GreaterThanOperator(e, _, e2){
-        return {type: "f", args: ["gt", [e.parse(), e2.parse()]]};
-    },
-    GreaterThanEqualOperator(e, _, e2){
-        return {type: "f", args: ["gte", [e.parse(), e2.parse()]]};
-    },
-    Operator_paren(_, e, _1){
-        return e.parse();
     },
     string(_, str, _3){
         return str.parse().join("");
