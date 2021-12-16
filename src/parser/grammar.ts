@@ -10,7 +10,7 @@ LogiMat {
     Import = ImportTemplates
     ImportTemplates = "import" #space "templates" #space "from" #space string ";"
     
-    OuterDeclaration = Template | OuterConstDeclaration | FunctionDeclaration | ActionDeclaration | ActionsDeclaration | ExpressionDeclaration | GraphDeclaration | PointDeclaration | PolygonDeclaration
+    OuterDeclaration = Template | OuterConstDeclaration | FunctionDeclaration | ActionDeclaration | ActionsDeclaration | ExpressionDeclaration | GraphDeclaration | PointDeclaration | PolygonDeclaration | ColorDeclaration
     
     Template = templateName "(" TemplateArgs ")" ";"
     InnerTemplate = templateName "(" TemplateArgs ")" ";"
@@ -32,6 +32,8 @@ LogiMat {
     ActionsDeclaration = NoArgsActionsDeclaration | ArgsActionsDeclaration
     NoArgsActionsDeclaration = actions #space exportIdentifier "=" ActionsArgs ";"
     ArgsActionsDeclaration = actions #space exportIdentifier "(" ExportFunctionArgs ")" "=" ActionsArgs ";"
+    
+    ColorDeclaration = color #space exportIdentifier "=" "rgb" "(" Expression "," Expression "," Expression ")" ";"
     
     ExpressionDeclaration = expression Block
     
@@ -197,6 +199,7 @@ LogiMat {
     else = "else" ~identifierPart
     boolean = ("true" | "false") ~identifierPart
     null = "null" ~identifierPart
+    color = "color" ~identifierPart
 
     keywords = export
              | inline
@@ -216,6 +219,7 @@ LogiMat {
              | else
              | boolean
              | null
+             | color
 
     reservedWord = keywords
                  | builtIns
@@ -316,6 +320,9 @@ semantic.addOperation("parse", {
     },
     ArgsActionsDeclaration(_1, _2, name, _4, actionArgs, _5, _6, args, _7){
         return {type: "actions", modifier: "export", name: name.parse(), args: args.parse(), actionArgs: actionArgs.parse()};
+    },
+    ColorDeclaration(_1, _2, name, _3, _4, _5, v1, _6, v2, _7, v3, _8, _9){
+        return {type: "color", modifier: "export", name: name.parse(), args: [v1.parse(), v2.parse(), v3.parse()]};
     },
     ExpressionDeclaration(_1, block) {
         return {type: "expression", modifier: "export", block: block.parse()};
@@ -528,7 +535,7 @@ export interface Import {
     importType: string;
     path: string;
 }
-export type OuterDeclaration = Template | OuterConstDeclaration | OuterFunctionDeclaration | ActionDeclaration | ActionsDeclaration | ExpressionDeclaration | GraphDeclaration | PointDeclaration | PolygonDeclaration;
+export type OuterDeclaration = Template | OuterConstDeclaration | OuterFunctionDeclaration | ActionDeclaration | ActionsDeclaration | ExpressionDeclaration | GraphDeclaration | PointDeclaration | PolygonDeclaration | ColorDeclaration;
 export interface Template {
     type: string;
     modifier: string;
@@ -563,6 +570,12 @@ export interface ActionsDeclaration {
     name: string;
     args: string[][];
     actionArgs: string[];
+}
+export interface ColorDeclaration {
+    type: string;
+    modifier: string;
+    name: string;
+    args: string[];
 }
 export interface ExpressionDeclaration {
     type: string;

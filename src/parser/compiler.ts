@@ -11,6 +11,7 @@ import {
     ParserOutput,
     PointDeclaration,
     PolygonDeclaration,
+    ColorDeclaration,
     semantic,
     Statement,
     Template
@@ -247,6 +248,10 @@ const InternalCompile = (useTex: boolean, tree: OuterDeclaration[], inlines: Rec
             case "polygon":
                 const polygonDeclaration = <PolygonDeclaration>declaration;
                 out.push("\\operatorname{polygon}" + (useTex ? "\\left(" : "(") + polygonDeclaration.points.map(point => SimplifyExpression(CompileExpression(point, inlines, templates, state, {}, stack), useTex, strict, names)).join(",") + (useTex ? "\\right)" : ")"));
+                break;
+            case "color":
+                const colorDeclaration = <ColorDeclaration>declaration;
+                out.push(HandleName(colorDeclaration.name) + "=" + "\operatorname{rgb}\left(" + colorDeclaration.args.map(HandleName) + "\right)");
                 break;
         }
     }
