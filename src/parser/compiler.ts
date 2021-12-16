@@ -219,17 +219,18 @@ const InternalCompile = (useTex: boolean, tree: OuterDeclaration[], inlines: Rec
                 break;
             case "action":
                 const actionDeclaration = <ActionDeclaration>declaration;
-                out.push((actionDeclaration.funcName ? HandleName(actionDeclaration.funcName) + "=" : "") + HandleName(actionDeclaration.name) + "\\to " + SimplifyExpression(CompileBlock(actionDeclaration.block, inlines, templates, state, actionDeclaration.name, {}, {}, stack), useTex, strict, names));
+                out.push((actionDeclaration.funcName ? HandleName(actionDeclaration.funcName) + (actionDeclaration.args ? "(" + actionDeclaration.args.map(HandleName).join(",") + ")" : "") + "=" : "") + HandleName(actionDeclaration.name) + "\\to " + SimplifyExpression(CompileBlock(actionDeclaration.block, inlines, templates, state, actionDeclaration.name, {}, {}, stack), useTex, strict, actionDeclaration.args ? names.concat(actionDeclaration.args) : names));
                 break;
             case "actions":
                 const actionsDeclaration = <ActionsDeclaration>declaration;
 
-                const badActions = actionsDeclaration.args.filter(action => !names.includes(action));
+                //Get the name without the args (the first part before the opening parenthesis)
+                const badActions = actionsDeclaration.args.filter(action => !names.includes(action[0]));
                 if(strict && badActions.length > 0) {
                     throw new Error("The following actions have not been defined: " + badActions.map(action => "\"" + action + "\"").join(", ") + ".");
                 }
 
-                out.push(HandleName(actionsDeclaration.name) + "=" + actionsDeclaration.args.map(HandleName).join(","));
+                out.push(HandleName(actionsDeclaration.name) + (actionsDeclaration.actionArgs ? "(" + actionsDeclaration.actionArgs.map(HandleName).join(",") + ")" : "") + "=" + actionsDeclaration.args.map(action => HandleName(action[0]) + (action.length > 1 ? "(" + action.slice(1).map(HandleName) + ")" : "")).join(","));
                 break;
             case "expression":
                 const expressionDeclaration = <ExpressionDeclaration>declaration;

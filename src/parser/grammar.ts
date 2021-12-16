@@ -25,9 +25,13 @@ LogiMat {
 
     ActionDeclaration = UnnamedActionDeclaration | NamedActionDeclaration
     UnnamedActionDeclaration = action #space exportIdentifier Block
-    NamedActionDeclaration = action #space exportIdentifier "=" exportIdentifier Block
+    NamedActionDeclaration = NoArgsActionDeclaration | ArgsActionDeclaration
+    NoArgsActionDeclaration = action #space exportIdentifier "=" exportIdentifier Block
+    ArgsActionDeclaration = action #space exportIdentifier "(" ExportFunctionArgs ")" "=" exportIdentifier Block
     
-    ActionsDeclaration = actions #space exportIdentifier "=" ExportFunctionArgs ";"
+    ActionsDeclaration = NoArgsActionsDeclaration | ArgsActionsDeclaration
+    NoArgsActionsDeclaration = actions #space exportIdentifier "=" ActionsArgs ";"
+    ArgsActionsDeclaration = actions #space exportIdentifier "(" ExportFunctionArgs ")" "=" ActionsArgs ";"
     
     ExpressionDeclaration = expression Block
     
@@ -50,6 +54,9 @@ LogiMat {
     ExportFunctionArgs = ListOf<exportIdentifier, ",">
     FunctionArgs = ListOf<identifier, ",">
     TemplateArgs = ListOf<TemplateArg, ",">
+    
+    ActionName (an action name) = exportIdentifier ("(" ExportFunctionArgs ")")?
+    ActionsArgs = ListOf<ActionName, ",">
     
     TemplateArg = string  -- string
                 | ("+" | "-")? numericLiteral  -- number
@@ -298,11 +305,17 @@ semantic.addOperation("parse", {
     UnnamedActionDeclaration(_1, _2, name, block){
         return {type: "action", modifier: "export", name: name.parse(), funcName: "", block: block.parse()};
     },
-    NamedActionDeclaration(_1, _2, funcName, _4, name, block){
+    NoArgsActionDeclaration(_1, _2, funcName, _4, name, block){
         return {type: "action", modifier: "export", name: name.parse(), funcName: funcName.parse(), block: block.parse()};
     },
-    ActionsDeclaration(_1, _2, name, _4, args, _6){
+    ArgsActionDeclaration(_1, _2, funcName, _4, args, _5, _6, name, block){
+        return {type: "action", modifier: "export", name: name.parse(), funcName: funcName.parse(), args: args.parse(), block: block.parse()};
+    },
+    NoArgsActionsDeclaration(_1, _2, name, _4, args, _6){
         return {type: "actions", modifier: "export", name: name.parse(), args: args.parse()};
+    },
+    ArgsActionsDeclaration(_1, _2, name, _4, actionArgs, _5, _6, args, _7){
+        return {type: "actions", modifier: "export", name: name.parse(), args: args.parse(), actionArgs: actionArgs.parse()};
     },
     ExpressionDeclaration(_1, block) {
         return {type: "expression", modifier: "export", block: block.parse()};
@@ -329,6 +342,19 @@ semantic.addOperation("parse", {
         return l.asIteration().parse();
     },
     TemplateArgs(l){
+        return l.asIteration().parse();
+    },
+    ActionName(name, _1, args, _2){
+        const arr = [name.parse()];
+        if(args) {
+            //For some reason the args are in a double array, with the first element being the args array.
+            const parsed = args.parse()[0];
+            if(parsed) arr.push(...parsed);
+        }
+
+        return arr;
+    },
+    ActionsArgs(l){
         return l.asIteration().parse();
     },
     identifier(_){
@@ -528,13 +554,15 @@ export interface ActionDeclaration {
     modifier: string;
     name: string;
     funcName: string;
+    args: string[];
     block: Statement[];
 }
 export interface ActionsDeclaration {
     type: string;
     modifier: string;
     name: string;
-    args: string[];
+    args: string[][];
+    actionArgs: string[];
 }
 export interface ExpressionDeclaration {
     type: string;
