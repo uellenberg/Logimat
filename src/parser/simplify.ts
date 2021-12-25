@@ -414,6 +414,12 @@ const functions: Record<string, (node: MathNode, options: object, tex: boolean) 
 
         return `[${func}\\operatorname{for}${varName}=${array}]`;
     },
+    range(node, options, tex) {
+        const from = HandleNode(node.args[0], options, tex);
+        const to = HandleNode(node.args[1], options, tex);
+
+        return `[${from}...${to}]`;
+    },
     equal(node, options, tex) {
         return `\\left\\{${HandleNode(node.args[0], options, tex)}=${HandleNode(node.args[1], options, tex)},0\\right\\}`;
     },
@@ -475,6 +481,9 @@ const texFunctions: Record<string, (node: MathNode, options: object) => string> 
     },
     array_map(node, options) {
         return `\\left[${node.args[1].toTex(options)}\\ \\operatorname{for}\\ ${node.args[2].toTex(options)}=${node.args[0].toTex(options)}\\right]`;
+    },
+    range(node, options) {
+        return `\\left[${node.args[0].toTex(options)}...${node.args[1].toTex(options)}\\right]`;
     },
     equal(node, options) {
         return `\\left\\{${node.args[0].toTex(options)}=${node.args[1].toTex(options)},0\\right\\}`;
