@@ -451,8 +451,14 @@ const CompileExpression = (expression: Expression, inlines: Record<string, Inlin
 
             return name;
         case "sum":
+            //Make the variable name used for mapping a declared variable, in order to make it work in strict mode.
+            declaredNames.push(<string>args[0]);
+
             return "sum(" + args[0] + "," + args[1] + "," + args[2] + "," + CompileBlock(<Statement[]>args[3], inlines, templates, state, "", vars, {}, stack, declaredNames) + ")";
         case "prod":
+            //Make the variable name used for mapping a declared variable, in order to make it work in strict mode.
+            declaredNames.push(<string>args[0]);
+
             return "prod(" + args[0] + "," + args[1] + "," + args[2] + "," + CompileBlock(<Statement[]>args[3], inlines, templates, state, "", vars, {}, stack, declaredNames) + ")";
         case "b":
             return CompileBlock(<Statement[]>expression.args[0], inlines, templates, state, "", vars, {}, stack, declaredNames);
