@@ -454,6 +454,9 @@ const texFunctions: Record<string, (node: MathNode, options: object) => string> 
     array(node, options) {
         return `\\left[${node.args.map(arg => arg.toTex(options)).join(",")}\\right]`
     },
+    array_idx(node, options) {
+        return `${node.args[0].toTex(options)}\\left[${node.args[0].toTex(options)}\\right]`;
+    },
     equal(node, options) {
         return `\\left\\{${node.args[0].toTex(options)}=${node.args[1].toTex(options)},0\\right\\}`;
     },
