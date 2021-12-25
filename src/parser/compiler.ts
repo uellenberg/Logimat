@@ -457,12 +457,27 @@ const CompileExpression = (expression: Expression, inlines: Record<string, Inlin
         case "b":
             return CompileBlock(<Statement[]>expression.args[0], inlines, templates, state, "", vars, {}, stack, declaredNames);
         case "a_f":
-            return "array_filter(" + args[0] + "," + CompileBlock(<Statement[]>args[2], inlines, templates, state, "", vars, {[<string>args[1]]: <string>args[0]}, stack, declaredNames) + ")";
+            //Map the user-chosen variable to the array for Desmos' filter syntax.
+            const filterVar = {[<string>args[1]]: <string>args[0]};
+
+            //If it's an array (list of statements), then compile it as a block, otherwise compile the original as an expression (with the .
+            const filterFunc =
+                Array.isArray(args[2])
+                    ? CompileBlock(<Statement[]>args[2], inlines, templates, state, "", vars, filterVar, stack, declaredNames)
+                    : CompileExpression(<Expression>expression.args[2], inlines, templates, state, {...vars, ...filterVar}, stack, declaredNames);
+
+            return "array_filter(" + args[0] + "," + filterFunc + ")";
         case "a_m":
             //Make the variable name used for mapping a declared variable, in order to make it work in strict mode.
             declaredNames.push(<string>args[1]);
 
-            return "array_map(" + args[0] + "," + CompileBlock(<Statement[]>args[2], inlines, templates, state, "", vars, {}, stack, declaredNames) + "," + args[1] + ")";
+            //If it's an array (list of statements), then compile it as a block, otherwise compile the original as an expression.
+            const mapFunc =
+                Array.isArray(args[2])
+                ? CompileBlock(<Statement[]>args[2], inlines, templates, state, "", vars, {}, stack, declaredNames)
+                : CompileExpression(<Expression>expression.args[2], inlines, templates, state, vars, stack, declaredNames);
+
+            return "array_map(" + args[0] + "," + mapFunc + "," + args[1] + ")";
     }
 
     return "";

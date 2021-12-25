@@ -98,8 +98,8 @@ LogiMat {
     
     MemberExpression = MemberExpression "[" Expression "]" -- arrayIdx
                      | MemberExpression "." ("x" | "y")    -- pointIdx
-                     | MemberExpression "." "filter" "(" identifier "=>" Block ")"  -- filter
-                     | MemberExpression "." "map" "(" exportIdentifier "=>" Block ")"  -- map
+                     | MemberExpression "." "filter" "(" identifier "=>" (Block | Expression) ")"  -- filter
+                     | MemberExpression "." "map" "(" exportIdentifier "=>" (Block | Expression) ")"  -- map
                      | PrimaryExpression
     
     UnaryExpression = "+" UnaryExpression -- plus
