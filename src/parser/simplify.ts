@@ -401,6 +401,19 @@ const functions: Record<string, (node: MathNode, options: object, tex: boolean) 
 
         return `${array}[${indexer}]`;
     },
+    array_filter(node, options, tex) {
+        const array = HandleNode(node.args[0], options, tex);
+        const condition = HandleNode(node.args[1], options, tex);
+
+        return `${array}[${condition}=1]`;
+    },
+    array_map(node, options, tex) {
+        const array = HandleNode(node.args[0], options, tex);
+        const func = HandleNode(node.args[1], options, tex);
+        const varName = HandleNode(node.args[2], options, tex);
+
+        return `[${func}\\operatorname{for}${varName}=${array}]`;
+    },
     equal(node, options, tex) {
         return `\\left\\{${HandleNode(node.args[0], options, tex)}=${HandleNode(node.args[1], options, tex)},0\\right\\}`;
     },
@@ -456,6 +469,12 @@ const texFunctions: Record<string, (node: MathNode, options: object) => string> 
     },
     array_idx(node, options) {
         return `${node.args[0].toTex(options)}\\left[${node.args[0].toTex(options)}\\right]`;
+    },
+    array_filter(node, options) {
+        return `${node.args[0].toTex(options)}\\left[${node.args[0].toTex(options)}=1\\right]`;
+    },
+    array_map(node, options) {
+        return `\\left[${node.args[1].toTex(options)}\\ \\operatorname{for}\\ ${node.args[2].toTex(options)}=${node.args[0].toTex(options)}\\right]`;
     },
     equal(node, options) {
         return `\\left\\{${node.args[0].toTex(options)}=${node.args[1].toTex(options)},0\\right\\}`;

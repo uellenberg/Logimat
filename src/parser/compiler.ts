@@ -204,23 +204,25 @@ const HandleTemplate = (templateDeclaration: Template, templates: Record<string,
 const InternalCompile = (useTex: boolean, tree: OuterDeclaration[], inlines: Record<string, Inline>, templates: Record<string, TemplateFunction>, state: TemplateState, stack: string[], strict: boolean) : string[] => {
     let out: string[] = [];
 
-    const names = GetDeclaredNames(tree);
+    const outerNames = GetDeclaredNames(tree);
 
     for (const declaration of tree) {
         if (declaration.modifier === "inline") continue;
 
+        const names = Object.assign([], outerNames);
+
         switch(declaration.type) {
             case "function":
                 const functionDeclaration = <OuterFunctionDeclaration>declaration;
-                out.push(HandleName(functionDeclaration.name) + "(" + functionDeclaration.args.map(HandleName).join(",") + ")" + "=" + SimplifyExpression(CompileBlock(functionDeclaration.block, inlines, templates, state, "", {}, {}, stack), useTex, strict, names.concat(functionDeclaration.args)));
+                out.push(HandleName(functionDeclaration.name) + "(" + functionDeclaration.args.map(HandleName).join(",") + ")" + "=" + SimplifyExpression(CompileBlock(functionDeclaration.block, inlines, templates, state, "", {}, {}, stack, names), useTex, strict, names.concat(functionDeclaration.args)));
                 break;
             case "const":
                 const constDeclaration = <OuterConstDeclaration>declaration;
-                out.push(HandleName(constDeclaration.name) + "=" + SimplifyExpression(CompileExpression(constDeclaration.expr, inlines, templates, state, {}, stack), useTex, strict, names));
+                out.push(HandleName(constDeclaration.name) + "=" + SimplifyExpression(CompileExpression(constDeclaration.expr, inlines, templates, state, {}, stack, names), useTex, strict, names));
                 break;
             case "action":
                 const actionDeclaration = <ActionDeclaration>declaration;
-                out.push((actionDeclaration.funcName ? HandleName(actionDeclaration.funcName) + (actionDeclaration.args ? "(" + actionDeclaration.args.map(HandleName).join(",") + ")" : "") + "=" : "") + HandleName(actionDeclaration.name) + "\\to " + SimplifyExpression(CompileBlock(actionDeclaration.block, inlines, templates, state, actionDeclaration.name, {}, {}, stack), useTex, strict, actionDeclaration.args ? names.concat(actionDeclaration.args) : names));
+                out.push((actionDeclaration.funcName ? HandleName(actionDeclaration.funcName) + (actionDeclaration.args ? "(" + actionDeclaration.args.map(HandleName).join(",") + ")" : "") + "=" : "") + HandleName(actionDeclaration.name) + "\\to " + SimplifyExpression(CompileBlock(actionDeclaration.block, inlines, templates, state, actionDeclaration.name, {}, {}, stack, names), useTex, strict, actionDeclaration.args ? names.concat(actionDeclaration.args) : names));
                 break;
             case "actions":
                 const actionsDeclaration = <ActionsDeclaration>declaration;
@@ -235,19 +237,19 @@ const InternalCompile = (useTex: boolean, tree: OuterDeclaration[], inlines: Rec
                 break;
             case "expression":
                 const expressionDeclaration = <ExpressionDeclaration>declaration;
-                out.push(SimplifyExpression(CompileBlock(expressionDeclaration.block, inlines, templates, state, "", {}, {}, stack), useTex, strict, names));
+                out.push(SimplifyExpression(CompileBlock(expressionDeclaration.block, inlines, templates, state, "", {}, {}, stack, names), useTex, strict, names));
                 break;
             case "graph":
                 const graphDeclaration = <GraphDeclaration>declaration;
-                out.push(SimplifyExpression(CompileExpression(graphDeclaration.p1, inlines, templates, state, {}, stack), useTex, strict, names) + opMap[graphDeclaration.op] + SimplifyExpression(CompileExpression(graphDeclaration.p2, inlines, templates, state, {}, stack), useTex, strict, names));
+                out.push(SimplifyExpression(CompileExpression(graphDeclaration.p1, inlines, templates, state, {}, stack, names), useTex, strict, names) + opMap[graphDeclaration.op] + SimplifyExpression(CompileExpression(graphDeclaration.p2, inlines, templates, state, {}, stack, names), useTex, strict, names));
                 break;
             case "point":
                 const pointDeclaration = <PointDeclaration>declaration;
-                out.push(SimplifyExpression(CompileExpression(pointDeclaration.point, inlines, templates, state, {}, stack), useTex, strict, names));
+                out.push(SimplifyExpression(CompileExpression(pointDeclaration.point, inlines, templates, state, {}, stack, names), useTex, strict, names));
                 break;
             case "polygon":
                 const polygonDeclaration = <PolygonDeclaration>declaration;
-                out.push("\\operatorname{polygon}" + (useTex ? "\\left(" : "(") + polygonDeclaration.points.map(point => SimplifyExpression(CompileExpression(point, inlines, templates, state, {}, stack), useTex, strict, names)).join(",") + (useTex ? "\\right)" : ")"));
+                out.push("\\operatorname{polygon}" + (useTex ? "\\left(" : "(") + polygonDeclaration.points.map(point => SimplifyExpression(CompileExpression(point, inlines, templates, state, {}, stack, names), useTex, strict, names)).join(",") + (useTex ? "\\right)" : ")"));
                 break;
             case "color":
                 const colorDeclaration = <ColorDeclaration>declaration;
@@ -306,7 +308,7 @@ const GetDeclaredNames = (tree: OuterDeclaration[]) : string[] => {
     return output;
 }
 
-const CompileBlock = (input: Statement[], inlines: Record<string, Inline>, templates: Record<string, TemplateFunction>, state: TemplateState, defaultOut = "", vars: Record<string, string> = {}, args: Record<string, string> = {}, stack: string[]) : string => {
+const CompileBlock = (input: Statement[], inlines: Record<string, Inline>, templates: Record<string, TemplateFunction>, state: TemplateState, defaultOut = "", vars: Record<string, string> = {}, args: Record<string, string> = {}, stack: string[], declaredNames: string[]) : string => {
     let out = defaultOut;
     let newVars = {
         ...vars,
@@ -319,14 +321,14 @@ const CompileBlock = (input: Statement[], inlines: Record<string, Inline>, templ
                 newVars[statement["name"]] = CompileExpression(statement["expr"], inlines, templates, state, {
                     ...newVars,
                     state: out || vars["state"] || ""
-                }, stack);
+                }, stack, declaredNames);
 
                 break;
             case "state":
                 out = CompileExpression(statement["expr"], inlines, templates, state, {
                     ...newVars,
                     state: out || vars["state"] || ""
-                }, stack);
+                }, stack, declaredNames);
                 break;
             case "if":
                 if(!statement["elseaction"] && !out) {
@@ -336,21 +338,21 @@ const CompileBlock = (input: Statement[], inlines: Record<string, Inline>, templ
                 const condition = CompileExpression(statement["condition"], inlines, templates, state, {
                     ...newVars,
                     state: out
-                }, stack);
+                }, stack, declaredNames);
                 const ifaction = CompileBlock(statement["ifaction"], inlines, templates, state, out, {
                     ...newVars,
                     state: out
-                }, {}, stack);
+                }, {}, stack, declaredNames);
                 const elseaction = statement["elseaction"] ? CompileBlock(statement["elseaction"], inlines, templates, state, out, {
                     ...newVars,
                     state: out
-                }, {}, stack) : out;
+                }, {}, stack, declaredNames) : out;
 
 
                 out = CompileExpression({type: "f", args: ["if_func", [condition, ifaction, elseaction]]}, inlines, templates, state, {
                     ...newVars,
                     state: out || vars["state"] || ""
-                }, stack);
+                }, stack, declaredNames);
                 break;
         }
     }
@@ -399,12 +401,12 @@ const piecewiseFunctions = [
     "gte"
 ];
 
-const CompileExpression = (expression: Expression, inlines: Record<string, Inline>, templates: Record<string, TemplateFunction>, state: TemplateState, vars: Record<string, string> = {}, stack: string[]) : string => {
+const CompileExpression = (expression: Expression, inlines: Record<string, Inline>, templates: Record<string, TemplateFunction>, state: TemplateState, vars: Record<string, string> = {}, stack: string[], declaredNames: string[]) : string => {
     if(typeof(expression) !== "object") return expression;
 
     if(typeof(expression) !== "object") return expression;
 
-    const args = expression.args.map(arg => typeof(arg) === "object" && arg.hasOwnProperty("type") ? CompileExpression(<Expression>arg, inlines, templates, state, vars, stack) : arg);
+    const args = expression.args.map(arg => typeof(arg) === "object" && arg.hasOwnProperty("type") ? CompileExpression(<Expression>arg, inlines, templates, state, vars, stack, declaredNames) : arg);
 
     switch(expression.type){
         case "+":
@@ -420,7 +422,7 @@ const CompileExpression = (expression: Expression, inlines: Record<string, Inlin
         case "n":
             return "-(" + args[0] + ")";
         case "f":
-            const fargs = (<any[]>expression.args[1]).map(arg => typeof(arg) === "object" && arg.hasOwnProperty("type") ? CompileExpression(<Expression>arg, inlines, templates, state, vars, stack) : arg);
+            const fargs = (<any[]>expression.args[1]).map(arg => typeof(arg) === "object" && arg.hasOwnProperty("type") ? CompileExpression(<Expression>arg, inlines, templates, state, vars, stack, declaredNames) : arg);
 
             if(!inlines.hasOwnProperty(<string>expression.args[0])) {
                 if(piecewiseFunctions.includes(<string>expression.args[0])) return HandlePiecewise(<string>expression.args[0], fargs);
@@ -432,7 +434,7 @@ const CompileExpression = (expression: Expression, inlines: Record<string, Inlin
             if(fargnames.length !== fargs.length) throw new Error("Inline function \"" + expression.args[0] + "\" requires " + fargnames.length + ", but only " + fargs.length + " are given.");
 
             stack.push(<string>expression.args[0]);
-            const result = CompileBlock((<OuterFunctionDeclaration>inlines[<string>expression.args[0]].value).block, inlines, templates, state, "", vars, Object.fromEntries(fargnames.map((v, i) => [v, fargs[i]])), stack);
+            const result = CompileBlock((<OuterFunctionDeclaration>inlines[<string>expression.args[0]].value).block, inlines, templates, state, "", vars, Object.fromEntries(fargnames.map((v, i) => [v, fargs[i]])), stack, declaredNames);
             stack.pop();
 
             return result;
@@ -440,7 +442,7 @@ const CompileExpression = (expression: Expression, inlines: Record<string, Inlin
             const name = <string>expression.args[0];
 
             if(vars.hasOwnProperty(name)) return vars[name];
-            if(inlines.hasOwnProperty(name)) return CompileExpression(inlines[name].value["expr"], inlines, templates, state, vars, stack);
+            if(inlines.hasOwnProperty(name)) return CompileExpression(inlines[name].value["expr"], inlines, templates, state, vars, stack, declaredNames);
 
             switch(name) {
                 case "pi":
@@ -449,11 +451,18 @@ const CompileExpression = (expression: Expression, inlines: Record<string, Inlin
 
             return name;
         case "sum":
-            return "sum(" + args[0] + "," + args[1] + "," + args[2] + "," + CompileBlock(<Statement[]>args[3], inlines, templates, state, "", vars, {}, stack) + ")";
+            return "sum(" + args[0] + "," + args[1] + "," + args[2] + "," + CompileBlock(<Statement[]>args[3], inlines, templates, state, "", vars, {}, stack, declaredNames) + ")";
         case "prod":
-            return "prod(" + args[0] + "," + args[1] + "," + args[2] + "," + CompileBlock(<Statement[]>args[3], inlines, templates, state, "", vars, {}, stack) + ")";
+            return "prod(" + args[0] + "," + args[1] + "," + args[2] + "," + CompileBlock(<Statement[]>args[3], inlines, templates, state, "", vars, {}, stack, declaredNames) + ")";
         case "b":
-            return CompileBlock(<Statement[]>expression.args[0], inlines, templates, state, "", vars, {}, stack);
+            return CompileBlock(<Statement[]>expression.args[0], inlines, templates, state, "", vars, {}, stack, declaredNames);
+        case "a_f":
+            return "array_filter(" + args[0] + "," + CompileBlock(<Statement[]>args[2], inlines, templates, state, "", vars, {[<string>args[1]]: <string>args[0]}, stack, declaredNames) + ")";
+        case "a_m":
+            //Make the variable name used for mapping a declared variable, in order to make it work in strict mode.
+            declaredNames.push(<string>args[1]);
+
+            return "array_map(" + args[0] + "," + CompileBlock(<Statement[]>args[2], inlines, templates, state, "", vars, {}, stack, declaredNames) + "," + args[1] + ")";
     }
 
     return "";
