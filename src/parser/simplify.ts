@@ -479,10 +479,10 @@ const texFunctions: Record<string, (node: MathNode, options: object) => string> 
         return `\\left[${node.args.map(arg => arg.toTex(options)).join(",")}\\right]`
     },
     array_idx(node, options) {
-        return `${node.args[0].toTex(options)}\\left[${node.args[0].toTex(options)}\\right]`;
+        return `${node.args[0].toTex(options)}\\left[${node.args[1].toTex(options)}\\right]`;
     },
     array_filter(node, options) {
-        return `${node.args[0].toTex(options)}\\left[${node.args[0].toTex(options)}=1\\right]`;
+        return `${node.args[0].toTex(options)}\\left[${node.args[1].toTex(options)}=1\\right]`;
     },
     array_map(node, options) {
         return `\\left[${node.args[1].toTex(options)}\\ \\operatorname{for}\\ ${node.args[2].toTex(options)}=${node.args[0].toTex(options)}\\right]`;
