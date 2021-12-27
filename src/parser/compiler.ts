@@ -256,7 +256,7 @@ const InternalCompile = (useTex: boolean, tree: OuterDeclaration[], inlines: Rec
                 break;
             case "color":
                 const colorDeclaration = <ColorDeclaration>declaration;
-                out.push(HandleName(colorDeclaration.name) + "=" + "\\operatorname{rgb}=" + (useTex ? "\\left(" : "(") + colorDeclaration.args.map(HandleName) + (useTex ? "\\right)" : ")"));
+                out.push(HandleName(colorDeclaration.name) + "=" + "\\operatorname{rgb}" + (useTex ? "\\left(" : "(") + colorDeclaration.args.map(HandleName) + (useTex ? "\\right)" : ")"));
                 break;
         }
     }
