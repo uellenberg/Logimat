@@ -98,6 +98,7 @@ LogiMat {
     
     MemberExpression = MemberExpression "[" Expression "]" -- arrayIdx
                      | MemberExpression "." ("x" | "y")    -- pointIdx
+                     | MemberExpression "." "length"       -- arrayLength
                      | MemberExpression "." "filter" "(" identifier "=>" (Block | Expression) ")"  -- filter
                      | MemberExpression "." "map" "(" exportIdentifier "=>" (Block | Expression) ")"  -- map
                      | PrimaryExpression
@@ -422,6 +423,9 @@ semantic.addOperation("parse", {
     },
     MemberExpression_pointIdx(e, _, e1){
         return {type: "f", args: ["point_idx", [e.parse(), e1.parse()]]};
+    },
+    MemberExpression_arrayLength(e, _, _2){
+        return {type: "f", args: ["array_length", [e.parse()]]};
     },
     MemberExpression_filter(e, _, _2, _3, varName, _4, block, _5){
         return {type: "a_f", args: [e.parse(), varName.parse(), block.parse()]};

@@ -401,6 +401,11 @@ const functions: Record<string, (node: MathNode, options: object, tex: boolean) 
 
         return `${array}[${indexer}]`;
     },
+    array_length(node, options, tex) {
+        const array = HandleNode(node.args[0], options, tex);
+
+        return `${array}.\\operatorname{length}`;
+    },
     array_filter(node, options, tex) {
         const array = HandleNode(node.args[0], options, tex);
         const condition = HandleNode(node.args[1], options, tex);
