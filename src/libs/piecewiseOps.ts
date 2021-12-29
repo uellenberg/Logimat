@@ -44,4 +44,9 @@ inline function isNegative(a) {
 inline function isNegativeOrZero(a) {
     state = a <= 0;
 }
+
+inline function isNaN(a) {
+    //NaN is not equal to itself, so this will return 0 for normal numbers and 1 for NaN.
+    state = a != a;
+}
 `;
