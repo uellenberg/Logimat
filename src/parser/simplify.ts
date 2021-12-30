@@ -389,11 +389,15 @@ const functions: Record<string, (node: MathNode, options: object, tex: boolean) 
     array(node, options, tex) {
         return `[${node.args.map(arg => HandleNode(arg, options, tex)).join(",")}]`;
     },
-    point_idx(node, options, tex) {
+    point_x(node, options, tex) {
         const point = HandleNode(node.args[0], options, tex);
-        const indexer = HandleNode(node.args[1], options, tex);
 
-        return `${point}.${indexer}`;
+        return `${point}.x`;
+    },
+    point_y(node, options, tex) {
+        const point = HandleNode(node.args[0], options, tex);
+
+        return `${point}.y`;
     },
     array_idx(node, options, tex) {
         const array = HandleNode(node.args[0], options, tex);

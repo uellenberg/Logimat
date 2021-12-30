@@ -422,7 +422,7 @@ semantic.addOperation("parse", {
         return {type: "f", args: ["array_idx", [e.parse(), e1.parse()]]};
     },
     MemberExpression_pointIdx(e, _, e1){
-        return {type: "f", args: ["point_idx", [e.parse(), e1.parse()]]};
+        return {type: "f", args: ["point_" + e1.parse(), [e.parse()]]};
     },
     MemberExpression_arrayLength(e, _, _2){
         return {type: "f", args: ["array_length", [e.parse()]]};
