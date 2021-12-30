@@ -24,6 +24,7 @@ import path from "path";
 import * as fs from "fs";
 import {HandleName, opMap} from "./util";
 import piecewiseOps from "../libs/piecewiseOps";
+import nonPiecewiseOps from "../libs/nonPiecewiseOps";
 
 /**
  * Compiles LogiMat to a math function (or multiple). Each function/variable will be on a separate line.
@@ -107,7 +108,8 @@ export const Compile = (input: string, useTex: boolean = false, noFS = false, fi
     const inlines: Record<string, Inline> = {
         ...GetInlines(declarations),
         ...GetInlines(GetTree(stdlib).declarations),
-        ...GetInlines(GetTree((piecewise ? piecewiseOps : ops)).declarations)
+        ...GetInlines(GetTree((piecewise ? piecewiseOps : ops)).declarations),
+        ...GetInlines(piecewise ? [] : GetTree(nonPiecewiseOps).declarations)
     };
 
     const stack = [];

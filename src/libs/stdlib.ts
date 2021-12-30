@@ -173,24 +173,6 @@ inline function safeLogBase(num, base) {
     }
 }
 
-//Returns the smallest number.
-inline function min(a, b) {
-    if(a < b) {
-        state = a;
-    } else {
-        state = b;
-    }
-}
-
-//Returns the biggest number.
-inline function max(a, b) {
-    if(a > b) {
-        state = a;
-    } else {
-        state = b;
-    }
-}
-
 //Simplifies a fraction and returns the numerator.
 inline function simplifyNumerator(numerator, denominator) {
     const div = gcd(numerator, denominator);

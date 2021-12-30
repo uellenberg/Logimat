@@ -60,6 +60,8 @@ const builtinOneArg = [
 const builtinTwoArgs = [
     "lcm",
     "gcd",
+    "min",
+    "max"
 ];
 
 const constants = [
