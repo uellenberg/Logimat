@@ -549,86 +549,99 @@ export interface Import {
 }
 export type OuterDeclaration = Template | OuterConstDeclaration | OuterFunctionDeclaration | ActionDeclaration | ActionsDeclaration | ExpressionDeclaration | GraphDeclaration | PointDeclaration | PolygonDeclaration | ColorDeclaration;
 export interface Template {
-    type: string;
-    modifier: string;
+    type: "template" | "templatefunction";
+    modifier: Modifier;
     name: string;
     args: TemplateArgs;
     context: TemplateContext;
 }
 export interface OuterConstDeclaration {
-    type: string;
-    modifier: string;
+    type: "const";
+    modifier: Modifier;
     name: string;
     expr: Expression;
 }
 export interface OuterFunctionDeclaration {
-    type: string;
-    modifier: string;
+    type: "function";
+    modifier: Modifier;
     name: string;
     args: string[];
     block: Statement[];
 }
 export interface ActionDeclaration {
-    type: string;
-    modifier: string;
+    type: "action";
+    modifier: Modifier;
     name: string;
     funcName: string;
     args: string[];
     block: Statement[];
 }
 export interface ActionsDeclaration {
-    type: string;
-    modifier: string;
+    type: "actions";
+    modifier: Modifier;
     name: string;
     args: string[][];
     actionArgs: string[];
 }
 export interface ColorDeclaration {
-    type: string;
-    modifier: string;
+    type: "color";
+    modifier: Modifier;
     name: string;
     args: string[];
 }
 export interface ExpressionDeclaration {
-    type: string;
-    modifier: string;
+    type: "expression";
+    modifier: Modifier;
     block: Statement[];
 }
 export interface GraphDeclaration {
-    type: string;
-    modifier: string;
+    type: "graph";
+    modifier: Modifier;
     p1: Expression;
     p2: Expression;
     op: string;
 }
 export interface PointDeclaration {
-    type: string;
-    modifier: string;
+    type: "point";
+    modifier: Modifier;
     point: Expression;
 }
 export interface PolygonDeclaration {
-    type: string;
-    modifier: string;
+    type: "polygon";
+    modifier: Modifier;
     points: Expression[];
 }
 export interface Expression {
     type: string;
     args: (string | object)[];
 }
-export type Statement = Template | SetState | IfStatement | Sum;
+export type Statement = ConstDeclaration | Template | SetState | IfStatement | Sum | Prod;
+export interface ConstDeclaration {
+    type: "const";
+    name: string;
+    expr: Expression;
+}
 export interface SetState {
-    type: string;
+    type: "state";
     expr: Expression;
 }
 export interface IfStatement {
-    type: string;
+    type: "if";
     condition: Expression;
     ifaction: Statement[];
     elseaction: Statement[];
 }
 export interface Sum {
-    type: string;
+    type: "sum";
     v: string;
     n1: string;
     n2: string;
 }
+export interface Prod {
+    type: "prod";
+    v: string;
+    n1: string;
+    n2: string;
+}
+
+export type Modifier = "export" | "inline";
