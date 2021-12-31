@@ -32,6 +32,18 @@ yargs(hideBin(process.argv))
             default: false,
             type: "boolean",
             describe: "Throws an error if any undefined functions or variables are used."
+        },
+        outputmap: {
+            alias: "o",
+            default: false,
+            type: "boolean",
+            describe: "Exports a JSON object mapping unsimplified output to simplified output ({output: string[], simplificationMap: Record<string, string>}). Used in conjunction with --simplificationmap to only compile expressions that have changed."
+        },
+        simplificationmap: {
+            alias: "m",
+            default: "{}",
+            type: "string",
+            describe: "Takes in the output of --outputmap's simplificationMap (Record<string, string>), and only compiles items that have changed."
         }
     }, (args) => {
         try {
@@ -41,9 +53,10 @@ yargs(hideBin(process.argv))
             fs.accessSync(file, fs.constants.R_OK);
 
             const data = fs.readFileSync(file, "utf-8");
-            const compiled = Compile(data, args.latex, args.nofs, path.resolve(path.dirname(file)), args.piecewise, args.strict);
+            const compiled = Compile(data, args.latex, args.nofs, path.resolve(path.dirname(file)), args.piecewise, args.strict, args.outputmap, JSON.parse(args.simplificationmap));
 
-            process.stdout.write(compiled);
+            if(typeof(compiled) === "string") process.stdout.write(compiled);
+            else process.stdout.write(JSON.stringify(compiled));
         } catch(e) {
             process.stderr.write(e.stack);
         }

@@ -1,13 +1,18 @@
 import {MathNode, sec, simplify} from "mathjs";
 import {HandleName} from "./util";
 
-export const SimplifyExpression = (input: string, useTex: boolean, strict: boolean, names: string[]) : string => {
+export const SimplifyExpression = (input: string, useTex: boolean, strict: boolean, names: string[], map: Record<string, string>) : string => {
+    if(map.hasOwnProperty(input)) return map[input];
+
     const newNames = names.concat(builtinOneArg).concat(builtinTwoArgs).concat(constants).concat(Object.keys(functions)).concat(Object.keys(texFunctions));
 
     try {
         const res = simplify(input, simplifyRules, {exactFractions: false});
         //They say they return a string but they can sometimes return numbers.
-        return useTex ? res.toTex(getTexOptions(strict, newNames)).toString() : res.toString(getStringOptions(strict, newNames)).toString();
+        const text = useTex ? res.toTex(getTexOptions(strict, newNames)).toString() : res.toString(getStringOptions(strict, newNames)).toString();
+        map[input] = text;
+
+        return text;
     } catch(e) {
         console.error("An error has occurred while attempting to simplify \"" + input + "\":");
         throw e;

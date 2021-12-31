@@ -34,8 +34,10 @@ import nonPiecewiseOps from "../libs/nonPiecewiseOps";
  * @param filePath {string} - is a path to the file currently being compiled.
  * @param piecewise {boolean} - is a value indicating if the output should use piecewise instead of pure math for logic.
  * @param strict {boolean} - is a value indicating if an error should be thrown if an undefined function/variable is used.
+ * @param outputMap {boolean} - is a value indicating if the output should be a map of simplified to unsimplified output.
+ * @param simplificationMap {Record<string, string>} - is a map of simplified values to unsimplified values.
  */
-export const Compile = (input: string, useTex: boolean = false, noFS = false, filePath: string = null, piecewise: boolean = false, strict: boolean = false) : string => {
+export const Compile = (input: string, useTex: boolean = false, noFS = false, filePath: string = null, piecewise: boolean = false, strict: boolean = false, outputMap: boolean = false, simplificationMap: Record<string, string> = {}) : string | {output: string[], simplificationMap: Record<string, string>} => {
     const tree = GetTree(input);
 
     const state: TemplateState = {};
@@ -115,7 +117,10 @@ export const Compile = (input: string, useTex: boolean = false, noFS = false, fi
     const stack = [];
 
     try {
-        return InternalCompile(useTex, declarations, inlines, templates, state, stack, strict).join("\n");
+        const output = InternalCompile(useTex, declarations, inlines, templates, state, stack, strict, simplificationMap);
+
+        if(simplificationMap) return output;
+        else return output.output.join("\n");
     } catch(e) {
         if(stack.length > 0) console.error("Call stack: " + stack.slice(0, Math.min(20, stack.length)).join(" -> "));
         throw e;
@@ -203,7 +208,7 @@ const HandleTemplate = (templateDeclaration: Template, templates: Record<string,
     return [];
 }
 
-const InternalCompile = (useTex: boolean, tree: OuterDeclaration[], inlines: Record<string, Inline>, templates: Record<string, TemplateFunction>, state: TemplateState, stack: string[], strict: boolean) : string[] => {
+const InternalCompile = (useTex: boolean, tree: OuterDeclaration[], inlines: Record<string, Inline>, templates: Record<string, TemplateFunction>, state: TemplateState, stack: string[], strict: boolean, simplificationMap: Record<string, string> = {}) : {output: string[], simplificationMap: Record<string, string>} => {
     let out: string[] = [];
 
     const outerNames = GetDeclaredNames(tree);
@@ -216,15 +221,15 @@ const InternalCompile = (useTex: boolean, tree: OuterDeclaration[], inlines: Rec
         switch(declaration.type) {
             case "function":
                 const functionDeclaration = <OuterFunctionDeclaration>declaration;
-                out.push(HandleName(functionDeclaration.name) + "(" + functionDeclaration.args.map(HandleName).join(",") + ")" + "=" + SimplifyExpression(CompileBlock(functionDeclaration.block, inlines, templates, state, "", {}, {}, stack, names), useTex, strict, names.concat(functionDeclaration.args)));
+                out.push(HandleName(functionDeclaration.name) + "(" + functionDeclaration.args.map(HandleName).join(",") + ")" + "=" + SimplifyExpression(CompileBlock(functionDeclaration.block, inlines, templates, state, "", {}, {}, stack, names), useTex, strict, names.concat(functionDeclaration.args), simplificationMap));
                 break;
             case "const":
                 const constDeclaration = <OuterConstDeclaration>declaration;
-                out.push(HandleName(constDeclaration.name) + "=" + SimplifyExpression(CompileExpression(constDeclaration.expr, inlines, templates, state, {}, stack, names), useTex, strict, names));
+                out.push(HandleName(constDeclaration.name) + "=" + SimplifyExpression(CompileExpression(constDeclaration.expr, inlines, templates, state, {}, stack, names), useTex, strict, names, simplificationMap));
                 break;
             case "action":
                 const actionDeclaration = <ActionDeclaration>declaration;
-                out.push((actionDeclaration.funcName ? HandleName(actionDeclaration.funcName) + (actionDeclaration.args ? "(" + actionDeclaration.args.map(HandleName).join(",") + ")" : "") + "=" : "") + HandleName(actionDeclaration.name) + "\\to " + SimplifyExpression(CompileBlock(actionDeclaration.block, inlines, templates, state, actionDeclaration.name, {}, {}, stack, names), useTex, strict, actionDeclaration.args ? names.concat(actionDeclaration.args) : names));
+                out.push((actionDeclaration.funcName ? HandleName(actionDeclaration.funcName) + (actionDeclaration.args ? "(" + actionDeclaration.args.map(HandleName).join(",") + ")" : "") + "=" : "") + HandleName(actionDeclaration.name) + "\\to " + SimplifyExpression(CompileBlock(actionDeclaration.block, inlines, templates, state, actionDeclaration.name, {}, {}, stack, names), useTex, strict, actionDeclaration.args ? names.concat(actionDeclaration.args) : names, simplificationMap));
                 break;
             case "actions":
                 const actionsDeclaration = <ActionsDeclaration>declaration;
@@ -239,22 +244,22 @@ const InternalCompile = (useTex: boolean, tree: OuterDeclaration[], inlines: Rec
                 break;
             case "expression":
                 const expressionDeclaration = <ExpressionDeclaration>declaration;
-                out.push(SimplifyExpression(CompileBlock(expressionDeclaration.block, inlines, templates, state, "", {}, {}, stack, names), useTex, strict, names));
+                out.push(SimplifyExpression(CompileBlock(expressionDeclaration.block, inlines, templates, state, "", {}, {}, stack, names), useTex, strict, names, simplificationMap));
                 break;
             case "graph":
                 //Give the graph access to x and y.
                 names.push("x", "y");
 
                 const graphDeclaration = <GraphDeclaration>declaration;
-                out.push(SimplifyExpression(CompileExpression(graphDeclaration.p1, inlines, templates, state, {}, stack, names), useTex, strict, names) + opMap[graphDeclaration.op] + SimplifyExpression(CompileExpression(graphDeclaration.p2, inlines, templates, state, {}, stack, names), useTex, strict, names));
+                out.push(SimplifyExpression(CompileExpression(graphDeclaration.p1, inlines, templates, state, {}, stack, names), useTex, strict, names, simplificationMap) + opMap[graphDeclaration.op] + SimplifyExpression(CompileExpression(graphDeclaration.p2, inlines, templates, state, {}, stack, names), useTex, strict, names, simplificationMap));
                 break;
             case "point":
                 const pointDeclaration = <PointDeclaration>declaration;
-                out.push(SimplifyExpression(CompileExpression(pointDeclaration.point, inlines, templates, state, {}, stack, names), useTex, strict, names));
+                out.push(SimplifyExpression(CompileExpression(pointDeclaration.point, inlines, templates, state, {}, stack, names), useTex, strict, names, simplificationMap));
                 break;
             case "polygon":
                 const polygonDeclaration = <PolygonDeclaration>declaration;
-                out.push("\\operatorname{polygon}" + (useTex ? "\\left(" : "(") + polygonDeclaration.points.map(point => SimplifyExpression(CompileExpression(point, inlines, templates, state, {}, stack, names), useTex, strict, names)).join(",") + (useTex ? "\\right)" : ")"));
+                out.push("\\operatorname{polygon}" + (useTex ? "\\left(" : "(") + polygonDeclaration.points.map(point => SimplifyExpression(CompileExpression(point, inlines, templates, state, {}, stack, names), useTex, strict, names, simplificationMap)).join(",") + (useTex ? "\\right)" : ")"));
                 break;
             case "color":
                 const colorDeclaration = <ColorDeclaration>declaration;
@@ -263,7 +268,7 @@ const InternalCompile = (useTex: boolean, tree: OuterDeclaration[], inlines: Rec
         }
     }
 
-    return out;
+    return {output: out, simplificationMap};
 }
 
 const GetTree = (input: string) : ParserOutput => {
