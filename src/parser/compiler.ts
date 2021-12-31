@@ -209,9 +209,9 @@ const HandleTemplate = (templateDeclaration: Template, templates: Record<string,
 }
 
 const InternalCompile = (useTex: boolean, tree: OuterDeclaration[], inlines: Record<string, Inline>, templates: Record<string, TemplateFunction>, state: TemplateState, stack: string[], strict: boolean, simplificationMap: Record<string, string> = {}) : {output: string[], simplificationMap: Record<string, string>} => {
-    let out: string[] = [];
-
+    const out: string[] = [];
     const outerNames = GetDeclaredNames(tree);
+    const display: Record<string, string> = {};
 
     for (const declaration of tree) {
         if (declaration.modifier === "inline") continue;
@@ -219,7 +219,20 @@ const InternalCompile = (useTex: boolean, tree: OuterDeclaration[], inlines: Rec
         const names = Object.assign([], outerNames);
 
         switch(declaration.type) {
+            case "display":
+                let val;
+                if(typeof(declaration.value) === "string") val = declaration.value;
+                else if(declaration.value.type === "tstring") val = declaration.value.args.map(arg => {
+                    if(typeof(arg) === "string") return arg;
+                    else return SimplifyExpression(CompileExpression(arg, inlines, templates, state, {}, stack, names), useTex, strict, names, simplificationMap);
+                }).join("");
+                else val = SimplifyExpression(CompileExpression(declaration.value, inlines, templates, state, {}, stack, names), useTex, strict, names, simplificationMap);
+
+                display[declaration.displayType] = val;
+                break;
             case "function":
+                out.push(...CompileDisplay(display));
+
                 const functionDeclaration = <OuterFunctionDeclaration>declaration;
                 out.push(HandleName(functionDeclaration.name) + "(" + functionDeclaration.args.map(HandleName).join(",") + ")" + "=" + SimplifyExpression(CompileBlock(functionDeclaration.block, inlines, templates, state, "", {}, {}, stack, names), useTex, strict, names.concat(functionDeclaration.args), simplificationMap));
                 break;
@@ -243,10 +256,14 @@ const InternalCompile = (useTex: boolean, tree: OuterDeclaration[], inlines: Rec
                 out.push(HandleName(actionsDeclaration.name) + (actionsDeclaration.actionArgs ? "(" + actionsDeclaration.actionArgs.map(HandleName).join(",") + ")" : "") + "=" + actionsDeclaration.args.map(action => HandleName(action[0]) + (action.length > 1 ? "(" + action.slice(1).map(HandleName) + ")" : "")).join(","));
                 break;
             case "expression":
+                out.push(...CompileDisplay(display));
+
                 const expressionDeclaration = <ExpressionDeclaration>declaration;
                 out.push(SimplifyExpression(CompileBlock(expressionDeclaration.block, inlines, templates, state, "", {}, {}, stack, names), useTex, strict, names, simplificationMap));
                 break;
             case "graph":
+                out.push(...CompileDisplay(display));
+
                 //Give the graph access to x and y.
                 names.push("x", "y");
 
@@ -254,10 +271,14 @@ const InternalCompile = (useTex: boolean, tree: OuterDeclaration[], inlines: Rec
                 out.push(SimplifyExpression(CompileExpression(graphDeclaration.p1, inlines, templates, state, {}, stack, names), useTex, strict, names, simplificationMap) + opMap[graphDeclaration.op] + SimplifyExpression(CompileExpression(graphDeclaration.p2, inlines, templates, state, {}, stack, names), useTex, strict, names, simplificationMap));
                 break;
             case "point":
+                out.push(...CompileDisplay(display));
+
                 const pointDeclaration = <PointDeclaration>declaration;
                 out.push(SimplifyExpression(CompileExpression(pointDeclaration.point, inlines, templates, state, {}, stack, names), useTex, strict, names, simplificationMap));
                 break;
             case "polygon":
+                out.push(...CompileDisplay(display));
+
                 const polygonDeclaration = <PolygonDeclaration>declaration;
                 out.push("\\operatorname{polygon}" + (useTex ? "\\left(" : "(") + polygonDeclaration.points.map(point => SimplifyExpression(CompileExpression(point, inlines, templates, state, {}, stack, names), useTex, strict, names, simplificationMap)).join(",") + (useTex ? "\\right)" : ")"));
                 break;
@@ -269,6 +290,17 @@ const InternalCompile = (useTex: boolean, tree: OuterDeclaration[], inlines: Rec
     }
 
     return {output: out, simplificationMap};
+}
+
+const CompileDisplay = (input: Record<string, string>) => {
+    const out = Object.entries(input).map(entry => "!" + entry[0] + "=" + entry[1]);
+
+    //Clear the object.
+    for(const key in input) {
+        delete input[key];
+    }
+
+    return out;
 }
 
 const GetTree = (input: string) : ParserOutput => {

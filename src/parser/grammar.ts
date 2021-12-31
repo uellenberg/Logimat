@@ -10,7 +10,7 @@ LogiMat {
     Import = ImportTemplates
     ImportTemplates = "import" #space "templates" #space "from" #space string ";"
     
-    OuterDeclaration = Template | OuterConstDeclaration | FunctionDeclaration | ActionDeclaration | ActionsDeclaration | ExpressionDeclaration | GraphDeclaration | PointDeclaration | PolygonDeclaration | ColorDeclaration
+    OuterDeclaration = Template | OuterConstDeclaration | FunctionDeclaration | ActionDeclaration | ActionsDeclaration | ExpressionDeclaration | GraphDeclaration | PointDeclaration | PolygonDeclaration | ColorDeclaration | DisplayDeclarations
     
     Template = templateName "(" TemplateArgs ")" ";"
     InnerTemplate = templateName "(" TemplateArgs ")" ";"
@@ -49,6 +49,17 @@ LogiMat {
     PointDeclaration = point Expression ";"
     
     PolygonDeclaration = polygon "(" ListOf<Expression, ","> ")" ";"
+    
+    DisplayDeclaration<type, value> = display type "=" value ";"
+    DisplayDeclarations = DisplayDeclaration<"color", exportIdentifier>
+                        | DisplayDeclaration<"opacity", Expression>
+                        | DisplayDeclaration<"thickness", Expression>
+                        | DisplayDeclaration<"fill", Expression>
+                        | DisplayDeclaration<"click", exportIdentifier>
+                        | DisplayDeclaration<"label", TemplateString>
+                        | DisplayDeclaration<"drag", ("x" | "y" | "xy")>
+    TemplateString = "\\"" (TemplateStringTemplate | stringCharacter)* "\\""
+    TemplateStringTemplate = ~("\\"" | "\\\\" | lineTerminator) "\${" Expression "}"
     
     Point = "(" Expression "," Expression ")"
     Array = "[" ListOf<Expression, ","> "]"
@@ -151,7 +162,6 @@ LogiMat {
     decimalDigit = "0".."9"
     nonZeroDigit = "1".."9"
 
-
     builtIns = "sin" ~identifierPart
              | "cos" ~identifierPart
              | "tan" ~identifierPart
@@ -203,6 +213,7 @@ LogiMat {
     boolean = ("true" | "false") ~identifierPart
     null = "null" ~identifierPart
     color = "color" ~identifierPart
+    display = "display" ~identifierPart
 
     keywords = export
              | inline
@@ -223,6 +234,7 @@ LogiMat {
              | boolean
              | null
              | color
+             | display
 
     reservedWord = keywords
                  | builtIns
@@ -338,6 +350,15 @@ semantic.addOperation("parse", {
     },
     PolygonDeclaration(_1, _2, points, _3, _4){
         return {type: "polygon", modifier: "export", points: points.asIteration().parse()};
+    },
+    DisplayDeclaration(_1, type, _2, value, _3){
+        return {type: "display", modifier: "export", displayType: type.parse(), value: value.parse()};
+    },
+    TemplateString(_1, string, _2){
+        return {type: "tstring", args: string.parse()};
+    },
+    TemplateStringTemplate(_1, expr, _2){
+        return expr.parse();
     },
     Point(_1, p1, _2, p2, _3){
         return [p1.parse(), p2.parse()];
@@ -547,7 +568,7 @@ export interface Import {
     importType: string;
     path: string;
 }
-export type OuterDeclaration = Template | OuterConstDeclaration | OuterFunctionDeclaration | ActionDeclaration | ActionsDeclaration | ExpressionDeclaration | GraphDeclaration | PointDeclaration | PolygonDeclaration | ColorDeclaration;
+export type OuterDeclaration = Template | OuterConstDeclaration | OuterFunctionDeclaration | ActionDeclaration | ActionsDeclaration | ExpressionDeclaration | GraphDeclaration | PointDeclaration | PolygonDeclaration | ColorDeclaration | DisplayDeclaration;
 export interface Template {
     type: "template" | "templatefunction";
     modifier: Modifier;
@@ -610,6 +631,16 @@ export interface PolygonDeclaration {
     type: "polygon";
     modifier: Modifier;
     points: Expression[];
+}
+export interface DisplayDeclaration {
+    type: "display";
+    modifier: Modifier;
+    displayType: "color" | "opacity" | "thickness" | "fill" | "click" | "label" | "drag";
+    value: string | Expression | TemplateString;
+}
+export interface TemplateString {
+    type: string;
+    args: (string | Expression)[];
 }
 export interface Expression {
     type: string;
