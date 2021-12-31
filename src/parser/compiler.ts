@@ -119,7 +119,7 @@ export const Compile = (input: string, useTex: boolean = false, noFS = false, fi
     try {
         const output = InternalCompile(useTex, declarations, inlines, templates, state, stack, strict, simplificationMap);
 
-        if(simplificationMap) return output;
+        if(outputMap) return output;
         else return output.output.join("\n");
     } catch(e) {
         if(stack.length > 0) console.error("Call stack: " + stack.slice(0, Math.min(20, stack.length)).join(" -> "));
