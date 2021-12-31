@@ -224,7 +224,7 @@ const InternalCompile = (useTex: boolean, tree: OuterDeclaration[], inlines: Rec
                 if(typeof(declaration.value) === "string") val = declaration.value;
                 else if(declaration.value.type === "tstring") val = declaration.value.args.map(arg => {
                     if(typeof(arg) === "string") return arg;
-                    else return SimplifyExpression(CompileExpression(arg, inlines, templates, state, {}, stack, names), useTex, strict, names, simplificationMap);
+                    else return "${" + SimplifyExpression(CompileExpression(arg, inlines, templates, state, {}, stack, names), useTex, strict, names, simplificationMap) + "}";
                 }).join("");
                 else val = SimplifyExpression(CompileExpression(declaration.value, inlines, templates, state, {}, stack, names), useTex, strict, names, simplificationMap);
 
