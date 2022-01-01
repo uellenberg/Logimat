@@ -45,7 +45,7 @@ yargs(hideBin(process.argv))
             type: "string",
             describe: "Takes in the output of --outputmap's simplificationMap (Record<string, string>), and only compiles items that have changed."
         }
-    }, (args) => {
+    }, async (args) => {
         try {
             const file: string = <string>args.file;
 
@@ -53,7 +53,7 @@ yargs(hideBin(process.argv))
             fs.accessSync(file, fs.constants.R_OK);
 
             const data = fs.readFileSync(file, "utf-8");
-            const compiled = Compile(data, args.latex, args.nofs, path.resolve(path.dirname(file)), args.piecewise, args.strict, args.outputmap, JSON.parse(args.simplificationmap));
+            const compiled = await Compile(data, args.latex, args.nofs, path.resolve(path.dirname(file)), args.piecewise, args.strict, args.outputmap, JSON.parse(args.simplificationmap));
 
             if(typeof(compiled) === "string") process.stdout.write(compiled);
             else process.stdout.write(JSON.stringify(compiled));
