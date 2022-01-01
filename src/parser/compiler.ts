@@ -19,7 +19,7 @@ import {
 import ops from "../libs/ops";
 import stdlib from "../libs/stdlib";
 import {SimplifyExpression} from "./simplify";
-import {TemplateContext, TemplateFunction, TemplateState} from "../types";
+import {TemplateContext, TemplateFunction, TemplateModule, TemplateState} from "../types";
 import path from "path";
 import * as fs from "fs";
 import {HandleName, opMap} from "./util";
@@ -42,8 +42,9 @@ const readFile = (path: string) => new Promise<string>((resolve, reject) => {
  * @param strict {boolean} - is a value indicating if an error should be thrown if an undefined function/variable is used.
  * @param outputMap {boolean} - is a value indicating if the output should be a map of simplified to unsimplified output.
  * @param simplificationMap {Record<string, string>} - is a map of simplified values to unsimplified values.
+ * @param importMap {Record<string, TemplateModule>} - is a map of imports which will be used instead of require if specified.
  */
-export const Compile = async (input: string, useTex: boolean = false, noFS = false, filePath: string = null, piecewise: boolean = false, strict: boolean = false, outputMap: boolean = false, simplificationMap: Record<string, string> = {}, importMap: Record<string, {}> = null) : Promise<string | {output: string[], simplificationMap: Record<string, string>}> => {
+export const Compile = async (input: string, useTex: boolean = false, noFS = false, filePath: string = null, piecewise: boolean = false, strict: boolean = false, outputMap: boolean = false, simplificationMap: Record<string, string> = {}, importMap: Record<string, TemplateModule> = null) : Promise<string | {output: string[], simplificationMap: Record<string, string>}> => {
     const tree = GetTree(input);
 
     const state: TemplateState = {};

@@ -16,3 +16,8 @@ export interface TemplatesObject {
 export interface TemplateObject {
     function: TemplateFunction;
 }
+
+export interface TemplateModule {
+    templates: TemplateObject;
+    postTemplates?: string;
+}

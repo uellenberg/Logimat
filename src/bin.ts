@@ -41,7 +41,7 @@ yargs(hideBin(process.argv))
             fs.accessSync(file, fs.constants.R_OK);
 
             const data = fs.readFileSync(file, "utf-8");
-            const compiled = await Compile(data, args.latex, args.nofs, path.resolve(path.dirname(file)), args.piecewise, args.strict, false, {});
+            const compiled = await Compile(data, args.latex, args.nofs, path.resolve(path.dirname(file)), args.piecewise, args.strict);
 
             if(typeof(compiled) === "string") process.stdout.write(compiled);
             else process.stdout.write(JSON.stringify(compiled));
