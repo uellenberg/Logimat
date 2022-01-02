@@ -40,11 +40,11 @@ const readFile = (path: string) => new Promise<string>((resolve, reject) => {
  * @param filePath {string} - is a path to the file currently being compiled.
  * @param piecewise {boolean} - is a value indicating if the output should use piecewise instead of pure math for logic.
  * @param strict {boolean} - is a value indicating if an error should be thrown if an undefined function/variable is used.
- * @param outputMap {boolean} - is a value indicating if the output should be a map of simplified to unsimplified output.
+ * @param outputMaps {boolean} - is a value indicating if the output should be a map of simplified to unsimplified output.
  * @param simplificationMap {Record<string, string>} - is a map of simplified values to unsimplified values.
  * @param importMap {Record<string, TemplateModule>} - is a map of imports which will be used instead of require if specified.
  */
-export const Compile = async (input: string, useTex: boolean = false, noFS = false, filePath: string = null, piecewise: boolean = false, strict: boolean = false, outputMap: boolean = false, simplificationMap: Record<string, string> = {}, importMap: Record<string, TemplateModule> = null) : Promise<string | {output: string[], simplificationMap: Record<string, string>}> => {
+export const Compile = async (input: string, useTex: boolean = false, noFS = false, filePath: string = null, piecewise: boolean = false, strict: boolean = false, outputMaps: boolean = false, simplificationMap: Record<string, string> = {}, importMap: Record<string, TemplateModule | string> = {}) : Promise<string | {output: string[], simplificationMap: Record<string, string>, importMap: Record<string, TemplateModule | string>}> => {
     const tree = GetTree(input);
 
     const state: TemplateState = {};
@@ -60,12 +60,18 @@ export const Compile = async (input: string, useTex: boolean = false, noFS = fal
             if(args.length < 1 || typeof(args[0]) !== "string" || !args[0]) throw new Error("A path to the file to import must be defined!");
 
             const importPath = args[0];
+            const realPath = path.isAbsolute(importPath) ? importPath : path.join(filePath, importPath);
 
-            if(path.isAbsolute(importPath)) {
-                return await readFile(importPath);
+            if(importMap.hasOwnProperty(realPath)) {
+                const val = importPath[realPath];
+                if(typeof(val) !== "string") throw new Error("Expected \"" + realPath + "\" to be a string but got \"" + typeof(val) + "\" instead.");
+
+                return val;
             }
 
-            return await readFile(path.join(filePath, importPath));
+            const val = await readFile(realPath);
+            importMap[realPath] = val;
+            return val;
         }
     };
 
@@ -76,7 +82,7 @@ export const Compile = async (input: string, useTex: boolean = false, noFS = fal
 
         if(declaration.importType === "template") {
             try {
-                const module = importMap ? importMap[declaration.path] : require(declaration.path);
+                const module = importMap.hasOwnProperty(declaration.path) ? importMap[declaration.path] : require(declaration.path);
                 if(!module?.hasOwnProperty("templates")) throw new Error("Module does not contain templates!");
                 if(typeof(module.templates) !== "object" || Array.isArray(module.templates)) throw new Error("Templates is not an object!");
 
@@ -101,17 +107,24 @@ export const Compile = async (input: string, useTex: boolean = false, noFS = fal
         }
     }
 
-    let declarations = await TraverseTemplatesArr(tree.declarations, templates, state);
+    const templatesRef = {
+        handledTemplates: false
+    };
+
+    let declarations = await TraverseTemplatesArr(tree.declarations, templates, state, templatesRef);
 
     //Allow up to 50 layers of functions.
-    for(let i = 0; i < 50; i++) {
-        declarations = await TraverseTemplatesArr(declarations, templates, state);
+    while(templatesRef.handledTemplates) {
+        templatesRef.handledTemplates = false;
+        declarations = await TraverseTemplatesArr(declarations, templates, state, templatesRef);
     }
 
     declarations.push(...GetTree(postTemplates.join("\n")).declarations);
 
-    for(let i = 0; i < 50; i++) {
-        declarations = await TraverseTemplatesArr(declarations, templates, state);
+    templatesRef.handledTemplates = true;
+    while(templatesRef.handledTemplates) {
+        templatesRef.handledTemplates = false;
+        declarations = await TraverseTemplatesArr(declarations, templates, state, templatesRef);
     }
 
     const inlines: Record<string, Inline> = {
@@ -126,7 +139,7 @@ export const Compile = async (input: string, useTex: boolean = false, noFS = fal
     try {
         const output = InternalCompile(useTex, declarations, inlines, templates, state, stack, strict, simplificationMap);
 
-        if(outputMap) return output;
+        if(outputMaps) return {...output, importMap};
         else return output.output.join("\n");
     } catch(e) {
         if(stack.length > 0) console.error("Call stack: " + stack.slice(0, Math.min(20, stack.length)).join(" -> "));
@@ -134,14 +147,14 @@ export const Compile = async (input: string, useTex: boolean = false, noFS = fal
     }
 }
 
-const TraverseTemplatesArr = async (input: any[], templates: Record<string, TemplateFunction>, state: TemplateState) : Promise<any[]> => {
+const TraverseTemplatesArr = async (input: any[], templates: Record<string, TemplateFunction>, state: TemplateState, ref: {handledTemplates: boolean}) : Promise<any[]> => {
     const output: any[] = [];
 
     for (const val of input) {
         if(Array.isArray(val)) {
-            output.push([...await TraverseTemplatesArr(val, templates, state)]);
+            output.push([...await TraverseTemplatesArr(val, templates, state, ref)]);
         } else if(typeof(val) === "object") {
-            const newVal = await TraverseTemplatesObj(val, templates, state);
+            const newVal = await TraverseTemplatesObj(val, templates, state, ref);
             if(Array.isArray(newVal)) output.push(...newVal);
             else output.push(newVal);
         } else {
@@ -152,11 +165,14 @@ const TraverseTemplatesArr = async (input: any[], templates: Record<string, Temp
     return output;
 }
 
-const TraverseTemplatesObj = async (input: object, templates: Record<string, TemplateFunction>, state: TemplateState) : Promise<object | any[]> => {
+const TraverseTemplatesObj = async (input: object, templates: Record<string, TemplateFunction>, state: TemplateState, ref: {handledTemplates: boolean}) : Promise<object | any[]> => {
     if(input == null) return null;
 
     if(input.hasOwnProperty("type") && ["template", "templatefunction"].includes(input["type"])) {
-        return await HandleTemplate(<Template>input, templates, state);
+        console.log("running template");
+        const template =  await HandleTemplate(<Template>input, templates, state, ref);
+        console.log("ran");
+        return template;
     }
 
     const output: object = {};
@@ -164,9 +180,9 @@ const TraverseTemplatesObj = async (input: object, templates: Record<string, Tem
     for (const key in input) {
         const val = input[key];
         if(Array.isArray(val)) {
-            output[key] = await TraverseTemplatesArr(val, templates, state);
+            output[key] = await TraverseTemplatesArr(val, templates, state, ref);
         } else if(typeof(val) === "object") {
-            output[key] = await TraverseTemplatesObj(val, templates, state);
+            output[key] = await TraverseTemplatesObj(val, templates, state, ref);
         } else {
             output[key] = val;
         }
@@ -175,12 +191,14 @@ const TraverseTemplatesObj = async (input: object, templates: Record<string, Tem
     return output;
 }
 
-const HandleTemplate = async (templateDeclaration: Template, templates: Record<string, TemplateFunction>, state: TemplateState) : Promise<any[] | object> => {
+const HandleTemplate = async (templateDeclaration: Template, templates: Record<string, TemplateFunction>, state: TemplateState, ref: {handledTemplates: boolean}) : Promise<any[] | object> => {
+    ref.handledTemplates = true;
+
     let output;
 
     if(templateDeclaration.type === "templatefunction") {
         // @ts-ignore
-        output = templateDeclaration.function(state)
+        output = templateDeclaration.function(state);
     } else {
         if(!templates.hasOwnProperty(templateDeclaration.name)) throw new Error("Template \"" + templateDeclaration.name + "\" does not exist!");
 
@@ -200,13 +218,13 @@ const HandleTemplate = async (templateDeclaration: Template, templates: Record<s
 
     switch(templateDeclaration.context) {
         case TemplateContext.OuterDeclaration:
-            return await TraverseTemplatesArr(GetTree(output).declarations, templates, state);
+            return await TraverseTemplatesArr(GetTree(output).declarations, templates, state, ref);
         case TemplateContext.InnerDeclaration:
-            return await TraverseTemplatesArr(GetStatementsTree(output), templates, state);
+            return await TraverseTemplatesArr(GetStatementsTree(output), templates, state, ref);
         case TemplateContext.Expression:
             const expr = GetExpression(output);
             if(typeof(expr) === "object") {
-                return await TraverseTemplatesObj(expr, templates, state);
+                return await TraverseTemplatesObj(expr, templates, state, ref);
             }
 
             return expr;
