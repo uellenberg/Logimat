@@ -1,5 +1,6 @@
 import ohm from "ohm-js";
 import {TemplateArgs, TemplateContext} from "../types";
+import {HandleName} from "./util";
 
 export const grammar = ohm.grammar(`
 //Based on https://github.com/harc/ohm/blob/master/examples/ecmascript/src/es5.ohm.
@@ -51,11 +52,11 @@ LogiMat {
     PolygonDeclaration = polygon "(" ListOf<Expression, ","> ")" ";"
     
     DisplayDeclaration<type, value> = display type "=" value ";"
-    DisplayDeclarations = DisplayDeclaration<"color", exportIdentifier>
+    DisplayDeclarations = DisplayDeclaration<"color", parsedExportIdentifier>
                         | DisplayDeclaration<"opacity", Expression>
                         | DisplayDeclaration<"thickness", Expression>
                         | DisplayDeclaration<"fill", Expression>
-                        | DisplayDeclaration<"click", exportIdentifier>
+                        | DisplayDeclaration<"click", parsedExportIdentifier>
                         | DisplayDeclaration<"label", TemplateString>
                         | DisplayDeclaration<"drag", ("x" | "y" | "xy")>
     TemplateString = "\\"" (TemplateStringTemplate | stringCharacter)* "\\""
@@ -241,6 +242,7 @@ LogiMat {
                  | builtInVariables
 
     exportIdentifier (a single character identifier) = ~reservedWord "a".."z" ("_" ("a".."z" | "0".."9" | "_")+)?
+    parsedExportIdentifier = exportIdentifier
 
     identifier (an identifier) = ~reservedWord identifierName
     identifierName (an identifier) = letter identifierPart*
@@ -396,6 +398,9 @@ semantic.addOperation("parse", {
     },
     exportIdentifier(_, _2, _3){
         return this.sourceString;
+    },
+    parsedExportIdentifier(_){
+        return HandleName(this.sourceString);
     },
     templateName(name, _){
         return name.parse();
