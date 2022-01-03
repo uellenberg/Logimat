@@ -111,21 +111,30 @@ export const Compile = async (input: string, useTex: boolean = false, noFS = fal
     const templatesRef = {
         handledTemplates: false
     };
+    let count = 0;
 
     let declarations = await TraverseTemplatesArr(tree.declarations, templates, state, templatesRef);
 
     //Allow up to 50 layers of functions.
-    while(templatesRef.handledTemplates) {
+    while(templatesRef.handledTemplates && count < 50) {
         templatesRef.handledTemplates = false;
         declarations = await TraverseTemplatesArr(declarations, templates, state, templatesRef);
+
+        count++;
     }
 
     declarations.push(...GetTree(postTemplates.join("\n")).declarations);
 
+    //Reset variables.
     templatesRef.handledTemplates = true;
-    while(templatesRef.handledTemplates) {
+    count = 0;
+
+    //Allow up to 50 layers of functions.
+    while(templatesRef.handledTemplates && count < 50) {
         templatesRef.handledTemplates = false;
         declarations = await TraverseTemplatesArr(declarations, templates, state, templatesRef);
+
+        count++;
     }
 
     const inlines: Record<string, Inline> = {
