@@ -64,7 +64,7 @@ export const Compile = async (input: string, useTex: boolean = false, noFS = fal
             const realPath = path.isAbsolute(importPath) ? importPath : path.join(filePath, importPath);
 
             if(importMap.hasOwnProperty(realPath)) {
-                const val = importPath[realPath];
+                const val = importMap[realPath];
                 if(typeof(val) !== "string") throw new Error("Expected \"" + realPath + "\" to be a string but got \"" + typeof(val) + "\" instead.");
 
                 return val;
