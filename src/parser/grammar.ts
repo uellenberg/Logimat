@@ -75,7 +75,7 @@ LogiMat {
                 | ("+" | "-")? numericLiteral  -- number
                 | boolean -- boolean
                 | null    -- null
-                | "{" (InnerDeclaration+ | OuterDeclaration+) "}"   -- block
+                | "{" (OuterDeclaration+ | InnerDeclaration+) "}"   -- block
     
     ExpressionBlock = "{" Expression "}"
     Block = "{" InnerDeclarations "}"
