@@ -53,7 +53,7 @@ LogiMat {
     
     DisplayDeclaration<type, value> = display type "=" value ";"
     DisplayDeclarations = DisplayDeclaration<"color", parsedExportIdentifier>
-                        | DisplayDeclaration<"opacity", Expression>
+                        | DisplayDeclaration<"stroke", Expression>
                         | DisplayDeclaration<"thickness", Expression>
                         | DisplayDeclaration<"fill", Expression>
                         | DisplayDeclaration<"click", parsedExportIdentifier>
