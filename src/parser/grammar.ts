@@ -57,10 +57,10 @@ LogiMat {
                         | DisplayDeclaration<"thickness", Expression>
                         | DisplayDeclaration<"fill", Expression>
                         | DisplayDeclaration<"click", parsedExportIdentifier>
-                        | DisplayDeclaration<"label", TemplateString>
+                        | DisplayDeclaration<"label", templateString>
                         | DisplayDeclaration<"drag", ("x" | "y" | "xy")>
-    TemplateString = "\\"" (TemplateStringTemplate | stringCharacter)* "\\""
-    TemplateStringTemplate = ~("\\"" | "\\\\" | lineTerminator) "\${" Expression "}"
+    templateString = "\\"" (templateStringTemplate | stringCharacter)* "\\""
+    templateStringTemplate = ~("\\"" | "\\\\" | lineTerminator) "\${" parsedExportIdentifier "}"
     
     Point = "(" Expression "," Expression ")"
     Array = "[" ListOf<Expression, ","> "]"
@@ -356,11 +356,11 @@ semantic.addOperation("parse", {
     DisplayDeclaration(_1, type, _2, value, _3){
         return {type: "display", modifier: "export", displayType: type.parse(), value: value.parse()};
     },
-    TemplateString(_1, string, _2){
+    templateString(_1, string, _2){
         return {type: "tstring", args: string.parse()};
     },
-    TemplateStringTemplate(_1, expr, _2){
-        return expr.parse();
+    templateStringTemplate(_1, expr, _2){
+        return "${" + expr.parse() + "}";
     },
     Point(_1, p1, _2, p2, _3){
         return [p1.parse(), p2.parse()];
