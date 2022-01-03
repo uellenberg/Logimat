@@ -1,6 +1,7 @@
 import {
     ActionDeclaration,
     ActionsDeclaration,
+    ColorDeclaration,
     Expression,
     ExpressionDeclaration,
     grammar,
@@ -11,7 +12,6 @@ import {
     ParserOutput,
     PointDeclaration,
     PolygonDeclaration,
-    ColorDeclaration,
     semantic,
     Statement,
     Template
@@ -25,6 +25,7 @@ import * as fs from "fs";
 import {HandleName, opMap} from "./util";
 import piecewiseOps from "../libs/piecewiseOps";
 import nonPiecewiseOps from "../libs/nonPiecewiseOps";
+
 const readFile = (path: string) => new Promise<string>((resolve, reject) => {
     fs.readFile(path, (err, val) => {
         if(err) return reject(err);
@@ -169,10 +170,7 @@ const TraverseTemplatesObj = async (input: object, templates: Record<string, Tem
     if(input == null) return null;
 
     if(input.hasOwnProperty("type") && ["template", "templatefunction"].includes(input["type"])) {
-        console.log("running template");
-        const template =  await HandleTemplate(<Template>input, templates, state, ref);
-        console.log("ran");
-        return template;
+        return await HandleTemplate(<Template>input, templates, state, ref);
     }
 
     const output: object = {};
