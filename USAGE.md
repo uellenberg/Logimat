@@ -2,7 +2,7 @@
 Here is an outline of how to use Logimat. This file contains instructions on both how to compile it, and how to write it.
 
 ## Setting up
-The easiest way to use Logimat is to install it through npm. If you have node installed, you can run `npx logimat` to run Logimat's command-line. This command-line has many options, the most important of which are `-p` and `-s`. `-s` helps prevent variables by adding strict variable checking, and `-p` allows exporting with piecewise output, which should be used if you are planning to use the output in Desmos (as it's a Desmos-specific feature that makes logical operations faster).
+The easiest way to use Logimat is to install it through npm. If you have node installed, you can run `npx logimat` to run Logimat's command-line. This command-line has many options, the most important of which are `-p` and `-s`. `-s` helps prevent mistakes by adding strict variable checking, and `-p` allows exporting with piecewise output, which should be used if you are planning to use the output in Desmos (as it's a Desmos-specific feature that makes logical operations faster).
 
 ## Language
 One important thing to keep in mind with Logimat is that it is based on Javascript, and a lot of its language features are built to emulate how the same thing would be handled in Javascript.
