@@ -36,5 +36,5 @@ The core of LogiMat is actually fairly simple. I've created certain functions (w
 ## Desmos
 Logimat was originally made to be a language to explore logical math, but it has since found its use in compiling to Desmos, both by creating more efficient output by taking advantage of certain Desmos features (such as piecewise expressions), and by directly supporting certain Desmos features (such as polygons, points, arrays, etc). In Logimat's documentation, certain features will be marked as Desmos-only.
 
-##Usage
+## Usage
 To use Logimat, please check out the [usage instructions](USAGE.md). They contain information about running the Logimat compiler, as well as information on Logimat's language. Also, make sure to check out the examples.
