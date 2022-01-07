@@ -61,6 +61,8 @@ LogiMat {
                         | DisplayDeclaration<"drag", ("x" | "y" | "xy")>
                         | DisplayDeclaration<"hidden", boolean>
                         | DisplayDeclaration<"outline", boolean>
+                        | DisplayDeclaration<"angle", Expression>
+                        | DisplayDeclaration<"size", Expression>
     templateString = "\\"" (templateStringTemplate | stringCharacter)* "\\""
     templateStringTemplate = ~("\\"" | "\\\\" | lineTerminator) "\${" parsedExportIdentifier "}"
     
