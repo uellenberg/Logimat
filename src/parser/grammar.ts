@@ -100,6 +100,7 @@ LogiMat {
     
     PrimaryExpression = state -- state
                       | templateName "(" TemplateArgs ")"   -- template
+                      | "log_" (literal | PrimaryExpression_var) "(" Expression ")" -- log
                       | identifierName "(" ListOf<Expression, ","> ")"   -- func
                       | (identifier | builtInVariables)  -- var
                       | literal
@@ -422,6 +423,9 @@ semantic.addOperation("parse", {
     },
     PrimaryExpression_paren(_, e, _2){
         return e.parse();
+    },
+    PrimaryExpression_log(_, e1, _1, e2, _2){
+        return {type: "f", args: ["log_base", [e1.parse(), e2.parse()]]};
     },
     PrimaryExpression_func(n, _, l, _2){
         return {type: "f", args: [n.parse(), l.asIteration().parse()]}

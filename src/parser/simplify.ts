@@ -476,6 +476,12 @@ const functions: Record<string, (node: MathNode, options: object, tex: boolean) 
         if(ifVal === elseVal) return ifVal;
 
         return `\\left\\{${cond + (node.args[0].type !== "OperatorNode" ? "=1" : "")}${ifVal !== "1" ? `:${ifVal}` : ""},${elseVal}\\right\\}`;
+    },
+    log_base(node, options: Options, tex) {
+        const base = HandleNode(node.args[0], options, tex);
+        const value = HandleNode(node.args[1], options, tex);
+
+        return `\\log_{${base}}(${value})`;
     }
 };
 
@@ -527,5 +533,8 @@ const texFunctions: Record<string, (node: MathNode, options: object) => string> 
     },
     gte(node, options) {
         return `\\left\\{${node.args[0].toTex(options)}\\ge ${node.args[1].toTex(options)},0\\right\\}`;
+    },
+    log_base(node, options) {
+        return `\\log_{${node.args[0].toTex(options)}}\\left(${node.args[1].toTex(options)}\\right)`;
     }
 };
