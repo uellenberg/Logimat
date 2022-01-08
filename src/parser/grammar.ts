@@ -416,7 +416,7 @@ semantic.addOperation("parse", {
         return parseFloat(this.sourceString);
     },
     TemplateArg_block(_, block, _2) {
-        return block.sourceString;
+        return {block: true, value: block.sourceString};
     },
     Expression(e){
         return e.parse();
