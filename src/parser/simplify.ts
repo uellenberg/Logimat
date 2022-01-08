@@ -4,7 +4,7 @@ import {HandleName} from "./util";
 export const SimplifyExpression = (input: string, useTex: boolean, strict: boolean, names: string[], map: Record<string, string>) : string => {
     if(map.hasOwnProperty(input)) return map[input];
 
-    const newNames = names.concat(builtinOneArg).concat(builtinTwoArgs).concat(constants).concat(Object.keys(functions)).concat(Object.keys(texFunctions));
+    const newNames = names.concat(builtinOneArg).concat(builtinTwoArgs).concat(builtinThreeArgs).concat(builtinMultiArgs).concat(constants).concat(Object.keys(functions)).concat(Object.keys(texFunctions));
 
     try {
         const res = simplify(input, simplifyRules, {exactFractions: false});
@@ -63,6 +63,15 @@ const builtinOneArg = [
 ];
 
 const builtinTwoArgs = [
+
+];
+
+const builtinThreeArgs = [
+    "rgb",
+    "hsv"
+];
+
+const builtinMultiArgs = [
     "lcm",
     "gcd",
     "min",
@@ -276,20 +285,20 @@ const handle = (node: MathNode, options: Options, tex: boolean) : string => {
             return functions[name](node, options, tex);
         }
 
-        //If we know it's built-in, handle it.
+        //If we know it's a built-in constant, handle it.
         if(constants.includes(name)) {
             return `\\${name} `;
         }
-        if(builtinOneArg.includes(name)) {
-            if(tex) {
-                return `\\operatorname{${name}}\\left(${node.args[0].toTex(options)}\\right)`;
-            }
 
-            return HandleFunction(node, options, true);
-        }
-        if(builtinTwoArgs.includes(name)) {
+        //If it's a built-in function, handle it.
+        if(
+            (node.args.length === 1 && builtinOneArg.includes(name)) ||
+            (node.args.length === 2 && builtinTwoArgs.includes(name)) ||
+            (node.args.length === 3 && builtinThreeArgs.includes(name)) ||
+            builtinMultiArgs.includes(name)
+        ) {
             if(tex) {
-                return `\\operatorname{${name}}\\left(${node.args[0].toTex(options)},\\ ${node.args[1].toTex(options)}\\right)`;
+                return `\\operatorname{${name}}\\left(${node.args.map(arg => arg.toTex(options)).join(",")}\\right)`
             }
 
             return HandleFunction(node, options, true);

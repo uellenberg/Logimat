@@ -1,7 +1,6 @@
 import {
     ActionDeclaration,
     ActionsDeclaration,
-    ColorDeclaration,
     Expression,
     ExpressionDeclaration,
     grammar,
@@ -313,10 +312,6 @@ const InternalCompile = (useTex: boolean, tree: OuterDeclaration[], inlines: Rec
 
                 const polygonDeclaration = <PolygonDeclaration>declaration;
                 out.push("\\operatorname{polygon}" + (useTex ? "\\left(" : "(") + polygonDeclaration.points.map(point => SimplifyExpression(CompileExpression(point, inlines, templates, state, {}, stack, names), useTex, strict, names, simplificationMap)).join(",") + (useTex ? "\\right)" : ")"));
-                break;
-            case "color":
-                const colorDeclaration = <ColorDeclaration>declaration;
-                out.push(HandleName(colorDeclaration.name) + "=" + "\\operatorname{rgb}" + (useTex ? "\\left(" : "(") + colorDeclaration.args.map(HandleName) + (useTex ? "\\right)" : ")"));
                 break;
         }
     }
