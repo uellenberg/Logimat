@@ -62,7 +62,7 @@ inline function lenBase(a, base){
     if(val < base^-1) {
         state = 0;
     } else {
-        state = floor(logBase(val, base)) + 1;
+        state = floor(log_base(val)) + 1;
     }
 }
 
@@ -153,23 +153,24 @@ inline function safeLN(a) {
     }
 }
 
-//Gets the log for a certain exponent.
+//Gets the log for a certain base.
+//Deprecated in favor of log_ syntax.
 inline function logBase(num, base) {
-    state = ln(num)/ln(base);
+    state = log_base(num);
 }
 
-//Safely gets the log for a certain exponent, returning 0 if the input is 0.
+//Safely gets the log for a certain base, returning 0 if the input is 0.
 inline function safeLogBase(num, base) {
-    if(a == 0) {
+    if(base == 0) {
         state = 0;
     } else {
-        if(a == 0) {
+        if(base == 0) {
             state = 1;
         } else {
-            state = a;
+            state = base;
         }
         
-        state = ln(num)/ln(base);
+        state = log_state(num);
     }
 }
 
