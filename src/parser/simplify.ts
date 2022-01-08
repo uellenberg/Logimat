@@ -63,7 +63,7 @@ const builtinOneArg = [
 ];
 
 const builtinTwoArgs = [
-
+    "round"
 ];
 
 const builtinThreeArgs = [
