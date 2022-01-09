@@ -59,7 +59,9 @@ const builtinOneArg = [
     "ln",
     "log",
     "abs",
-    "mod"
+    "mod",
+    "floor",
+    "ceil"
 ];
 
 const builtinTwoArgs = [
