@@ -59,13 +59,13 @@ const builtinOneArg = [
     "ln",
     "log",
     "abs",
-    "mod",
     "floor",
     "ceil"
 ];
 
 const builtinTwoArgs = [
-    "round"
+    "round",
+    "mod"
 ];
 
 const builtinThreeArgs = [
