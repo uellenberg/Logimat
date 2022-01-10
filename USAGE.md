@@ -43,7 +43,7 @@ Where `PATH_HERE` is either a file path, or a npm package. This will make all te
 Logimat is split up into outer declarations. These outer declarations are things that will be output when it is compiled, or things that will be globally available. Below are the different kinds of outer declarations that exist.
 
 #### import!
-Import is technically a template, but it's common enough that it deserves its own section. Import is a template that imports other files. It is important to note that it does this by directly replacing import with the text found in the file. Because of this, you should only import templates from your main file, and the path in the imports should be relative to the main file (and not the file that's running the import). Here's how import is used:
+Import is technically a template, but it's common enough that it deserves its own section. Import is a template that imports other files. It is important to note that import works relative to the file running it, and not the main file. Here's how import is used:
 ```
 import!("PATH.lm");
 ```
