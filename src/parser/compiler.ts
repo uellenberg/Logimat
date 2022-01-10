@@ -32,6 +32,12 @@ const readFile = (path: string) => new Promise<string>((resolve, reject) => {
     });
 });
 
+interface LogimatTemplateState {
+    logimat: {
+        files: string[]
+    }
+}
+
 /**
  * Compiles LogiMat to a math function (or multiple). Each function/variable will be on a separate line.
  * @param input {string} - is the input LogiMat code that will be compiled.
@@ -47,31 +53,44 @@ const readFile = (path: string) => new Promise<string>((resolve, reject) => {
 export const Compile = async (input: string, useTex: boolean = false, noFS = false, filePath: string = null, piecewise: boolean = false, strict: boolean = false, outputMaps: boolean = false, simplificationMap: Record<string, string> = {}, importMap: Record<string, TemplateModule | string> = {}) : Promise<string | {output: string[], simplificationMap: Record<string, string>, importMap: Record<string, TemplateModule | string>}> => {
     const tree = GetTree(input);
 
-    const state: TemplateState = {};
+    const state: LogimatTemplateState = {logimat: {files: []}};
+    if(filePath) state.logimat.files = [filePath];
 
-    if(!noFS && typeof(filePath) === "string") {
-        module.paths.push(filePath);
+    if(!noFS && filePath) {
+        module.paths.push(path.dirname(filePath));
     }
 
     const templates: Record<string, TemplateFunction> = {
-        import: async (args, state1, context) => {
+        import: async (args, state1: LogimatTemplateState, context) => {
             if(noFS) throw new Error("Import failed: filesystem operations have been disabled.");
             if(context !== TemplateContext.OuterDeclaration) throw new Error("The import template can only be used outside of any methods!");
             if(args.length < 1 || typeof(args[0]) !== "string" || !args[0]) throw new Error("A path to the file to import must be defined!");
 
             const importPath = args[0];
-            const realPath = path.isAbsolute(importPath) ? importPath : path.join(filePath, importPath);
+            const realPath = path.isAbsolute(importPath) || state.logimat.files.length < 1 ? importPath : path.join(path.dirname(state.logimat.files[state.logimat.files.length-1]), importPath);
+
+            //This uses a bit of "compiler magic". Basically, we use templates to keep track of files, but our template resolver doesn't actually mark
+            //setFile as a template, so it will stop resolving templates once all templates that aren't setFile are gone. This way, the file boundaries will
+            //persist, but won't create an infinite loop of template resolution.
 
             if(importMap.hasOwnProperty(realPath)) {
                 const val = importMap[realPath];
                 if(typeof(val) !== "string") throw new Error("Expected \"" + realPath + "\" to be a string but got \"" + typeof(val) + "\" instead.");
 
-                return val;
+                return "setFile!(\"" + realPath + "\");" + val + "setFile!();";
             }
 
             const val = await readFile(realPath);
             importMap[realPath] = val;
-            return val;
+
+            return "setFile!(\"" + realPath + "\");" + val + "setFile!();";
+        },
+        setFile: (args, state1: LogimatTemplateState, context) => {
+            //If we have an argument, push it, otherwise remove the current path.
+            if(typeof(args[0]) === "string") state1.logimat.files.push(args[0]);
+            else state1.logimat.files.pop();
+
+            return "";
         }
     };
 
@@ -112,28 +131,36 @@ export const Compile = async (input: string, useTex: boolean = false, noFS = fal
     };
     let count = 0;
 
-    let declarations = await TraverseTemplatesArr(tree.declarations, templates, state, templatesRef);
+    let declarations: any[];
 
-    //Allow up to 50 layers of functions.
-    while(templatesRef.handledTemplates && count < 50) {
-        templatesRef.handledTemplates = false;
-        declarations = await TraverseTemplatesArr(declarations, templates, state, templatesRef);
+    try {
+        declarations = await TraverseTemplatesArr(tree.declarations, templates, state, templatesRef);
 
-        count++;
-    }
+        //Allow up to 50 layers of functions.
+        while(templatesRef.handledTemplates && count < 50) {
+            templatesRef.handledTemplates = false;
+            declarations = await TraverseTemplatesArr(declarations, templates, state, templatesRef);
 
-    declarations.push(...GetTree(postTemplates.join("\n")).declarations);
+            count++;
+        }
 
-    //Reset variables.
-    templatesRef.handledTemplates = true;
-    count = 0;
+        declarations.push(...GetTree(postTemplates.join("\n")).declarations);
 
-    //Allow up to 50 layers of functions.
-    while(templatesRef.handledTemplates && count < 50) {
-        templatesRef.handledTemplates = false;
-        declarations = await TraverseTemplatesArr(declarations, templates, state, templatesRef);
+        //Reset variables.
+        templatesRef.handledTemplates = true;
+        count = 0;
 
-        count++;
+        //Allow up to 50 layers of functions.
+        while(templatesRef.handledTemplates && count < 50) {
+            templatesRef.handledTemplates = false;
+            declarations = await TraverseTemplatesArr(declarations, templates, state, templatesRef);
+
+            count++;
+        }
+    } catch(e) {
+        //Log the file the error occurred in, if it exists.
+        if(state.logimat.files.length > 0) console.error("An error occurred in \"" + state.logimat.files[state.logimat.files.length-1] + "\":");
+        throw e;
     }
 
     const inlines: Record<string, Inline> = {
@@ -198,13 +225,13 @@ const TraverseTemplatesObj = async (input: object, templates: Record<string, Tem
 }
 
 const HandleTemplate = async (templateDeclaration: Template, templates: Record<string, TemplateFunction>, state: TemplateState, ref: {handledTemplates: boolean}) : Promise<any[] | object> => {
-    ref.handledTemplates = true;
-
     let output;
 
     if(templateDeclaration.type === "templatefunction") {
         // @ts-ignore
         output = templateDeclaration.function(state);
+
+        ref.handledTemplates = true;
     } else {
         if(!templates.hasOwnProperty(templateDeclaration.name)) throw new Error("Template \"" + templateDeclaration.name + "\" does not exist!");
 
@@ -214,6 +241,15 @@ const HandleTemplate = async (templateDeclaration: Template, templates: Record<s
             console.error("An error occurred while running the \"" + templateDeclaration.name + "\" template:");
             throw e;
         }
+
+        //Ignore the setFile template. It's an internal template that returns itself in order to maintain file boundaries, but should not keep
+        //template resolution from exiting. What this does is instead of handling the templates of the output, we simply return the template.
+        //Doing this means that it will only be read until the next iteration.
+        if(["setFile"].includes(templateDeclaration.name)) {
+            return templateDeclaration;
+        }
+
+        ref.handledTemplates = true;
     }
 
     if(output instanceof Function) {
