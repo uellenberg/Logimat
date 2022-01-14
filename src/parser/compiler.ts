@@ -127,7 +127,7 @@ export const Compile = async (input: string, useTex: boolean = false, noFS = fal
     }
 
     const templatesRef = {
-        handledTemplates: false
+        handledTemplates: true
     };
     let count = 0;
 
