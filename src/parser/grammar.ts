@@ -105,7 +105,7 @@ LogiMat {
                       | templateName "(" TemplateArgs ")"   -- template
                       | "log_" (literal | PrimaryExpression_var) "(" Expression ")" -- log
                       | identifierName "(" ListOf<Expression, ","> ")"   -- func
-                      | (identifier | builtInVariables)  -- var
+                      | identifier  -- var
                       | literal
                       | Sum
                       | Prod
@@ -169,38 +169,6 @@ LogiMat {
     decimalDigit = "0".."9"
     nonZeroDigit = "1".."9"
 
-    builtIns = "sin" ~identifierPart
-             | "cos" ~identifierPart
-             | "tan" ~identifierPart
-             | "csc" ~identifierPart
-             | "sec" ~identifierPart
-             | "cot" ~identifierPart
-             | "arcsin" ~identifierPart
-             | "arccos" ~identifierPart
-             | "arctan" ~identifierPart
-             | "arccsc" ~identifierPart
-             | "arcsec" ~identifierPart
-             | "arccot" ~identifierPart
-             | "sinh" ~identifierPart
-             | "cosh" ~identifierPart
-             | "tanh" ~identifierPart
-             | "csch" ~identifierPart
-             | "sech" ~identifierPart
-             | "coth" ~identifierPart
-             | "lcm" ~identifierPart
-             | "gcd" ~identifierPart
-             | "mod" ~identifierPart
-             | "floor" ~identifierPart
-             | "ceil" ~identifierPart
-             | "round" ~identifierPart
-             | "abs" ~identifierPart
-             | "sign" ~identifierPart
-             | "ln" ~identifierPart
-             | "log" ~identifierPart
-
-    builtInVariables = "pi" ~identifierPart
-                     | "e" ~identifierPart
-
     export = "export" ~identifierPart
     inline = "inline" ~identifierPart
     const = "const" ~identifierPart
@@ -242,8 +210,6 @@ LogiMat {
              | display
 
     reservedWord = keywords
-                 | builtIns
-                 | builtInVariables
 
     exportIdentifier (a single character identifier) = ~reservedWord "a".."z" ("_" ("a".."z" | "0".."9" | "_")+)?
     parsedExportIdentifier = exportIdentifier

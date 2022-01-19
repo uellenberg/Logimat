@@ -1,10 +1,11 @@
-import {MathNode, sec, simplify} from "mathjs";
+import {MathNode, simplify} from "mathjs";
 import {HandleName} from "./util";
+import {builtinMultiArgs, builtinOneArg, builtinThreeArgs, builtinTwoArgs, builtinZeroArg, constants} from "./builtin";
 
 export const SimplifyExpression = (input: string, useTex: boolean, strict: boolean, names: string[], map: Record<string, string>) : string => {
     if(map.hasOwnProperty(input)) return map[input];
 
-    const newNames = names.concat(builtinOneArg).concat(builtinTwoArgs).concat(builtinThreeArgs).concat(builtinMultiArgs).concat(constants).concat(Object.keys(functions)).concat(Object.keys(texFunctions));
+    const newNames = names.concat(builtinNames);
 
     try {
         const res = simplify(input, simplifyRules, {exactFractions: false});
@@ -34,55 +35,6 @@ const simplifyRules = simplify["rules"].concat([
     "if_func(0,n1,n2) -> n2",
     "if_func(1,n1,n2) -> n1"
 ]);
-
-const builtinOneArg = [
-    "sin",
-    "cos",
-    "tan",
-    "csc",
-    "sec",
-    "cot",
-    "arcsin",
-    "arccos",
-    "arctan",
-    "arccsc",
-    "arcsec",
-    "arccot",
-    "sinh",
-    "cosh",
-    "tanh",
-    "csch",
-    "sech",
-    "coth",
-    "round",
-    "sign",
-    "ln",
-    "log",
-    "abs",
-    "floor",
-    "ceil"
-];
-
-const builtinTwoArgs = [
-    "round",
-    "mod"
-];
-
-const builtinThreeArgs = [
-    "rgb",
-    "hsv"
-];
-
-const builtinMultiArgs = [
-    "lcm",
-    "gcd",
-    "min",
-    "max"
-];
-
-const constants = [
-    "pi"
-];
 
 const HandleFunction = (node: MathNode, options: object, builtIn: boolean = false) : string => {
     return (builtIn ? "\\operatorname{" : "") + (<MathNode><unknown>node.fn).toString(options) + (builtIn ? "}" : "") + "(" + node.args.map(arg => arg.toString(options)).join(",") + ")";
@@ -294,6 +246,7 @@ const handle = (node: MathNode, options: Options, tex: boolean) : string => {
 
         //If it's a built-in function, handle it.
         if(
+            (node.args.length === 0 && builtinZeroArg.includes(name)) ||
             (node.args.length === 1 && builtinOneArg.includes(name)) ||
             (node.args.length === 2 && builtinTwoArgs.includes(name)) ||
             (node.args.length === 3 && builtinThreeArgs.includes(name)) ||
@@ -540,3 +493,5 @@ const texFunctions: Record<string, (node: MathNode, options: object) => string> 
         return `\\log_{${node.args[0].toTex(options)}}\\left(${node.args[1].toTex(options)}\\right)`;
     }
 };
+
+const builtinNames = [...builtinZeroArg, ...builtinOneArg, ...builtinTwoArgs, ...builtinThreeArgs, ...builtinMultiArgs, ...constants, ...Object.keys(functions), ...Object.keys(texFunctions)];
