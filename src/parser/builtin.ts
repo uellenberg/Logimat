@@ -79,7 +79,8 @@ export const builtinMultiArgs = [
     "gcd",
     "min",
     "max",
-    "join"
+    "join",
+    "polygon"
 ];
 
 export const constants = [
