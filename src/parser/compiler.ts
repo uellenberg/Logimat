@@ -304,6 +304,8 @@ const InternalCompile = (useTex: boolean, tree: OuterDeclaration[], inlines: Rec
                 out.push(HandleName(functionDeclaration.name) + "(" + functionDeclaration.args.map(HandleName).join(",") + ")" + "=" + SimplifyExpression(CompileBlock(functionDeclaration.block, inlines, templates, state, "", {}, {}, stack, names), useTex, strict, names.concat(functionDeclaration.args), simplificationMap));
                 break;
             case "const":
+                out.push(...CompileDisplay(display));
+
                 const constDeclaration = <OuterConstDeclaration>declaration;
                 out.push(HandleName(constDeclaration.name) + "=" + SimplifyExpression(CompileExpression(constDeclaration.expr, inlines, templates, state, {}, stack, names), useTex, strict, names, simplificationMap));
                 break;
