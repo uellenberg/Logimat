@@ -323,7 +323,7 @@ const InternalCompile = (useTex: boolean, tree: OuterDeclaration[], inlines: Rec
                 //Get the name without the args (the first part before the opening parenthesis)
                 const badActions = actionsDeclaration.args.filter(action => !names.includes(action[0]));
                 if(strict && badActions.length > 0) {
-                    throw new Error("The following actions have not been defined: " + badActions.map(action => "\"" + action + "\"").join(", ") + ".");
+                    throw new Error("The following actions have not been defined: " + badActions.map(action => "\"" + action[0] + "\"").join(", ") + ".");
                 }
 
                 out.push(HandleName(actionsDeclaration.name) + (actionsDeclaration.actionArgs ? "(" + actionsDeclaration.actionArgs.map(HandleName).join(",") + ")" : "") + "=" + actionsDeclaration.args.map(action => HandleName(action[0]) + (action.length > 1 ? "(" + action.slice(1).map(HandleName) + ")" : "")).join(","));
