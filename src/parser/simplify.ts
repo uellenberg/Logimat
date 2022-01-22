@@ -229,6 +229,12 @@ const handle = (node: MathNode, options: Options, tex: boolean) : string => {
     if(node.fn && typeof(node.fn) === "object" && node.fn["name"]) {
         let name: string = node.fn["name"];
 
+        //If we can simplify the function, do so.
+        if(simplification.hasOwnProperty(name)) {
+            const simplified = simplification[name](node, options, tex);
+            if(simplified != null) return simplified;
+        }
+
         //If we have tex-only special handling for it, then handle it.
         if(tex && texFunctions.hasOwnProperty(name)) {
             return texFunctions[name](node, options);
@@ -330,6 +336,35 @@ interface Options {
     encaseLogicalOperators: boolean;
     secondaryBinary: boolean;
 }
+
+const simplification: Record<string, (node: MathNode, options: object, tex: boolean) => string | null> = {
+    array_idx(node, options, tex) {
+        const indexer = parseInt(HandleNode(node.args[1], options, tex));
+
+        //If the indexer is a number and the array is an array (and not a variable), we can simplify it.
+        if(!isNaN(indexer) && typeof(node.args[0]?.fn) === "object" && node.args[0]?.fn["name"] === "array") {
+            return HandleNode(node.args[0].args[indexer-1], options, tex);
+        }
+
+        return null;
+    },
+    point_x(node, options, tex) {
+        //If the point is a point (and not a variable), we can simplify it.
+        if(typeof(node.args[0]?.fn) === "object" && node.args[0]?.fn["name"] === "point") {
+            return HandleNode(node.args[0].args[0], options, tex);
+        }
+
+        return null;
+    },
+    point_y(node, options, tex) {
+        //If the point is a point (and not a variable), we can simplify it.
+        if(typeof(node.args[0]?.fn) === "object" && node.args[0]?.fn["name"] === "point") {
+            return HandleNode(node.args[0].args[1], options, tex);
+        }
+
+        return null;
+    }
+};
 
 const functions: Record<string, (node: MathNode, options: object, tex: boolean) => string> = {
     sum(node, options, tex) {
