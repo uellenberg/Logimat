@@ -163,17 +163,33 @@ const handle = (node: MathNode, options: Options, tex: boolean) : string => {
         let a1 = HandleNode(node.args[0], options, tex);
         let a2 = HandleNode(node.args[1], options, tex);
 
+        const pA1 = parseFloat(a1);
+        const pA2 = parseFloat(a2);
+        const numeric = !isNaN(pA1) && !isNaN(pA2);
+
         //Handle logical operators.
         if(["==", ">", ">=", "<", "<="].includes(op)) {
             switch(op) {
                 case "==":
                     op = "=";
+
+                    if(numeric) return pA1 === pA2 ? "1" : "0";
+                    break;
+                case ">":
+                    if(numeric) return pA1 > pA2 ? "1" : "0";
                     break;
                 case ">=":
                     op = "\\ge ";
+
+                    if(numeric) return pA1 >= pA2 ? "1" : "0";
+                    break;
+                case "<":
+                    if(numeric) return pA1 < pA2 ? "1" : "0";
                     break;
                 case "<=":
                     op = "\\le ";
+
+                    if(numeric) return pA1 <= pA2 ? "1" : "0";
                     break;
             }
 
