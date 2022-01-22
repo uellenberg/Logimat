@@ -1,6 +1,12 @@
 # Logimat
 First, to preface, this Logimat's pure math compilation is not useful for anything. It does not serve any purpose, other than being an interesting concept to mess around with, and making some interesting functions. That being said, Logimat is also intended to be able to compile to Desmos, and is made more powerful by extensions to it (such as Graphgame).
 
+## Desmos
+Logimat was originally made to be a language to explore logical math, but it has since found its use in compiling to Desmos, both by creating more efficient output by taking advantage of certain Desmos features (such as piecewise expressions), and by directly supporting certain Desmos features (such as polygons, points, arrays, etc). In Logimat's documentation, certain features will be marked as Desmos-only.
+
+## Graphgame
+Logimat's big feature program is Graphgame, a game/animation engine for Desmos. Check it out [here](https://github.com/uellenberg/Graphgame.git)!
+
 ## Logical Math
 Many mathematical functions are defined through logical statements instead of a function that can be evaluated arithmetically (for example, piecewise definitions). LogiMat does the opposite of this. It allows logical functions to be defined as functions that can be easily evaluated (using a scientific calculator).
 
@@ -32,9 +38,6 @@ Functions weren't made for doing this, so as you can imagine, there are a few re
 
 ## How it works
 The core of LogiMat is actually fairly simple. I've created certain functions (which you can view in more detail inside of src/libs/ops.ts) which act as either logic gates, or operators (==, !=, <, etc). These are then chained together to perform the more familiar logical operations found inside the if statement. The only special functions that LogiMat requires are the `ceil`, `floor`, and `abs` functions.
-
-## Desmos
-Logimat was originally made to be a language to explore logical math, but it has since found its use in compiling to Desmos, both by creating more efficient output by taking advantage of certain Desmos features (such as piecewise expressions), and by directly supporting certain Desmos features (such as polygons, points, arrays, etc). In Logimat's documentation, certain features will be marked as Desmos-only.
 
 ## Usage
 To use Logimat, please check out the [usage instructions](USAGE.md). They contain information about running the Logimat compiler, as well as information on Logimat's language. Also, make sure to check out the examples.
