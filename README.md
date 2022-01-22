@@ -40,4 +40,4 @@ Functions weren't made for doing this, so as you can imagine, there are a few re
 The core of LogiMat is actually fairly simple. I've created certain functions (which you can view in more detail inside of src/libs/ops.ts) which act as either logic gates, or operators (==, !=, <, etc). These are then chained together to perform the more familiar logical operations found inside the if statement. The only special functions that LogiMat requires are the `ceil`, `floor`, and `abs` functions.
 
 ## Usage
-To use Logimat, please check out the [usage instructions](USAGE.md). They contain information about running the Logimat compiler, as well as information on Logimat's language. Also, make sure to check out the examples.
+To use Logimat, please check out the [usage instructions](docs/USAGE.md). They contain information about running the Logimat compiler, as well as information on Logimat's language. Also, make sure to check out the examples.
