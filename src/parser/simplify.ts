@@ -295,7 +295,6 @@ const handle = (node: MathNode, options: Options, tex: boolean) : string => {
     //Handle variables.
     if(node.name) {
         if(options.strict && !options.names.includes(node.name)) {
-            console.log(node);
             throw new Error("The function or variable \"" + node.name + "\" does not exist.");
         }
 

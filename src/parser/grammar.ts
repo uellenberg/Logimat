@@ -54,7 +54,7 @@ LogiMat {
                         | DisplayDeclaration<"stroke", Expression>
                         | DisplayDeclaration<"thickness", Expression>
                         | DisplayDeclaration<"fill", Expression>
-                        | DisplayDeclaration<"click", (parsedExportIdentifier | ParsedActionArgs)>
+                        | DisplayDeclaration<"click", (ParsedActionArgs | parsedExportIdentifier)>
                         | DisplayDeclaration<"label", templateString>
                         | DisplayDeclaration<"drag", ("x" | "y" | "xy")>
                         | DisplayDeclaration<"hidden", boolean>
@@ -66,7 +66,7 @@ LogiMat {
                         | DisplayDeclaration<"step", Expression>
     templateString = "\\"" (templateStringTemplate | stringCharacter)* "\\""
     templateStringTemplate = ~("\\"" | "\\\\" | lineTerminator) "\${" parsedExportIdentifier "}"
-    ParsedActionArgs = parsedExportIdentifier "(" ListOf<(exportIdentifier | "index" | "dt"), ","> ")"
+    ParsedActionArgs = parsedExportIdentifier "(" ListOf<("index" | Expression), ","> ")"
     
     Point = "(" Expression "," Expression ")"
     Array = "[" ListOf<Expression, ","> "]"
@@ -339,7 +339,7 @@ semantic.addOperation("parse", {
         return "${" + expr.parse() + "}";
     },
     ParsedActionArgs(name, _1, args, _2){
-        return name.parse + "(" + args.asIteration().parse() + ")";
+        return {type: "aargs", name: name.parse(), args: args.asIteration().parse()};
     },
     Point(_1, p1, _2, p2, _3){
         return [p1.parse(), p2.parse()];
@@ -631,15 +631,20 @@ export interface PolygonDeclaration {
 export interface DisplayDeclaration {
     type: "display";
     modifier: Modifier;
-    displayType: "color" | "opacity" | "thickness" | "fill" | "click" | "label" | "drag";
-    value: string | Expression | TemplateString;
+    displayType: "color" | "stroke" | "thickness" | "fill" | "click" | "label" | "drag" | "hidden" | "outline" | "angle" | "size" | "min" | "max" | "step";
+    value: string | Expression | TemplateString | ParsedActionArgs;
 }
 export interface TemplateString {
-    type: string;
+    type: "tstring";
+    args: (string | Expression)[];
+}
+export interface ParsedActionArgs {
+    type: "aargs";
+    name: string;
     args: (string | Expression)[];
 }
 export interface Expression {
-    type: string;
+    type: "f" | "^" | "*" | "/" | "+" | "-" | "n" | "a_m" | "a_f" | "b" | "v" | "sum" | "prod";
     args: (string | object)[];
 }
 export type Statement = ConstDeclaration | Template | SetState | IfStatement | Sum | Prod;
