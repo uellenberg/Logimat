@@ -294,7 +294,10 @@ const InternalCompile = (useTex: boolean, tree: OuterDeclaration[], inlines: Rec
                     else return "${" + SimplifyExpression(CompileExpression(arg, inlines, templates, state, {}, stack, names), useTex, strict, names, simplificationMap) + "}";
                 }).join("");
                 else if(declaration.value.type === "aargs") val = declaration.value.name + "(" + declaration.value.args.map(arg => {
-                    if(typeof(arg) === "string") return arg;
+                    if(typeof(arg) === "string") {
+                        if(arg === "index") return "\\operatorname{index}";
+                        return arg;
+                    }
                     else return SimplifyExpression(CompileExpression(arg, inlines, templates, state, {}, stack, names), useTex, strict, names, simplificationMap);
                 }).join(",") + ")";
                 else val = SimplifyExpression(CompileExpression(declaration.value, inlines, templates, state, {}, stack, names), useTex, strict, names, simplificationMap);
