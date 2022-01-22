@@ -21,14 +21,14 @@ LogiMat {
     InlineOuterConstDeclaration = inline #space const #space identifier "=" Expression ";"
 
     FunctionDeclaration = ExportFunctionDeclaration | InlineFunctionDeclaration
-    ExportFunctionDeclaration = export #space function #space exportIdentifier "(" ExportFunctionArgs ")" Block
-    InlineFunctionDeclaration = inline #space function #space identifier "(" FunctionArgs ")" Block
+    ExportFunctionDeclaration = export #space function #space exportIdentifier "(" ExportFunctionArgs ")" FunctionBody
+    InlineFunctionDeclaration = inline #space function #space identifier "(" FunctionArgs ")" FunctionBody
 
     ActionDeclaration = UnnamedActionDeclaration | NamedActionDeclaration
-    UnnamedActionDeclaration = action #space exportIdentifier Block
+    UnnamedActionDeclaration = action #space exportIdentifier FunctionBody
     NamedActionDeclaration = NoArgsActionDeclaration | ArgsActionDeclaration
-    NoArgsActionDeclaration = action #space exportIdentifier "=" exportIdentifier Block
-    ArgsActionDeclaration = action #space exportIdentifier "(" ExportFunctionArgs ")" "=" exportIdentifier Block
+    NoArgsActionDeclaration = action #space exportIdentifier "=" exportIdentifier FunctionBody
+    ArgsActionDeclaration = action #space exportIdentifier "(" ExportFunctionArgs ")" "=" exportIdentifier FunctionBody
     
     ActionsDeclaration = NoArgsActionsDeclaration | ArgsActionsDeclaration
     NoArgsActionsDeclaration = actions #space exportIdentifier "=" ActionsArgs ";"
@@ -74,6 +74,8 @@ LogiMat {
     ExportFunctionArgs = ListOf<exportIdentifier, ",">
     FunctionArgs = ListOf<identifier, ",">
     TemplateArgs = ListOf<TemplateArg, ",">
+    FunctionBody = Block -- block
+                 | "=>" Expression ";" -- arrow
     
     ActionName (an action name) = exportIdentifier ("(" ExportFunctionArgs ")")?
     ActionsArgs = ListOf<ActionName, ",">
@@ -96,11 +98,15 @@ LogiMat {
     ConstDeclaration = const #space identifier "=" Expression ";"
 
     SetState = state "=" Expression ";"
+    StateBlock = Block -- block
+               | SetState -- state
 
-    IfStatement = if "(" Expression ")" Block (else (Block | IfStatement))?
+    IfStatement = if "(" Expression ")" StateBlock (else (StateBlock | IfStatement))?
+    
+    Ternary = Expression "?" Expression ":" Expression
 
-    Sum = sum "(" exportIdentifier "=" Expression ";" Expression ")" Block
-    Prod = prod "(" exportIdentifier "=" Expression ";" Expression ")" Block
+    Sum = sum "(" exportIdentifier "=" Expression ";" Expression ")" StateBlock
+    Prod = prod "(" exportIdentifier "=" Expression ";" Expression ")" StateBlock
     
     PrimaryExpression = state -- state
                       | templateName "(" TemplateArgs ")"   -- template
@@ -155,7 +161,9 @@ LogiMat {
     OrExpression = OrExpression "||" AndExpression -- or
                  | AndExpression
     
-    Expression = OrExpression
+    TernaryExpression = Ternary | OrExpression
+    
+    Expression = TernaryExpression
 
     literal = numericLiteral
 
@@ -348,6 +356,12 @@ semantic.addOperation("parse", {
     TemplateArgs(l){
         return l.asIteration().parse();
     },
+    FunctionBody_block(block){
+        return block.parse();
+    },
+    FunctionBody_arrow(_1, expression, _2){
+        return [{type: "state", expr: expression.parse()}];
+    },
     ActionName(name, _1, args, _2){
         const arr = [name.parse()];
         if(args) {
@@ -514,6 +528,12 @@ semantic.addOperation("parse", {
     SetState(_, _2, expr, _3){
         return {type: "state", expr: expr.parse()};
     },
+    StateBlock_block(block){
+        return block.parse();
+    },
+    StateBlock_state(state){
+        return [state.parse()];
+    },
     IfStatement(_, _2, condition, _3, ifaction, _4, elseaction){
         let elseAction = elseaction.parse();
         if(!Array.isArray(elseAction)) elseAction = [elseAction];
@@ -521,6 +541,9 @@ semantic.addOperation("parse", {
         if(elseAction.length < 1) elseAction = null;
 
         return {type: "if", condition: condition.parse(), ifaction: ifaction.parse(), elseaction: elseAction};
+    },
+    Ternary(condition, _1, tRes, _2, fRes){
+        return {type: "b", args: [[{type: "if", condition: condition.parse(), ifaction: [{type: "state", expr: tRes.parse()}], elseaction: [{type: "state", expr: fRes.parse()}]}]]};
     },
     Sum(_, _2, v, _3, expr1, _4, expr2, _6, action){
         return {type: "sum", args: [v.parse(), expr1.parse(), expr2.parse(), action.parse()]};

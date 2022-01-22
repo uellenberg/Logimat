@@ -511,9 +511,7 @@ const piecewiseFunctions = [
 const CompileExpression = (expression: Expression, inlines: Record<string, Inline>, templates: Record<string, TemplateFunction>, state: TemplateState, vars: Record<string, string> = {}, stack: string[], declaredNames: string[]) : string => {
     if(typeof(expression) !== "object") return expression;
 
-    if(typeof(expression) !== "object") return expression;
-
-    const args = expression.args.map(arg => typeof(arg) === "object" && arg.hasOwnProperty("type") ? CompileExpression(<Expression>arg, inlines, templates, state, vars, stack, declaredNames) : arg);
+    const args = expression.args.map(arg => typeof(arg) === "object" && arg.hasOwnProperty("type") && arg.hasOwnProperty("args") ? CompileExpression(<Expression>arg, inlines, templates, state, vars, stack, declaredNames) : arg);
 
     switch(expression.type){
         case "+":
