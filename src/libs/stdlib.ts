@@ -186,11 +186,6 @@ inline function simplifyDenominator(numerator, denominator) {
     state = denominator/div;
 }
 
-//Creates a complex number from a real and imaginary part.
-inline function c(a, b) {
-    state = (a, b);
-}
-
 //Gets the real part of a complex number.
 inline function cR(a) {
     state = a.x;
@@ -212,7 +207,7 @@ inline function cMul(a, b) {
     const bPart2 = cR(a) * cI(b);
     const bPart = bPart1 + bPart2;
     
-    state = c(aPart, bPart);
+    state = (aPart, bPart);
 }
 
 //Divides two complex numbers.
@@ -228,15 +223,15 @@ inline function cDiv(a, b) {
     
     const cPart = cR(b)^2 + cI(b)^2;
     
-    state = c(aPart/cPart, bPart/cPart);
+    state = (aPart/cPart, bPart/cPart);
 }
 
 //Adds two complex numbers.
 inline function cAdd(a, b) {
-    state = c(cR(a) + cR(b), cI(a) + cI(b));
+    state = (cR(a) + cR(b), cI(a) + cI(b));
 }
 
 //Subtracts two complex numbers.
 inline function cSub(a, b) {
-    state = c(cR(a) - cR(b), cI(a) - cI(b));
+    state = (cR(a) - cR(b), cI(a) - cI(b));
 }`;
