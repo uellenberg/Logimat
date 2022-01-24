@@ -184,4 +184,59 @@ inline function simplifyNumerator(numerator, denominator) {
 inline function simplifyDenominator(numerator, denominator) {
     const div = gcd(numerator, denominator);
     state = denominator/div;
+}
+
+//Creates a complex number from a real and imaginary part.
+inline function complex(a, b) {
+    state = (a, b);
+}
+
+//Gets the real part of a complex number.
+inline function complexReal(a) {
+    state = a.x;
+}
+
+//Gets the imaginary part of a complex number.
+inline function complexImaginary(a) {
+    state = a.y;
+}
+
+//Multiplies two complex numbers together.
+//https://en.wikipedia.org/wiki/Multiplication_algorithm#Complex_multiplication_algorithm
+inline function complexMul(a, b) {
+    const aPart1 = complexReal(a) * complexReal(b);
+    const aPart2 = complexImaginary(a) * complexImaginary(b);
+    const aPart = aPart1 - aPart2;
+    
+    const bPart1 = complexImaginary(a) * complexReal(b);
+    const bPart2 = complexReal(a) * complexImaginary(b);
+    const bPart = bPart1 + bPart2;
+    
+    state = complex(aPart, bPart);
+}
+
+//Divides two complex numbers.
+//https://mathworld.wolfram.com/ComplexDivision.html
+inline function complxDiv(a, b) {
+    const aPart1 = complexReal(a) * complexReal(b);
+    const aPart2 = complexImaginary(a) * complexImaginary(b);
+    const aPart = aPart1 + aPart2;
+    
+    const bPart1 = complexImaginary(a) * complexReal(b);
+    const bPart2 = complexReal(a) * complexImaginary(b);
+    const bPart = bPart1 - bPart2;
+    
+    const cPart = complexReal(b)^2 + complexImaginary(b)^2;
+    
+    state = complex(aPart/cPart, bPart/cPart);
+}
+
+//Adds two complex numbers.
+inline function complexAdd(a, b) {
+    state = complex(complexReal(a) + complexReal(b), complexImaginary(a) + complexImaginary(b));
+}
+
+//Subtracts two complex numbers.
+inline function complexSub(a, b) {
+    state = complex(complexReal(a) - complexReal(b), complexImaginary(a) - complexImaginary(b));
 }`;
