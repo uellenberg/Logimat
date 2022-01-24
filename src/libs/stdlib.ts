@@ -196,6 +196,11 @@ inline function cI(a) {
     state = a.y;
 }
 
+//Takes the absolute value of a complex number.
+inline function cAbs(a) {
+    state = sqrt(cR(a)^2 + cI(a)^2);
+}
+
 //Multiplies two complex numbers together.
 //https://en.wikipedia.org/wiki/Multiplication_algorithm#Complex_multiplication_algorithm
 inline function cMul(a, b) {
