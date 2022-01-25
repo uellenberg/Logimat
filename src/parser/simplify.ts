@@ -8,7 +8,7 @@ export const SimplifyExpression = (input: string, useTex: boolean, strict: boole
     const newNames = names.concat(builtinNames);
 
     try {
-        const res = simplify(input, simplifyRules, {exactFractions: false});
+        const res = simplify(input, simplifyRules, {}, {exactFractions: false});
         //They say they return a string but they can sometimes return numbers.
         const text = useTex ? res.toTex(getTexOptions(strict, newNames)).toString() : res.toString(getStringOptions(strict, newNames)).toString();
         map[input] = text;
