@@ -114,6 +114,11 @@ export const Compile = async (input: string, useTex: boolean = false, noFS = fal
             state1.logimat.definitions[args[0]["value"]] = args[1];
 
             return "";
+        },
+        get: (args, state1: LogimatTemplateState, context) => {
+            if(args.length < 1 || typeof(args[0]) !== "number") throw new Error("A name is required!");
+
+            return args[0].toString();
         }
     };
 
