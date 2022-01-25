@@ -15,4 +15,9 @@ inline function max(a, b) {
     } else {
         state = b;
     }
+}
+
+//Rounds a number.
+inline function round(a) {
+    state = floor(a + .5);
 }`;

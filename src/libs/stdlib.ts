@@ -244,4 +244,27 @@ inline function cSub(a, b) {
 //Checks if a number is NaN.
 inline function isNaN(a) {
     state = a != a;
+}
+
+//Gets the x position (0-based) of a 2d array embedded in a 1d array (1-based).
+//Used to convert from a 1d array to a 2d array.
+inline function conv_1d_2d_x(idx, width) {
+    state = (idx-1) % width;
+}
+
+//Gets the y position (0-based) of a 2d array embedded in a 1d array (1-based).
+//Used to convert from a 1d array to a 2d array.
+inline function conv_1d_2d_y(idx, width) {
+    state = floor((idx-1) / width);
+}
+
+//Gets the index (1-based) of a 1d array from the position x and y of a 2d array (0-based).
+//Used to convert from a 2d array to a 1d array.
+inline function conv_2d_1d(x, y, width) {
+    state = y * width + x + 1;
+}
+
+inline function map(input_start, input_end, output_start, output_end, val) {
+    const slope = (output_end - output_start) / (input_end - input_start);
+    state = output_start + slope * (val - input_start);
 }`;
