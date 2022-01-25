@@ -34,7 +34,7 @@ LogiMat {
     NoArgsActionsDeclaration = actions #space exportIdentifier "=" ActionsArgs ";"
     ArgsActionsDeclaration = actions #space exportIdentifier "(" ExportFunctionArgs ")" "=" ActionsArgs ";"
     
-    ExpressionDeclaration = expression Block
+    ExpressionDeclaration = expression FunctionBody
     
     GraphDeclaration = graph ExpressionBlock GraphOperator ExpressionBlock ";"
     GraphOperator = ">="
