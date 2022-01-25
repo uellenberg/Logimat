@@ -239,4 +239,9 @@ inline function cAdd(a, b) {
 //Subtracts two complex numbers.
 inline function cSub(a, b) {
     state = (cR(a) - cR(b), cI(a) - cI(b));
+}
+
+//Checks if a number is NaN.
+inline function isNaN(a) {
+    state = a != a;
 }`;
