@@ -317,12 +317,22 @@ const InternalCompile = (useTex: boolean, tree: OuterDeclaration[], inlines: Rec
     const outerNames = GetDeclaredNames(tree);
     const display: Record<string, string> = {};
 
+    let data: CompileData = {inlines, templates, state, stack, names: [], vars: {}, mapIdx: {value: 1}};
+
     for (const declaration of tree) {
         if (declaration.modifier === "inline") continue;
 
         const names = Object.assign([], outerNames);
-        
-        const data: CompileData = {inlines, templates, state, stack, names, vars: {}, mapIdx: 1};
+
+        data = {
+            inlines,
+            templates,
+            state,
+            stack,
+            names,
+            vars: {},
+            mapIdx: data.mapIdx
+        };
 
         switch(declaration.type) {
             case "display":
@@ -654,7 +664,7 @@ const CompileExpression = (expression: Expression, data: CompileData) : string =
 
             return "array_filter(" + args[0] + "," + filterFunc + ")";
         case "a_m":
-            const mapName = "m_v" + data.mapIdx++;
+            const mapName = "m_v" + data.mapIdx.value++;
 
             //Map the user-chosen variable to generated name.
             const mapVar = {[<string>args[1]]: mapName};
@@ -698,5 +708,5 @@ interface CompileData {
     vars: Record<string, string>;
     stack: string[];
     names: string[];
-    mapIdx: number;
+    mapIdx: {value: number};
 }
