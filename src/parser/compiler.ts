@@ -97,7 +97,7 @@ export const Compile = async (input: string, useTex: boolean = false, noFS = fal
             if(args.length < 2 || typeof(args[0]) !== "object" || !args[0]["block"]) throw new Error("A block to iterate is required!");
             if(typeof(args[1]) !== "number" || isNaN(args[1]) || args[1] < 1) throw new Error("A number specifying the number of times to iterate is required!");
             
-            const output = "";
+            let output = "";
             
             for(let i = 0; i < args[1]; i++) {
                 output += args[0]["value"] + "\n";
