@@ -125,7 +125,7 @@ LogiMat {
                      | MemberExpression "." ("x" | "y")    -- pointIdx
                      | MemberExpression "." "length"       -- arrayLength
                      | MemberExpression "." "filter" "(" identifier "=>" (Block | Expression) ")"  -- filter
-                     | MemberExpression "." "map" "(" exportIdentifier "=>" (Block | Expression) ")"  -- map
+                     | MemberExpression "." "map" "(" identifier "=>" (Block | Expression) ")"  -- map
                      | PrimaryExpression
     
     UnaryExpression = "+" UnaryExpression -- plus

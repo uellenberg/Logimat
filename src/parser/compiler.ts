@@ -298,7 +298,7 @@ const InternalCompile = (useTex: boolean, tree: OuterDeclaration[], inlines: Rec
 
         const names = Object.assign([], outerNames);
         
-        const data: CompileData = {inlines, templates, state, stack, names, vars: {}};
+        const data: CompileData = {inlines, templates, state, stack, names, vars: {}, mapIdx: 1};
 
         switch(declaration.type) {
             case "display":
@@ -613,21 +613,50 @@ const CompileExpression = (expression: Expression, data: CompileData) : string =
             //If it's an array (list of statements), then compile it as a block, otherwise compile the original as an expression (with the .
             const filterFunc =
                 Array.isArray(args[2])
-                    ? CompileBlock(<Statement[]>args[2], data, "", {})
-                    : CompileExpression(<Expression>expression.args[2], data);
+                    ? CompileBlock(<Statement[]>args[2], {
+                        ...data,
+                        vars: {
+                            ...data.vars,
+                            ...filterVar
+                        }
+                    }, "", {})
+                    : CompileExpression(<Expression>expression.args[2], {
+                        ...data,
+                        vars: {
+                            ...data.vars,
+                            ...filterVar
+                        }
+                    });
 
             return "array_filter(" + args[0] + "," + filterFunc + ")";
         case "a_m":
+            const mapName = "m_v" + data.mapIdx++;
+
+            //Map the user-chosen variable to generated name.
+            const mapVar = {[<string>args[1]]: mapName};
+
             //Make the variable name used for mapping a declared variable, in order to make it work in strict mode.
-            data.names.push(<string>args[1]);
+            data.names.push(mapName);
 
             //If it's an array (list of statements), then compile it as a block, otherwise compile the original as an expression.
             const mapFunc =
                 Array.isArray(args[2])
-                ? CompileBlock(<Statement[]>args[2], data, "", {})
-                : CompileExpression(<Expression>expression.args[2], data);
+                ? CompileBlock(<Statement[]>args[2], {
+                        ...data,
+                        vars: {
+                            ...data.vars,
+                            ...mapVar
+                        }
+                    }, "", {})
+                : CompileExpression(<Expression>expression.args[2], {
+                        ...data,
+                        vars: {
+                            ...data.vars,
+                            ...mapVar
+                        }
+                    });
 
-            return "array_map(" + args[0] + "," + mapFunc + "," + args[1] + ")";
+            return "array_map(" + args[0] + "," + mapFunc + "," + mapName + ")";
     }
 
     return "";
@@ -645,4 +674,5 @@ interface CompileData {
     vars: Record<string, string>;
     stack: string[];
     names: string[];
+    mapIdx: number;
 }
