@@ -264,7 +264,15 @@ inline function conv_2d_1d(x, y, width) {
     state = y * width + x + 1;
 }
 
+//Maps from one range of numbers to another.
 inline function map(input_start, input_end, output_start, output_end, val) {
     const slope = (output_end - output_start) / (input_end - input_start);
     state = output_start + slope * (val - input_start);
+}
+
+//Linearly interpolates from one number to another. This is used to smoothly transition between two numbers.
+//An amount of 0 will return from, 1 will return to, and anything in between will return something
+//between the two numbers.
+inline function lerp(from, to, amount) {
+    state = from + (to - from) * amount;
 }`;
