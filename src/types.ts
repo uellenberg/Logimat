@@ -1,4 +1,5 @@
-export type TemplateArgs = (string | number | boolean | TemplateBlock)[];
+export type TemplateArg = string | number | boolean | TemplateBlock;
+export type TemplateArgs = TemplateArg[];
 export type TemplateReturn = string | ((state: object) => TemplateReturn);
 export type TemplateFunction = (args: TemplateArgs, state: TemplateState, context: TemplateContext) => TemplateReturn | Promise<TemplateReturn>;
 

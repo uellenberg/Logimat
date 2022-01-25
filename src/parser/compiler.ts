@@ -18,7 +18,7 @@ import {
 import ops from "../libs/ops";
 import stdlib from "../libs/stdlib";
 import {SimplifyExpression} from "./simplify";
-import {TemplateContext, TemplateFunction, TemplateModule, TemplateState} from "../types";
+import {TemplateArg, TemplateContext, TemplateFunction, TemplateModule, TemplateState} from "../types";
 import path from "path";
 import * as fs from "fs";
 import {HandleName, opMap} from "./util";
@@ -34,7 +34,8 @@ const readFile = (path: string) => new Promise<string>((resolve, reject) => {
 
 interface LogimatTemplateState {
     logimat: {
-        files: string[]
+        files: string[],
+        definitions: Record<string, TemplateArg>
     }
 }
 
@@ -53,7 +54,7 @@ interface LogimatTemplateState {
 export const Compile = async (input: string, useTex: boolean = false, noFS = false, filePath: string = null, piecewise: boolean = false, strict: boolean = false, outputMaps: boolean = false, simplificationMap: Record<string, string> = {}, importMap: Record<string, TemplateModule | string> = {}) : Promise<string | {output: string[], simplificationMap: Record<string, string>, importMap: Record<string, TemplateModule | string>}> => {
     const tree = GetTree(input);
 
-    const state: LogimatTemplateState = {logimat: {files: []}};
+    const state: LogimatTemplateState = {logimat: {files: [], definitions: {}}};
     if(filePath) state.logimat.files = [filePath];
 
     if(!noFS && filePath) {
@@ -94,8 +95,8 @@ export const Compile = async (input: string, useTex: boolean = false, noFS = fal
         },
         iterate: (args, state1: LogimatTemplateState, context) => {
             if(context !== TemplateContext.InnerDeclaration) throw new Error("The import template can only be used inside a block!");
-            if(args.length < 2 || typeof(args[0]) !== "object" || !args[0]["block"]) throw new Error("A block to iterate is required!");
-            if(typeof(args[1]) !== "number" || isNaN(args[1]) || args[1] < 1) throw new Error("A number specifying the number of times to iterate is required!");
+            if(args.length < 1 || typeof(args[0]) !== "object" || !args[0]["block"]) throw new Error("A block to iterate is required!");
+            if(args.length < 2 || typeof(args[1]) !== "number" || isNaN(args[1]) || args[1] < 1) throw new Error("A number specifying the number of times to iterate is required!");
             
             let output = "";
             
@@ -104,6 +105,15 @@ export const Compile = async (input: string, useTex: boolean = false, noFS = fal
             }
             
             return output;
+        },
+        define: (args, state1: LogimatTemplateState, context) => {
+            if(context !== TemplateContext.OuterDeclaration) throw new Error("The define template can only be used outside of any methods!");
+            if(args.length < 1 || typeof(args[0]) !== "object" || !args[0]["var"]) throw new Error("A name is required!");
+            if(args.length < 2) throw new Error("A value is required!");
+
+            state1.logimat.definitions[args[0]["value"]] = args[1];
+
+            return "";
         }
     };
 
@@ -196,7 +206,7 @@ export const Compile = async (input: string, useTex: boolean = false, noFS = fal
     }
 }
 
-const TraverseTemplatesArr = async (input: any[], templates: Record<string, TemplateFunction>, state: TemplateState, ref: {handledTemplates: boolean}) : Promise<any[]> => {
+const TraverseTemplatesArr = async (input: any[], templates: Record<string, TemplateFunction>, state: LogimatTemplateState, ref: {handledTemplates: boolean}) : Promise<any[]> => {
     const output: any[] = [];
 
     for (const val of input) {
@@ -214,7 +224,7 @@ const TraverseTemplatesArr = async (input: any[], templates: Record<string, Temp
     return output;
 }
 
-const TraverseTemplatesObj = async (input: object, templates: Record<string, TemplateFunction>, state: TemplateState, ref: {handledTemplates: boolean}) : Promise<object | any[]> => {
+const TraverseTemplatesObj = async (input: object, templates: Record<string, TemplateFunction>, state: LogimatTemplateState, ref: {handledTemplates: boolean}) : Promise<object | any[]> => {
     if(input == null) return null;
 
     if(input.hasOwnProperty("type") && ["template", "templatefunction"].includes(input["type"])) {
@@ -237,7 +247,7 @@ const TraverseTemplatesObj = async (input: object, templates: Record<string, Tem
     return output;
 }
 
-const HandleTemplate = async (templateDeclaration: Template, templates: Record<string, TemplateFunction>, state: TemplateState, ref: {handledTemplates: boolean}) : Promise<any[] | object> => {
+const HandleTemplate = async (templateDeclaration: Template, templates: Record<string, TemplateFunction>, state: LogimatTemplateState, ref: {handledTemplates: boolean}) : Promise<any[] | object> => {
     let output;
 
     if(templateDeclaration.type === "templatefunction") {
@@ -249,7 +259,16 @@ const HandleTemplate = async (templateDeclaration: Template, templates: Record<s
         if(!templates.hasOwnProperty(templateDeclaration.name)) throw new Error("Template \"" + templateDeclaration.name + "\" does not exist!");
 
         try {
-            output = await templates[templateDeclaration.name](templateDeclaration.args, state, templateDeclaration.context);
+            //Handle defines in the templates, except in the define template.
+            const templateArgs = ["define"].includes(templateDeclaration.name) ? templateDeclaration.args : templateDeclaration.args.map(arg => {
+                if(arg["var"]) {
+                    if(!state.logimat.definitions.hasOwnProperty(arg["value"])) throw new Error("The variable \"" + arg["value"] + "\" does not exist. Use the \"define\" template to define it.");
+                    return state.logimat.definitions[arg["value"]];
+                }
+                return arg;
+            });
+
+            output = await templates[templateDeclaration.name](templateArgs, state, templateDeclaration.context);
         } catch(e) {
             console.error("An error occurred while running the \"" + templateDeclaration.name + "\" template:");
             throw e;

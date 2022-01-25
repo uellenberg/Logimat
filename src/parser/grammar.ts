@@ -85,6 +85,7 @@ LogiMat {
                 | boolean -- boolean
                 | null    -- null
                 | "{" (OuterDeclaration+ | InnerDeclaration+) "}"   -- block
+                | identifier -- var
     
     ExpressionBlock = "{" Expression "}"
     Block = "{" InnerDeclarations "}"
@@ -404,6 +405,9 @@ semantic.addOperation("parse", {
     },
     TemplateArg_block(_, block, _2) {
         return {block: true, value: block.sourceString};
+    },
+    TemplateArg_var(_) {
+        return {var: true, value: this.sourceString};
     },
     Expression(e){
         return e.parse();
