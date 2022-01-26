@@ -307,7 +307,12 @@ const HandleTemplate = async (templateDeclaration: Template, templates: Record<s
                             continue;
                         }
                     } else {
-                        templateArgs.push(Object.values(handled).join(""));
+                        const value = Object.values(handled).join("");
+
+                        const parsed = parseFloat(value);
+                        if(isNaN(parsed)) throw new Error("The input \"" + arg["source"] + "\" cannot be evaluated to a number. Expressions input into templates must evaluate to numbers, and can only use defined variables.");
+
+                        templateArgs.push(parsed);
                         continue;
                     }
 
