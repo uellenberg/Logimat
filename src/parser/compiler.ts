@@ -18,7 +18,7 @@ import {
 import ops from "../libs/ops";
 import stdlib from "../libs/stdlib";
 import {SimplifyExpression} from "./simplify";
-import {TemplateArg, TemplateContext, TemplateFunction, TemplateModule, TemplateState} from "../types";
+import {TemplateArg, TemplateArgs, TemplateContext, TemplateFunction, TemplateModule, TemplateState} from "../types";
 import path from "path";
 import * as fs from "fs";
 import {HandleName, opMap} from "./util";
@@ -94,7 +94,7 @@ export const Compile = async (input: string, useTex: boolean = false, noFS = fal
             return "";
         },
         iterate: (args, state1: LogimatTemplateState, context) => {
-            if(context === TemplateContext.Expression) throw new Error("The iterate template cannot be used in expressions!");
+            if(context !== TemplateContext.OuterDeclaration && context !== TemplateContext.InnerDeclaration) throw new Error("This cannot be used in expressions!");
             if(args.length < 1 || typeof(args[0]) !== "object" || !args[0]["block"]) throw new Error("A block to iterate is required!");
             if(args.length < 2 || typeof(args[1]) !== "number" || isNaN(args[1]) || args[1] < 1) throw new Error("A number specifying the number of times to iterate is required!");
             
@@ -107,18 +107,31 @@ export const Compile = async (input: string, useTex: boolean = false, noFS = fal
             return output;
         },
         define: (args, state1: LogimatTemplateState, context) => {
-            if(context !== TemplateContext.OuterDeclaration) throw new Error("The define template can only be used outside of any methods!");
-            if(args.length < 1 || typeof(args[0]) !== "object" || !args[0]["var"]) throw new Error("A name is required!");
+            if(context !== TemplateContext.OuterDeclaration) throw new Error("This can only be used outside of any methods!");
+            if(args.length < 1 || typeof(args[0]) !== "string" || !args[0]) throw new Error("A name is required!");
             if(args.length < 2) throw new Error("A value is required!");
 
-            state1.logimat.definitions[args[0]["value"]] = args[1];
+            state1.logimat.definitions[args[0]] = args[1];
 
             return "";
         },
         get: (args, state1: LogimatTemplateState, context) => {
+            if(context !== TemplateContext.Expression) throw new Error("This template cannot be ran outside of an expression!");
             if(args.length < 1 || typeof(args[0]) !== "number") throw new Error("A name is required!");
 
             return args[0].toString();
+        },
+        concat: (args, state1: LogimatTemplateState, context) => {
+            if(context !== TemplateContext.Expression) throw new Error("This template cannot be ran outside of an expression!");
+
+            let result = "";
+
+            for(const part of args) {
+                if(typeof(part) !== "string" && typeof(part) !== "number") throw new Error("This template can only be used with strings and numbers!");
+                result += part;
+            }
+
+            return result;
         }
     };
 
@@ -264,14 +277,38 @@ const HandleTemplate = async (templateDeclaration: Template, templates: Record<s
         if(!templates.hasOwnProperty(templateDeclaration.name)) throw new Error("Template \"" + templateDeclaration.name + "\" does not exist!");
 
         try {
-            //Handle defines in the templates, except in the define template.
-            const templateArgs = ["define"].includes(templateDeclaration.name) ? templateDeclaration.args : templateDeclaration.args.map(arg => {
-                if(arg["var"]) {
-                    if(!state.logimat.definitions.hasOwnProperty(arg["value"])) throw new Error("The variable \"" + arg["value"] + "\" does not exist. Use the \"define\" template to define it.");
-                    return state.logimat.definitions[arg["value"]];
+            //Handle expressions in the template args.
+            const templateArgs: TemplateArgs = [];
+
+            for(const arg of templateDeclaration.args) {
+                if(arg["expression"]) {
+                    const definedNames = Object.keys(state.logimat.definitions).filter(key => typeof(state.logimat.definitions[key]) === "number");
+
+                    const handled = await TraverseTemplatesObj(arg["value"], templates, state, ref);
+                    //Handle raw numbers.
+                    const value = handled.hasOwnProperty("0") ? handled["0"] : handled;
+
+                    const compiled = CompileExpression(value as Expression, {
+                        inlines: {},
+                        mapIdx: {value: 0},
+                        names: definedNames,
+                        stack: [],
+                        state,
+                        templates,
+                        vars: Object.fromEntries(Object.entries(state.logimat.definitions).filter(([key, value]) => typeof(value) === "number")) as Record<string, string>
+                    });
+
+                    const simplified = SimplifyExpression(compiled, false, true, definedNames, {});
+
+                    const parsed = parseFloat(simplified);
+                    if(isNaN(parsed)) throw new Error("The input \"" + arg["source"] + "\" cannot be evaluated to a number. Expressions input into templates must evaluate to numbers, and can only use defined variables.");
+
+                    templateArgs.push(parsed);
+                    continue;
                 }
-                return arg;
-            });
+
+                templateArgs.push(arg as TemplateArg);
+            }
 
             output = await templates[templateDeclaration.name](templateArgs, state, templateDeclaration.context);
         } catch(e) {
@@ -293,6 +330,8 @@ const HandleTemplate = async (templateDeclaration: Template, templates: Record<s
         return {type: "templatefunction", context: templateDeclaration.context, function: output};
     }
 
+    if(templateDeclaration.name === "concat") return output;
+
     //TODO: Allow templates to import other templates.
 
     switch(templateDeclaration.context) {
@@ -307,6 +346,8 @@ const HandleTemplate = async (templateDeclaration: Template, templates: Record<s
             }
 
             return expr;
+        case TemplateContext.Identifier:
+            return output;
     }
 
     return [];

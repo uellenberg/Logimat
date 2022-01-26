@@ -1,5 +1,5 @@
 import ohm from "ohm-js";
-import {TemplateArgs, TemplateContext} from "../types";
+import {TemplateArgs, TemplateBlock, TemplateContext} from "../types";
 import {HandleName} from "./util";
 
 export const grammar = ohm.grammar(`
@@ -11,28 +11,31 @@ LogiMat {
     Import = ImportTemplates
     ImportTemplates = "import" #space "templates" #space "from" #space string ";"
     
-    OuterDeclaration = Template | OuterConstDeclaration | FunctionDeclaration | ActionDeclaration | ActionsDeclaration | ExpressionDeclaration | GraphDeclaration | PointDeclaration | PolygonDeclaration | DisplayDeclarations
+    OuterDeclaration = DefineTemplate | Template | OuterConstDeclaration | FunctionDeclaration | ActionDeclaration | ActionsDeclaration | ExpressionDeclaration | GraphDeclaration | PointDeclaration | PolygonDeclaration | DisplayDeclarations
     
     Template = templateName "(" TemplateArgs ")" ";"
     InnerTemplate = templateName "(" TemplateArgs ")" ";"
+    
+    DefineTemplate = "define!" "(" TemplateIdentifier "," TemplateArg ")" ";"
+    InnerDefineTemplate = "define!" "(" TemplateIdentifier "," TemplateArg ")" ";"
 
     OuterConstDeclaration = ExportOuterConstDeclaration | InlineOuterConstDeclaration | PointDeclaration
-    ExportOuterConstDeclaration = export #space const #space exportIdentifier "=" Expression ";"
-    InlineOuterConstDeclaration = inline #space const #space identifier "=" Expression ";"
+    ExportOuterConstDeclaration = export #space const #space TemplateExportIdentifier "=" Expression ";"
+    InlineOuterConstDeclaration = inline #space const #space TemplateIdentifier "=" Expression ";"
 
     FunctionDeclaration = ExportFunctionDeclaration | InlineFunctionDeclaration
-    ExportFunctionDeclaration = export #space function #space exportIdentifier "(" ExportFunctionArgs ")" FunctionBody
-    InlineFunctionDeclaration = inline #space function #space identifier "(" FunctionArgs ")" FunctionBody
+    ExportFunctionDeclaration = export #space function #space TemplateExportIdentifier "(" ExportFunctionArgs ")" FunctionBody
+    InlineFunctionDeclaration = inline #space function #space TemplateIdentifier "(" FunctionArgs ")" FunctionBody
 
     ActionDeclaration = UnnamedActionDeclaration | NamedActionDeclaration
-    UnnamedActionDeclaration = action #space exportIdentifier FunctionBody
+    UnnamedActionDeclaration = action #space TemplateExportIdentifier FunctionBody
     NamedActionDeclaration = NoArgsActionDeclaration | ArgsActionDeclaration
-    NoArgsActionDeclaration = action #space exportIdentifier "=" exportIdentifier FunctionBody
-    ArgsActionDeclaration = action #space exportIdentifier "(" ExportFunctionArgs ")" "=" exportIdentifier FunctionBody
+    NoArgsActionDeclaration = action #space TemplateExportIdentifier "=" TemplateExportIdentifier FunctionBody
+    ArgsActionDeclaration = action #space TemplateExportIdentifier "(" ExportFunctionArgs ")" "=" TemplateExportIdentifier FunctionBody
     
     ActionsDeclaration = NoArgsActionsDeclaration | ArgsActionsDeclaration
-    NoArgsActionsDeclaration = actions #space exportIdentifier "=" ActionsArgs ";"
-    ArgsActionsDeclaration = actions #space exportIdentifier "(" ExportFunctionArgs ")" "=" ActionsArgs ";"
+    NoArgsActionsDeclaration = actions #space TemplateExportIdentifier "=" ActionsArgs ";"
+    ArgsActionsDeclaration = actions #space TemplateExportIdentifier "(" ExportFunctionArgs ")" "=" ActionsArgs ";"
     
     ExpressionDeclaration = expression FunctionBody
     
@@ -55,7 +58,7 @@ LogiMat {
                         | DisplayDeclaration<"thickness", Expression>
                         | DisplayDeclaration<"fill", Expression>
                         | DisplayDeclaration<"click", (ParsedActionArgs | parsedExportIdentifier)>
-                        | DisplayDeclaration<"label", templateString>
+                        | DisplayDeclaration<"label", exportEmbedString>
                         | DisplayDeclaration<"drag", ("x" | "y" | "xy")>
                         | DisplayDeclaration<"hidden", boolean>
                         | DisplayDeclaration<"outline", boolean>
@@ -64,39 +67,39 @@ LogiMat {
                         | DisplayDeclaration<"min", Expression>
                         | DisplayDeclaration<"max", Expression>
                         | DisplayDeclaration<"step", Expression>
-    templateString = "\\"" (templateStringTemplate | stringCharacter)* "\\""
-    templateStringTemplate = ~("\\"" | "\\\\" | lineTerminator) "\${" parsedExportIdentifier "}"
+    exportEmbedString = "\\"" (exportEmbedStringEmbed | stringCharacter)* "\\""
+    exportEmbedStringEmbed = ~("\\"" | "\\\\" | lineTerminator) "\${" parsedExportIdentifier "}"
     ParsedActionArgs = parsedExportIdentifier "(" ListOf<("index" | Expression), ","> ")"
     
     Point = "(" Expression "," Expression ")"
     Array = "[" ListOf<Expression, ","> "]"
     
-    ExportFunctionArgs = ListOf<exportIdentifier, ",">
-    FunctionArgs = ListOf<identifier, ",">
+    ExportFunctionArgs = ListOf<TemplateExportIdentifier, ",">
+    FunctionArgs = ListOf<TemplateIdentifier, ",">
     TemplateArgs = ListOf<TemplateArg, ",">
     FunctionBody = Block -- block
                  | "=>" Expression ";" -- arrow
     
-    ActionName (an action name) = exportIdentifier ("(" ExportFunctionArgs ")")?
+    ActionName (an action name) = TemplateExportIdentifier ("(" ExportFunctionArgs ")")?
     ActionsArgs = ListOf<ActionName, ",">
     
     TemplateArg = string  -- string
-                | ("+" | "-")? numericLiteral  -- number
+                | "{" (OuterDeclaration+ | InnerDeclaration+) "}"   -- block
+                | Expression -- expression
                 | boolean -- boolean
                 | null    -- null
-                | "{" (OuterDeclaration+ | InnerDeclaration+) "}"   -- block
-                | identifier -- var
     
     ExpressionBlock = "{" Expression "}"
     Block = "{" InnerDeclarations "}"
     InnerDeclarations = InnerDeclaration+
     
-    InnerDeclaration = InnerTemplate
+    InnerDeclaration = InnerDefineTemplate
+                     | InnerTemplate
                      | ConstDeclaration
                      | SetState
                      | IfStatement
 
-    ConstDeclaration = const #space identifier "=" Expression ";"
+    ConstDeclaration = const #space TemplateIdentifier "=" Expression ";"
 
     SetState = state "=" Expression ";"
     StateBlock = Block -- block
@@ -106,14 +109,14 @@ LogiMat {
     
     Ternary = Expression "?" Expression ":" Expression
 
-    Sum = sum "(" exportIdentifier "=" Expression ";" Expression ")" StateBlock
-    Prod = prod "(" exportIdentifier "=" Expression ";" Expression ")" StateBlock
+    Sum = sum "(" TemplateExportIdentifier "=" Expression ";" Expression ")" StateBlock
+    Prod = prod "(" TemplateExportIdentifier "=" Expression ";" Expression ")" StateBlock
     
     PrimaryExpression = state -- state
                       | templateName "(" TemplateArgs ")"   -- template
                       | "log_" (literal | PrimaryExpression_var) "(" Expression ")" -- log
-                      | identifierName "(" ListOf<Expression, ","> ")"   -- func
-                      | identifier  -- var
+                      | TemplateIdentifierName "(" ListOf<Expression, ","> ")"   -- func
+                      | TemplateIdentifier  -- var
                       | literal
                       | Sum
                       | Prod
@@ -125,8 +128,8 @@ LogiMat {
     MemberExpression = MemberExpression "[" Expression "]" -- arrayIdx
                      | MemberExpression "." ("x" | "y")    -- pointIdx
                      | MemberExpression "." "length"       -- arrayLength
-                     | MemberExpression "." "filter" "(" identifier "=>" (Block | Expression) ")"  -- filter
-                     | MemberExpression "." "map" "(" identifier "=>" (Block | Expression) ")"  -- map
+                     | MemberExpression "." "filter" "(" TemplateIdentifier "=>" (Block | Expression) ")"  -- filter
+                     | MemberExpression "." "map" "(" TemplateIdentifier "=>" (Block | Expression) ")"  -- map
                      | PrimaryExpression
     
     UnaryExpression = "+" UnaryExpression -- plus
@@ -221,6 +224,13 @@ LogiMat {
 
     reservedWord = keywords
 
+    TemplateIdentifier = identifier | templateString
+    TemplateExportIdentifier = exportIdentifier | templateString
+    TemplateIdentifierName = identifierName | templateString
+    
+    templateString = "\\"" (templateStringTemplate | stringCharacter)* "\\""
+    templateStringTemplate = ~("\\"" | "\\\\" | lineTerminator) "\${" applySyntactic<Expression> "}"
+
     exportIdentifier (a single character identifier) = ~reservedWord "a".."z" ("_" ("a".."z" | "0".."9" | "_")+)?
     parsedExportIdentifier = exportIdentifier
 
@@ -288,6 +298,12 @@ semantic.addOperation("parse", {
     InnerTemplate(name, _2, args, _3, _4){
         return {type: "template", name: name.parse(), args: args.parse(), context: TemplateContext.InnerDeclaration};
     },
+    DefineTemplate(_, _2, name, _3, arg, _4, _5){
+        return {type: "template", name: "define", args: [name.parse(), arg.parse()], context: TemplateContext.OuterDeclaration};
+    },
+    InnerDefineTemplate(_, _2, name, _3, arg, _4, _5){
+        return {type: "template", name: "define", args: [name.parse(), arg.parse()], context: TemplateContext.InnerDeclaration};
+    },
     PrimaryExpression_template(name, _2, args, _3){
         return {type: "template", name: name.parse(), args: args.parse(), context: TemplateContext.Expression};
     },
@@ -333,10 +349,10 @@ semantic.addOperation("parse", {
     DisplayDeclaration(_1, type, _2, value, _3){
         return {type: "display", modifier: "export", displayType: type.parse(), value: value.parse()};
     },
-    templateString(_1, string, _2){
+    exportEmbedString(_1, string, _2){
         return {type: "tstring", args: string.parse()};
     },
-    templateStringTemplate(_1, expr, _2){
+    exportEmbedStringEmbed(_1, expr, _2){
         return "${" + expr.parse() + "}";
     },
     ParsedActionArgs(name, _1, args, _2){
@@ -376,6 +392,12 @@ semantic.addOperation("parse", {
     ActionsArgs(l){
         return l.asIteration().parse();
     },
+    templateString(_1, string, _2){
+        return {type: "template", name: "concat", args: string.parse(), context: TemplateContext.Expression};
+    },
+    templateStringTemplate(_, expr, _2){
+        return {expression: true, value: expr.parse(), source: expr.sourceString};
+    },
     identifier(_){
         return this.sourceString;
     },
@@ -400,14 +422,11 @@ semantic.addOperation("parse", {
     TemplateArg_null(_) {
         return null;
     },
-    TemplateArg_number(_, _1) {
-        return parseFloat(this.sourceString);
-    },
     TemplateArg_block(_, block, _2) {
         return {block: true, value: block.sourceString};
     },
-    TemplateArg_var(_) {
-        return {var: true, value: this.sourceString};
+    TemplateArg_expression(expr) {
+        return {expression: true, value: expr.parse(), source: expr.sourceString};
     },
     Expression(e){
         return e.parse();
@@ -578,13 +597,25 @@ export interface Import {
     path: string;
 }
 export type OuterDeclaration = Template | OuterConstDeclaration | OuterFunctionDeclaration | ActionDeclaration | ActionsDeclaration | ExpressionDeclaration | GraphDeclaration | PointDeclaration | PolygonDeclaration | DisplayDeclaration;
+
+export type InternalTemplateArg = string | number | boolean | TemplateBlock | TemplateDeclareValue | TemplateExpression;
+export interface TemplateDeclareValue {
+    var: true;
+    value: string;
+}
+export interface TemplateExpression {
+    expression: true;
+    value: Expression;
+    source: string;
+}
 export interface Template {
     type: "template" | "templatefunction";
     modifier: Modifier;
     name: string;
-    args: TemplateArgs;
+    args: InternalTemplateArg[];
     context: TemplateContext;
 }
+
 export interface OuterConstDeclaration {
     type: "const";
     modifier: Modifier;

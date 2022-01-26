@@ -8,7 +8,8 @@ export interface TemplateState {}
 export enum TemplateContext {
     OuterDeclaration,
     InnerDeclaration,
-    Expression
+    Expression,
+    Identifier
 }
 
 export interface TemplatesObject {
