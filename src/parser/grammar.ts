@@ -53,12 +53,12 @@ LogiMat {
     PolygonDeclaration = polygon "(" ListOf<Expression, ","> ")" ";"
     
     DisplayDeclaration<type, value> = display type "=" value ";"
-    DisplayDeclarations = DisplayDeclaration<"color", parsedExportIdentifier>
+    DisplayDeclarations = DisplayDeclaration<"color", TemplateExportIdentifier>
                         | DisplayDeclaration<"stroke", Expression>
                         | DisplayDeclaration<"thickness", Expression>
                         | DisplayDeclaration<"fill", Expression>
-                        | DisplayDeclaration<"click", (ParsedActionArgs | parsedExportIdentifier)>
-                        | DisplayDeclaration<"label", exportEmbedString>
+                        | DisplayDeclaration<"click", (ParsedActionArgs | TemplateExportIdentifier)>
+                        | DisplayDeclaration<"label", templateString>
                         | DisplayDeclaration<"drag", ("x" | "y" | "xy")>
                         | DisplayDeclaration<"hidden", boolean>
                         | DisplayDeclaration<"outline", boolean>
@@ -67,9 +67,7 @@ LogiMat {
                         | DisplayDeclaration<"min", Expression>
                         | DisplayDeclaration<"max", Expression>
                         | DisplayDeclaration<"step", Expression>
-    exportEmbedString = "\\"" (exportEmbedStringEmbed | stringCharacter)* "\\""
-    exportEmbedStringEmbed = ~("\\"" | "\\\\" | lineTerminator) "\${" parsedExportIdentifier "}"
-    ParsedActionArgs = parsedExportIdentifier "(" ListOf<("index" | Expression), ","> ")"
+    ParsedActionArgs = TemplateExportIdentifier "(" ListOf<("index" | Expression), ","> ")"
     
     Point = "(" Expression "," Expression ")"
     Array = "[" ListOf<Expression, ","> "]"
@@ -232,7 +230,6 @@ LogiMat {
     templateStringTemplate = ~("\\"" | "\\\\" | lineTerminator) "\${" applySyntactic<Expression> "}"
 
     exportIdentifier (a single character identifier) = ~reservedWord "a".."z" ("_" ("a".."z" | "0".."9" | "_")+)?
-    parsedExportIdentifier = exportIdentifier
 
     identifier (an identifier) = ~reservedWord identifierName
     identifierName (an identifier) = letter identifierPart*
@@ -349,12 +346,6 @@ semantic.addOperation("parse", {
     DisplayDeclaration(_1, type, _2, value, _3){
         return {type: "display", modifier: "export", displayType: type.parse(), value: value.parse()};
     },
-    exportEmbedString(_1, string, _2){
-        return {type: "tstring", args: string.parse()};
-    },
-    exportEmbedStringEmbed(_1, expr, _2){
-        return "${" + expr.parse() + "}";
-    },
     ParsedActionArgs(name, _1, args, _2){
         return {type: "aargs", name: name.parse(), args: args.asIteration().parse()};
     },
@@ -406,9 +397,6 @@ semantic.addOperation("parse", {
     },
     exportIdentifier(_, _2, _3){
         return this.sourceString;
-    },
-    parsedExportIdentifier(_){
-        return HandleName(this.sourceString);
     },
     templateName(name, _){
         return name.parse();
