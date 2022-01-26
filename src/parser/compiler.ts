@@ -292,7 +292,7 @@ const TraverseTemplatesObj = async (input: object, templates: Record<string, Tem
 const HandleTemplate = async (templateDeclaration: Template, templates: Record<string, TemplateFunction>, state: LogimatTemplateState, ref: {handledTemplates: boolean}) : Promise<any[] | object> => {
     let output;
 
-    const name = templateDeclaration.name.trim().toLowerCase();
+    const name = templateDeclaration.name?.trim()?.toLowerCase();
 
     if(templateDeclaration.type === "templatefunction") {
         // @ts-ignore
@@ -612,14 +612,14 @@ const CompileBlock = (input: Statement[], data: CompileData, defaultOut: string,
                         ...newVars,
                         state: out
                     }
-                }, "", {});
+                }, out, {});
                 const elseaction = statement["elseaction"] ? CompileBlock(statement["elseaction"], {
                     ...data,
                     vars: {
                         ...newVars,
                         state: out
                     }
-                }, "", {}) : out;
+                }, out, {}) : out;
 
                 out = CompileExpression({type: "f", args: ["if_func", [condition, ifaction, elseaction]]}, {
                     ...data,
