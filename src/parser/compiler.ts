@@ -165,7 +165,7 @@ export const Compile = async (input: string, useTex: boolean = false, noFS = fal
                         throw new Error("Template \"" + templateKey + "\" on module \"" + declaration.path + "\" is not defined correctly!");
                     }
 
-                    templates[templateKey] = template.function;
+                    templates[templateKey.trim().toLowerCase()] = template.function;
                 }
 
                 if(!module.hasOwnProperty("postTemplates")) continue;
@@ -280,13 +280,15 @@ const TraverseTemplatesObj = async (input: object, templates: Record<string, Tem
 const HandleTemplate = async (templateDeclaration: Template, templates: Record<string, TemplateFunction>, state: LogimatTemplateState, ref: {handledTemplates: boolean}) : Promise<any[] | object> => {
     let output;
 
+    const name = templateDeclaration.name.trim().toLowerCase();
+
     if(templateDeclaration.type === "templatefunction") {
         // @ts-ignore
         output = templateDeclaration.function(state);
 
         ref.handledTemplates = true;
     } else {
-        if(!templates.hasOwnProperty(templateDeclaration.name)) throw new Error("Template \"" + templateDeclaration.name + "\" does not exist!");
+        if(!templates.hasOwnProperty(name)) throw new Error("Template \"" + templateDeclaration.name + "\" does not exist!");
 
         try {
             //Handle expressions in the template args.
@@ -331,7 +333,7 @@ const HandleTemplate = async (templateDeclaration: Template, templates: Record<s
                 templateArgs.push(arg as TemplateArg);
             }
 
-            output = await templates[templateDeclaration.name](templateArgs, state, templateDeclaration.context);
+            output = await templates[name](templateArgs, state, templateDeclaration.context);
         } catch(e) {
             console.error("An error occurred while running the \"" + templateDeclaration.name + "\" template:");
             throw e;
@@ -340,7 +342,7 @@ const HandleTemplate = async (templateDeclaration: Template, templates: Record<s
         //Ignore the setFile template. It's an internal template that returns itself in order to maintain file boundaries, but should not keep
         //template resolution from exiting. What this does is instead of handling the templates of the output, we simply return the template.
         //Doing this means that it will only be read until the next iteration.
-        if(["setFile"].includes(templateDeclaration.name)) {
+        if(["setfile"].includes(name)) {
             return templateDeclaration;
         }
 
@@ -351,7 +353,7 @@ const HandleTemplate = async (templateDeclaration: Template, templates: Record<s
         return {type: "templatefunction", context: templateDeclaration.context, function: output};
     }
 
-    if(templateDeclaration.name === "concat") return output;
+    if(name === "concat") return output;
 
     //TODO: Allow templates to import other templates.
 
