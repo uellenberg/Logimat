@@ -321,8 +321,7 @@ const HandleTemplate = async (templateDeclaration: Template, templates: Record<s
                     } else {
                         const value = Object.values(handled).join("");
 
-                        const parsed = parseFloat(value);
-                        if(isNaN(parsed)) {
+                        if(isNaN(value)) {
                             if(arg["nonStrict"] && typeof(handled) === "string") {
                                 templateArgs.push(handled);
                                 continue;
@@ -330,7 +329,7 @@ const HandleTemplate = async (templateDeclaration: Template, templates: Record<s
 
                             throw new Error("The input \"" + arg["source"] + "\" cannot be evaluated to a number. Expressions input into templates must evaluate to numbers, and can only use defined variables.");
                         }
-                        templateArgs.push(parsed);
+                        templateArgs.push(parseFloat(value));
                         continue;
                     }
 
@@ -346,8 +345,7 @@ const HandleTemplate = async (templateDeclaration: Template, templates: Record<s
 
                     const simplified = SimplifyExpression(compiled, false, !arg["nonStrict"], definedNames, {});
 
-                    const parsed = parseFloat(simplified);
-                    if(isNaN(parsed)) {
+                    if(isNaN(simplified)) {
                         if(arg["nonStrict"]) {
                             templateArgs.push(simplified);
                             continue;
@@ -356,7 +354,7 @@ const HandleTemplate = async (templateDeclaration: Template, templates: Record<s
                         throw new Error("The input \"" + arg["source"] + "\" cannot be evaluated to a number. Expressions input into templates must evaluate to numbers, and can only use defined variables.");
                     }
 
-                    templateArgs.push(parsed);
+                    templateArgs.push(parseFloat(simplified));
                     continue;
                 } else if(typeof(arg) === "object") {
                     templateArgs.push(await TraverseTemplatesObj(arg, templates, state, ref) as TemplateArg);

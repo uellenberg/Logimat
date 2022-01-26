@@ -165,7 +165,7 @@ const handle = (node: MathNode, options: Options, tex: boolean) : string => {
 
         const pA1 = parseFloat(a1);
         const pA2 = parseFloat(a2);
-        const numeric = !isNaN(pA1) && !isNaN(pA2);
+        const numeric = !isNaN(a1) && !isNaN(a2);
 
         //Handle logical operators.
         if(["==", ">", ">=", "<", "<="].includes(op)) {
@@ -354,10 +354,11 @@ interface Options {
 
 const simplification: Record<string, (node: MathNode, options: object, tex: boolean) => string | null> = {
     array_idx(node, options, tex) {
-        const indexer = parseInt(HandleNode(node.args[1], options, tex));
+        const handledIndexer = HandleNode(node.args[1], options, tex);
+        const indexer = parseInt(handledIndexer);
 
         //If the indexer is a number and the array is an array (and not a variable), we can simplify it.
-        if(!isNaN(indexer) && typeof(node.args[0]?.fn) === "object" && node.args[0]?.fn["name"] === "array") {
+        if(!isNaN(handledIndexer) && typeof(node.args[0]?.fn) === "object" && node.args[0]?.fn["name"] === "array") {
             return HandleNode(node.args[0].args[indexer-1], options, tex);
         }
 
