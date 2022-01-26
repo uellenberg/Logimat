@@ -94,7 +94,7 @@ export const Compile = async (input: string, useTex: boolean = false, noFS = fal
             return "";
         },
         iterate: (args, state1: LogimatTemplateState, context) => {
-            if(context !== TemplateContext.InnerDeclaration) throw new Error("The import template can only be used inside a block!");
+            if(context === TemplateContext.Expression) throw new Error("The iterate template cannot be used in expressions!");
             if(args.length < 1 || typeof(args[0]) !== "object" || !args[0]["block"]) throw new Error("A block to iterate is required!");
             if(args.length < 2 || typeof(args[1]) !== "number" || isNaN(args[1]) || args[1] < 1) throw new Error("A number specifying the number of times to iterate is required!");
             
