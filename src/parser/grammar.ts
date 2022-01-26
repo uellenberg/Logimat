@@ -234,7 +234,7 @@ LogiMat {
     identifier (an identifier) = ~reservedWord identifierName
     identifierName (an identifier) = letter identifierPart*
     
-    templateName (an identifier) = identifier "!"
+    templateName (an identifier) = identifierName "!"
 
     identifierPart = letter | unicodeCombiningMark
                    | unicodeDigit | unicodeConnectorPunctuation
