@@ -1,6 +1,5 @@
 import ohm from "ohm-js";
-import {TemplateArgs, TemplateBlock, TemplateContext} from "../types";
-import {HandleName} from "./util";
+import {TemplateBlock, TemplateContext} from "../types";
 
 export const grammar = ohm.grammar(`
 //Based on https://github.com/harc/ohm/blob/master/examples/ecmascript/src/es5.ohm.
@@ -53,12 +52,12 @@ LogiMat {
     PolygonDeclaration = polygon "(" ListOf<Expression, ","> ")" ";"
     
     DisplayDeclaration<type, value> = display type "=" value ";"
-    DisplayDeclarations = DisplayDeclaration<"color", TemplateExportIdentifier>
+    DisplayDeclarations = DisplayDeclaration<"color", (parsedExportIdentifier | parsedTemplateString)>
                         | DisplayDeclaration<"stroke", Expression>
                         | DisplayDeclaration<"thickness", Expression>
                         | DisplayDeclaration<"fill", Expression>
-                        | DisplayDeclaration<"click", (ParsedActionArgs | TemplateExportIdentifier)>
-                        | DisplayDeclaration<"label", templateString>
+                        | DisplayDeclaration<"click", (ParsedActionArgs | parsedExportIdentifier | parsedTemplateString)>
+                        | DisplayDeclaration<"label", embeddedTemplateString>
                         | DisplayDeclaration<"drag", ("x" | "y" | "xy")>
                         | DisplayDeclaration<"hidden", boolean>
                         | DisplayDeclaration<"outline", boolean>
@@ -68,6 +67,14 @@ LogiMat {
                         | DisplayDeclaration<"max", Expression>
                         | DisplayDeclaration<"step", Expression>
     ParsedActionArgs = TemplateExportIdentifier "(" ListOf<("index" | Expression), ","> ")"
+    
+    parsedTemplateString = "\\"" (parsedTemplateStringTemplate | stringCharacter)* "\\""
+    parsedTemplateStringTemplate = ~("\\"" | "\\\\" | lineTerminator) "\${" applySyntactic<Expression> "}"
+    
+    embeddedTemplateString = "\\"" (embeddedTemplateStringTemplate | stringCharacter)* "\\""
+    embeddedTemplateStringTemplate = ~("\\"" | "\\\\" | lineTerminator) "\${" applySyntactic<Expression> "}"
+    
+    parsedExportIdentifier = exportIdentifier
     
     Point = "(" Expression "," Expression ")"
     Array = "[" ListOf<Expression, ","> "]"
@@ -349,6 +356,21 @@ semantic.addOperation("parse", {
     ParsedActionArgs(name, _1, args, _2){
         return {type: "aargs", name: name.parse(), args: args.asIteration().parse()};
     },
+    parsedTemplateString(_1, string, _2){
+        return {type: "template", name: "parse", args: [{type: "template", name: "concat", args: string.parse(), context: TemplateContext.Expression}], context: TemplateContext.Expression}
+    },
+    parsedTemplateStringTemplate(_, expr, _2){
+        return {expression: true, value: expr.parse(), source: expr.sourceString};
+    },
+    embeddedTemplateString(_1, string, _2){
+        return {type: "template", name: "concat", args: string.parse(), context: TemplateContext.Expression};
+    },
+    embeddedTemplateStringTemplate(_, expr, _2){
+        return {type: "template", name: "wrap", args: [{expression: true, value: expr.parse(), source: expr.sourceString, nonStrict: true}], context: TemplateContext.Expression};
+    },
+    parsedExportIdentifier(id){
+        return {type: "template", name: "parse", args: [id.parse()], context: TemplateContext.Expression};
+    },
     Point(_1, p1, _2, p2, _3){
         return [p1.parse(), p2.parse()];
     },
@@ -595,6 +617,7 @@ export interface TemplateExpression {
     expression: true;
     value: Expression;
     source: string;
+    nonStrict?: boolean;
 }
 export interface Template {
     type: "template" | "templatefunction";

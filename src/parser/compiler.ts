@@ -144,6 +144,18 @@ export const Compile = async (input: string, useTex: boolean = false, noFS = fal
 
             if(args.length > 2 && typeof(args[2]) === "object" && args[2]["block"]) return args[2]["value"];
             return "";
+        },
+        parse: (args, state1: LogimatTemplateState, context) => {
+            if(context !== TemplateContext.Expression) throw new Error("This template can only be ran inside of an expression!");
+            if(args.length < 1 || typeof(args[0]) !== "string" || !args[0]) throw new Error("A value to parse is required!");
+
+            return HandleName(args[0]);
+        },
+        wrap: (args, state1: LogimatTemplateState, context) => {
+            if(context !== TemplateContext.Expression) throw new Error("This template can only be ran inside of an expression!");
+            if(args.length < 1 || typeof(args[0]) !== "string" || !args[0]) throw new Error("A value to wrap is required!");
+
+            return "${" + args[0] + "}";
         }
     };
 
@@ -310,8 +322,14 @@ const HandleTemplate = async (templateDeclaration: Template, templates: Record<s
                         const value = Object.values(handled).join("");
 
                         const parsed = parseFloat(value);
-                        if(isNaN(parsed)) throw new Error("The input \"" + arg["source"] + "\" cannot be evaluated to a number. Expressions input into templates must evaluate to numbers, and can only use defined variables.");
+                        if(isNaN(parsed)) {
+                            if(arg["nonStrict"] && typeof(handled) === "string") {
+                                templateArgs.push(handled);
+                                continue;
+                            }
 
+                            throw new Error("The input \"" + arg["source"] + "\" cannot be evaluated to a number. Expressions input into templates must evaluate to numbers, and can only use defined variables.");
+                        }
                         templateArgs.push(parsed);
                         continue;
                     }
@@ -326,12 +344,22 @@ const HandleTemplate = async (templateDeclaration: Template, templates: Record<s
                         vars: Object.fromEntries(Object.entries(state.logimat.definitions).filter(([key, value]) => typeof(value) === "number")) as Record<string, string>
                     });
 
-                    const simplified = SimplifyExpression(compiled, false, true, definedNames, {});
+                    const simplified = SimplifyExpression(compiled, false, !arg["nonStrict"], definedNames, {});
 
                     const parsed = parseFloat(simplified);
-                    if(isNaN(parsed)) throw new Error("The input \"" + arg["source"] + "\" cannot be evaluated to a number. Expressions input into templates must evaluate to numbers, and can only use defined variables.");
+                    if(isNaN(parsed)) {
+                        if(arg["nonStrict"]) {
+                            templateArgs.push(simplified);
+                            continue;
+                        }
+
+                        throw new Error("The input \"" + arg["source"] + "\" cannot be evaluated to a number. Expressions input into templates must evaluate to numbers, and can only use defined variables.");
+                    }
 
                     templateArgs.push(parsed);
+                    continue;
+                } else if(typeof(arg) === "object") {
+                    templateArgs.push(await TraverseTemplatesObj(arg, templates, state, ref) as TemplateArg);
                     continue;
                 }
 
@@ -358,7 +386,7 @@ const HandleTemplate = async (templateDeclaration: Template, templates: Record<s
         return {type: "templatefunction", context: templateDeclaration.context, function: output};
     }
 
-    if(name === "concat") return output;
+    if(["concat", "parse", "wrap"].includes(name)) return output;
 
     //TODO: Allow templates to import other templates.
 
@@ -374,8 +402,6 @@ const HandleTemplate = async (templateDeclaration: Template, templates: Record<s
             }
 
             return expr;
-        case TemplateContext.Identifier:
-            return output;
     }
 
     return [];
