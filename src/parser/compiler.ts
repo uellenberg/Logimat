@@ -295,7 +295,7 @@ const HandleTemplate = async (templateDeclaration: Template, templates: Record<s
             const templateArgs: TemplateArgs = [];
 
             for(const arg of templateDeclaration.args) {
-                if(arg["expression"]) {
+                if(arg && arg["expression"]) {
                     const definedNames = Object.keys(state.logimat.definitions).filter(key => typeof(state.logimat.definitions[key]) === "number");
 
                     const handled = await TraverseTemplatesObj(arg["value"], templates, state, ref);
