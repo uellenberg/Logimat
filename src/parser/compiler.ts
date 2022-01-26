@@ -285,10 +285,19 @@ const HandleTemplate = async (templateDeclaration: Template, templates: Record<s
                     const definedNames = Object.keys(state.logimat.definitions).filter(key => typeof(state.logimat.definitions[key]) === "number");
 
                     const handled = await TraverseTemplatesObj(arg["value"], templates, state, ref);
-                    //Handle raw numbers.
-                    const value = handled.hasOwnProperty("type") ? handled : Object.values(handled).join("");
 
-                    const compiled = CompileExpression(value as Expression, {
+                    //Handle special cases like raw numbers and non-numerical definitions.
+                    if(handled.hasOwnProperty("type")) {
+                        if(handled["type"] === "v" && handled["args"] && state.logimat.definitions.hasOwnProperty(handled["args"][0])) {
+                            templateArgs.push(state.logimat.definitions[handled["args"][0]]);
+                            continue;
+                        }
+                    } else {
+                        templateArgs.push(Object.values(handled).join(""));
+                        continue;
+                    }
+
+                    const compiled = CompileExpression(handled as Expression, {
                         inlines: {},
                         varIdx: {value: 0},
                         names: definedNames,
