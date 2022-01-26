@@ -160,11 +160,6 @@ inherits@2, inherits@^2.0.1, inherits@~2.0.1, inherits@~2.0.3:
   resolved "https://registry.yarnpkg.com/inherits/-/inherits-2.0.4.tgz#0fa2c64f932917c3433a0ded55363aae37416b7c"
   integrity sha512-k/vGaX4/Yla3WzyMCvTQOXYeIHvqOKtnqBduzTHpzpQZzAskKMhZ2K+EnBiSM9zGSoIFeMpXKxa4dYeZIQqewQ==
 
-is-buffer@^2.0.4:
-  version "2.0.5"
-  resolved "https://registry.yarnpkg.com/is-buffer/-/is-buffer-2.0.5.tgz#ebc252e400d22ff8d77fa09888821a24a658c191"
-  integrity sha512-i2R6zNFDwgEHJyQUtJEk0XFi1i0dPFn/oqjK3/vPCcDeJvW5NQ83V8QbicfF1SupOaB0h8ntgBC2YiE7dfyctQ==
-
 is-fullwidth-code-point@^3.0.0:
   version "3.0.0"
   resolved "https://registry.yarnpkg.com/is-fullwidth-code-point/-/is-fullwidth-code-point-3.0.0.tgz#f116f8064fe90b3f7844a38997c0b75051269f1d"
@@ -220,13 +215,10 @@ noms@0.0.0:
     inherits "^2.0.1"
     readable-stream "~1.0.31"
 
-ohm-js@^15.5.0:
-  version "15.5.0"
-  resolved "https://registry.yarnpkg.com/ohm-js/-/ohm-js-15.5.0.tgz#45d23f4bbf52281853d35524ccf62a0a4663f8b4"
-  integrity sha512-pmTx/SXZLMekLXJi0V6TEfESpPCSd5B95pWKaY+1ZIgvV5IEUiP2K3EdkESbLZ4VpO94oNCEJ2OTmQyzxSklmA==
-  dependencies:
-    is-buffer "^2.0.4"
-    util-extend "^1.0.3"
+ohm-js@^16.2.0:
+  version "16.2.0"
+  resolved "https://registry.yarnpkg.com/ohm-js/-/ohm-js-16.2.0.tgz#4ce8dacc75d61f7d06777a7694a5a21543dec806"
+  integrity sha512-vUZv4Jwf9+aQQ4t23L/bJLJA/T+A96GWk3LmlxAqViyyzQl7G+FECZASsNBYR/6TQPqx9zEQLBJDPV1N6lTJnQ==
 
 once@^1.3.0:
   version "1.4.0"
@@ -348,11 +340,6 @@ util-deprecate@~1.0.1:
   version "1.0.2"
   resolved "https://registry.yarnpkg.com/util-deprecate/-/util-deprecate-1.0.2.tgz#450d4dc9fa70de732762fbd2d4a28981419a0ccf"
   integrity sha1-RQ1Nyfpw3nMnYvvS1KKJgUGaDM8=
-
-util-extend@^1.0.3:
-  version "1.0.3"
-  resolved "https://registry.yarnpkg.com/util-extend/-/util-extend-1.0.3.tgz#a7c216d267545169637b3b6edc6ca9119e2ff93f"
-  integrity sha1-p8IW0mdUUWljeztu3GypEZ4v+T8=
 
 wrap-ansi@^7.0.0:
   version "7.0.0"

@@ -563,6 +563,9 @@ semantic.addOperation("parse", {
     },
     stringCharacter_escaped(_, str){
         return str.parse();
+    },
+    _iter(...children) {
+        return children.map(c => c.parse());
     }
 });
 
