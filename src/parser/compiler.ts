@@ -86,7 +86,7 @@ export const Compile = async (input: string, useTex: boolean = false, noFS = fal
 
             return "setFile!(\"" + realPath + "\");" + val + "setFile!();";
         },
-        setFile: (args, state1: LogimatTemplateState, context) => {
+        setfile: (args, state1: LogimatTemplateState, context) => {
             //If we have an argument, push it, otherwise remove the current path.
             if(typeof(args[0]) === "string") state1.logimat.files.push(args[0]);
             else state1.logimat.files.pop();
