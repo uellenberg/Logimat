@@ -290,7 +290,7 @@ const HandleTemplate = async (templateDeclaration: Template, templates: Record<s
 
                     const compiled = CompileExpression(value as Expression, {
                         inlines: {},
-                        mapIdx: {value: 0},
+                        varIdx: {value: 0},
                         names: definedNames,
                         stack: [],
                         state,
@@ -358,7 +358,7 @@ const InternalCompile = (useTex: boolean, tree: OuterDeclaration[], inlines: Rec
     const outerNames = GetDeclaredNames(tree);
     const display: Record<string, string> = {};
 
-    let data: CompileData = {inlines, templates, state, stack, names: [], vars: {}, mapIdx: {value: 1}};
+    let data: CompileData = {inlines, templates, state, stack, names: [], vars: {}, varIdx: {value: 1}};
 
     for (const declaration of tree) {
         if (declaration.modifier === "inline") continue;
@@ -372,7 +372,7 @@ const InternalCompile = (useTex: boolean, tree: OuterDeclaration[], inlines: Rec
             stack,
             names,
             vars: {},
-            mapIdx: data.mapIdx
+            varIdx: data.varIdx
         };
 
         switch(declaration.type) {
@@ -670,15 +670,37 @@ const CompileExpression = (expression: Expression, data: CompileData) : string =
 
             return name;
         case "sum":
-            //Make the variable name used for mapping a declared variable, in order to make it work in strict mode.
-            data.names.push(<string>args[0]);
+            const sumName = "v_" + data.varIdx.value++;
 
-            return "sum(" + args[0] + "," + args[1] + "," + args[2] + "," + CompileBlock(<Statement[]>args[3], data, "", {}) + ")";
+            //Map the user-chosen variable to generated name.
+            const sumVar = {[<string>args[0]]: sumName};
+
+            //Make the variable name used here a declared variable, in order to make it work in strict mode.
+            data.names.push(sumName);
+
+            return "sum(" + sumName + "," + args[1] + "," + args[2] + "," + CompileBlock(<Statement[]>args[3], {
+                ...data,
+                vars: {
+                    ...data.vars,
+                    ...sumVar
+                }
+            }, "", {}) + ")";
         case "prod":
-            //Make the variable name used for mapping a declared variable, in order to make it work in strict mode.
-            data.names.push(<string>args[0]);
+            const prodName = "v_" + data.varIdx.value++;
 
-            return "prod(" + args[0] + "," + args[1] + "," + args[2] + "," + CompileBlock(<Statement[]>args[3], data, "", {}) + ")";
+            //Map the user-chosen variable to generated name.
+            const prodVar = {[<string>args[0]]: prodName};
+
+            //Make the variable name used here a declared variable, in order to make it work in strict mode.
+            data.names.push(prodName);
+
+            return "prod(" + prodVar + "," + args[1] + "," + args[2] + "," + CompileBlock(<Statement[]>args[3], {
+                ...data,
+                vars: {
+                    ...data.vars,
+                    ...prodVar
+                }
+            }, "", {}) + ")";
         case "b":
             return CompileBlock(<Statement[]>expression.args[0], data, "", {});
         case "a_f":
@@ -705,7 +727,7 @@ const CompileExpression = (expression: Expression, data: CompileData) : string =
 
             return "array_filter(" + args[0] + "," + filterFunc + ")";
         case "a_m":
-            const mapName = "m_v" + data.mapIdx.value++;
+            const mapName = "v_" + data.varIdx.value++;
 
             //Map the user-chosen variable to generated name.
             const mapVar = {[<string>args[1]]: mapName};
@@ -749,5 +771,5 @@ interface CompileData {
     vars: Record<string, string>;
     stack: string[];
     names: string[];
-    mapIdx: {value: number};
+    varIdx: {value: number};
 }

@@ -109,8 +109,8 @@ LogiMat {
     
     Ternary = Expression "?" Expression ":" Expression
 
-    Sum = sum "(" TemplateExportIdentifier "=" Expression ";" Expression ")" StateBlock
-    Prod = prod "(" TemplateExportIdentifier "=" Expression ";" Expression ")" StateBlock
+    Sum = sum "(" TemplateIdentifier "=" Expression ";" Expression ")" StateBlock
+    Prod = prod "(" TemplateIdentifier "=" Expression ";" Expression ")" StateBlock
     
     PrimaryExpression = state -- state
                       | templateName "(" TemplateArgs ")"   -- template
