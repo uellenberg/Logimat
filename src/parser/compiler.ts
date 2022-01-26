@@ -21,7 +21,7 @@ import {SimplifyExpression} from "./simplify";
 import {TemplateArg, TemplateArgs, TemplateContext, TemplateFunction, TemplateModule, TemplateState} from "../types";
 import path from "path";
 import * as fs from "fs";
-import {HandleName, opMap} from "./util";
+import {HandleName, isNumeric, opMap} from "./util";
 import piecewiseOps from "../libs/piecewiseOps";
 import nonPiecewiseOps from "../libs/nonPiecewiseOps";
 
@@ -321,7 +321,7 @@ const HandleTemplate = async (templateDeclaration: Template, templates: Record<s
                     } else {
                         const value = Object.values(handled).join("");
 
-                        if(isNaN(value)) {
+                        if(!isNumeric(value)) {
                             if(arg["nonStrict"] && typeof(handled) === "string") {
                                 templateArgs.push(handled);
                                 continue;
@@ -345,7 +345,7 @@ const HandleTemplate = async (templateDeclaration: Template, templates: Record<s
 
                     const simplified = SimplifyExpression(compiled, false, !arg["nonStrict"], definedNames, {});
 
-                    if(isNaN(simplified)) {
+                    if(!isNumeric(simplified)) {
                         if(arg["nonStrict"]) {
                             templateArgs.push(simplified);
                             continue;

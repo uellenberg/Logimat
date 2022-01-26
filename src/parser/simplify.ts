@@ -1,6 +1,13 @@
-import {MathNode, simplify} from "mathjs";
-import {HandleName} from "./util";
+import {create, all, MathNodeCommon, FunctionNode, MathNode} from "mathjs";
+import {HandleName, isNumeric} from "./util";
 import {builtinMultiArgs, builtinOneArg, builtinThreeArgs, builtinTwoArgs, builtinZeroArg, constants} from "./builtin";
+
+const math = create(all);
+
+//Disable the range function because it conflicts with Logimat's.
+delete math["range"];
+delete math["expression"]["transform"]["range"];
+delete math["expression"]["mathWithTransform"]["range"];
 
 export const SimplifyExpression = (input: string, useTex: boolean, strict: boolean, names: string[], map: Record<string, string>) : string => {
     if(map.hasOwnProperty(input)) return map[input];
@@ -8,7 +15,7 @@ export const SimplifyExpression = (input: string, useTex: boolean, strict: boole
     const newNames = names.concat(builtinNames);
 
     try {
-        const res = simplify(input, simplifyRules, {}, {exactFractions: false});
+        const res = math.simplify(input, simplifyRules, {}, {exactFractions: false});
         //They say they return a string but they can sometimes return numbers.
         const text = useTex ? res.toTex(getTexOptions(strict, newNames)).toString() : res.toString(getStringOptions(strict, newNames)).toString();
         map[input] = text;
@@ -20,7 +27,7 @@ export const SimplifyExpression = (input: string, useTex: boolean, strict: boole
     }
 }
 
-const simplifyRules = simplify["rules"].concat([
+const simplifyRules = math.simplify["rules"].concat([
     //Or
     "n | 1 -> 1",
     "1 | n -> 1",
@@ -36,8 +43,8 @@ const simplifyRules = simplify["rules"].concat([
     "if_func(1,n1,n2) -> n1"
 ]);
 
-const HandleFunction = (node: MathNode, options: object, builtIn: boolean = false) : string => {
-    return (builtIn ? "\\operatorname{" : "") + (<MathNode><unknown>node.fn).toString(options) + (builtIn ? "}" : "") + "(" + node.args.map(arg => arg.toString(options)).join(",") + ")";
+const HandleFunction = (node: FunctionNode, options: object, builtIn: boolean = false) : string => {
+    return (builtIn ? "\\operatorname{" : "") + node.fn.toString(options) + (builtIn ? "}" : "") + "(" + node.args.map(arg => arg.toString(options)).join(",") + ")";
 }
 
 const operatorMap = {
@@ -56,14 +63,14 @@ const handle = (node: MathNode, options: Options, tex: boolean) : string => {
     options.secondaryBinary = false;
 
     //Handle numerical values.
-    if(!isNaN(node.value)) {
+    if(node.type === "ConstantNode" && !isNaN(node.value)) {
         return node.value;
     }
 
     //Handle default operators.
-    if(node.op) {
+    if(node.type === "OperatorNode" && node.op) {
         if(node.fn?.startsWith("unary")) {
-            if(node.args[0]?.op) {
+            if(node.args[0]?.type === "OperatorNode" && node.args[0]?.op) {
                 return node.op + "(" + HandleNode(node.args[0], options, tex) + ")";
             }
 
@@ -157,7 +164,7 @@ const handle = (node: MathNode, options: Options, tex: boolean) : string => {
         if(op === "!=") {
             node.op = "=";
             node.args = [node.args[1], node.args[0]];
-            return functions["if_func"](<MathNode>{args: [node, {value: 0}, {value: 1}]}, options, tex);
+            return functions["if_func"](<FunctionNode>{args: [node, {value: 0}, {value: 1}]}, options, tex);
         }
 
         let a1 = HandleNode(node.args[0], options, tex);
@@ -165,7 +172,7 @@ const handle = (node: MathNode, options: Options, tex: boolean) : string => {
 
         const pA1 = parseFloat(a1);
         const pA2 = parseFloat(a2);
-        const numeric = !isNaN(a1) && !isNaN(a2);
+        const numeric = isNumeric(a1) && isNumeric(a2);
 
         //Handle logical operators.
         if(["==", ">", ">=", "<", "<="].includes(op)) {
@@ -213,8 +220,23 @@ const handle = (node: MathNode, options: Options, tex: boolean) : string => {
         //If the operator is * and they are either 1a, a1, or aa, and neither operand is a point or list.
         else if(
             node.op === "*" &&
-            ((node.args[0].name && node.args[1].name) || (node.args[0].value && node.args[1].name) || (node.args[0].name && node.args[1].value)) &&
-            !((node.args[0].fn && typeof(node.args[0].fn) === "object" && ["point", "array"].includes(node.args[0].fn["name"])) || (node.args[1].fn && typeof(node.args[1].fn) === "object" && ["point", "array"].includes(node.args[1].fn["name"])))
+            (
+                ((node.args[0].type === "SymbolNode" || node.args[0].type === "FunctionNode") && (node.args[1].type === "SymbolNode" || node.args[1].type === "FunctionNode")) ||
+                (node.args[0].type === "ConstantNode" && (node.args[1].type === "SymbolNode" || node.args[1].type === "FunctionNode")) ||
+                ((node.args[0].type === "SymbolNode" || node.args[0].type === "FunctionNode") && node.args[1].type === "ConstantNode")
+            ) &&
+            !(
+                (
+                    node.args[0].type === "FunctionNode" &&
+                    typeof(node.args[0].fn) === "object" &&
+                    ["point", "array"].includes(node.args[0].fn["name"])
+                ) ||
+                (
+                    node.args[1].type === "FunctionNode" &&
+                    typeof(node.args[1].fn) === "object" &&
+                    ["point", "array"].includes(node.args[1].fn["name"])
+                )
+            )
         ) {
             return `${a1}${a2}`;
         }
@@ -222,8 +244,8 @@ const handle = (node: MathNode, options: Options, tex: boolean) : string => {
         //If any of the ones here are an incompatible operation, encapsulate them.
 
         const operator = node.op;
-        const op1 = node.args[0].op;
-        const op2 = node.args[1].op;
+        const op1 = node.args[0].type === "OperatorNode" ? node.args[0].op : null;
+        const op2 = node.args[1].type === "OperatorNode" ? node.args[1].op : null;
 
         //We want to group any non-single terms that have an operator that isn't equal to the current operator.
         if(!IsSingleTerm(op1) && op1 !== operator) {
@@ -242,7 +264,7 @@ const handle = (node: MathNode, options: Options, tex: boolean) : string => {
     }
 
     //Handle functions.
-    if(node.fn && typeof(node.fn) === "object" && node.fn["name"]) {
+    if(node.type === "FunctionNode" && typeof(node.fn) === "object" && node.fn["name"]) {
         let name: string = node.fn["name"];
 
         //If we can simplify the function, do so.
@@ -286,14 +308,14 @@ const handle = (node: MathNode, options: Options, tex: boolean) : string => {
         }
 
         if(tex) {
-            return (<MathNode><unknown>node.fn).toTex(options) + "\\left(" + node.args.map(arg => arg.toTex(options)).join(",\\ ") + "\\right)";
+            return (<MathNodeCommon><unknown>node.fn).toTex(options) + "\\left(" + node.args.map(arg => arg.toTex(options)).join(",\\ ") + "\\right)";
         }
 
         return HandleFunction(node, options);
     }
 
     //Handle variables.
-    if(node.name) {
+    if(node.type === "SymbolNode") {
         if(options.strict && !options.names.includes(node.name)) {
             throw new Error("The function or variable \"" + node.name + "\" does not exist.");
         }
@@ -302,6 +324,8 @@ const handle = (node: MathNode, options: Options, tex: boolean) : string => {
         return HandleName(node.name);
     }
 
+    console.log(node, node.type);
+    throw new Error();
     return "";
 }
 
@@ -314,7 +338,7 @@ const Encapsulate = (val: string, tex: boolean) : string => {
     return tex ? `\\left(${val}\\right)` : `(${val})`;
 }
 
-const HandleNode = (node: MathNode, options: object, tex: boolean) : string => {
+const HandleNode = (node: MathNodeCommon, options: object, tex: boolean) : string => {
     if(!node) return "";
     //They say they return a string but they can sometimes return numbers.
     return tex ? node.toTex(options).toString() : node.toString(options).toString();
@@ -352,13 +376,13 @@ interface Options {
     secondaryBinary: boolean;
 }
 
-const simplification: Record<string, (node: MathNode, options: object, tex: boolean) => string | null> = {
+const simplification: Record<string, (node: FunctionNode, options: object, tex: boolean) => string | null> = {
     array_idx(node, options, tex) {
         const handledIndexer = HandleNode(node.args[1], options, tex);
         const indexer = parseInt(handledIndexer);
 
         //If the indexer is a number and the array is an array (and not a variable), we can simplify it.
-        if(!isNaN(handledIndexer) && typeof(node.args[0]?.fn) === "object" && node.args[0]?.fn["name"] === "array") {
+        if(isNumeric(handledIndexer) && node.args[0]?.type === "FunctionNode" && typeof(node.args[0]?.fn) === "object" && node.args[0]?.fn["name"] === "array") {
             return HandleNode(node.args[0].args[indexer-1], options, tex);
         }
 
@@ -366,7 +390,7 @@ const simplification: Record<string, (node: MathNode, options: object, tex: bool
     },
     point_x(node, options, tex) {
         //If the point is a point (and not a variable), we can simplify it.
-        if(typeof(node.args[0]?.fn) === "object" && node.args[0]?.fn["name"] === "point") {
+        if(node.args[0]?.type === "FunctionNode" && typeof(node.args[0]?.fn) === "object" && node.args[0]?.fn["name"] === "point") {
             return HandleNode(node.args[0].args[0], options, tex);
         }
 
@@ -374,7 +398,7 @@ const simplification: Record<string, (node: MathNode, options: object, tex: bool
     },
     point_y(node, options, tex) {
         //If the point is a point (and not a variable), we can simplify it.
-        if(typeof(node.args[0]?.fn) === "object" && node.args[0]?.fn["name"] === "point") {
+        if(node.args[0]?.type === "FunctionNode" && typeof(node.args[0]?.fn) === "object" && node.args[0]?.fn["name"] === "point") {
             return HandleNode(node.args[0].args[1], options, tex);
         }
 
@@ -382,7 +406,7 @@ const simplification: Record<string, (node: MathNode, options: object, tex: bool
     }
 };
 
-const functions: Record<string, (node: MathNode, options: object, tex: boolean) => string> = {
+const functions: Record<string, (node: FunctionNode, options: object, tex: boolean) => string> = {
     sum(node, options, tex) {
         return `{\\sum_{${HandleNode(node.args[0], options, tex)}=${HandleNode(node.args[1], options, tex)}}^{${HandleNode(node.args[2], options, tex)}}{${tex ? "" : "("}${HandleNode(node.args[3], options, tex)}${tex ? "" : ")"}}}`;
     },
@@ -396,7 +420,7 @@ const functions: Record<string, (node: MathNode, options: object, tex: boolean) 
         let base = HandleNode(node.args[0], options, tex);
         const exp = HandleNode(node.args[1], options, tex);
 
-        if((node.args[0].fn && typeof(node.args[0].fn) === "object" && node.args[0].fn["name"] === "pow") || /[-+*/]/g.test(base)) {
+        if((node.args[0].type === "FunctionNode" && typeof(node.args[0].fn) === "object" && node.args[0].fn["name"] === "pow") || /[-+*/]/g.test(base)) {
             base = "(" + base + ")";
         }
 
@@ -491,7 +515,7 @@ const functions: Record<string, (node: MathNode, options: object, tex: boolean) 
     }
 };
 
-const texFunctions: Record<string, (node: MathNode, options: object) => string> = {
+const texFunctions: Record<string, (node: FunctionNode, options: object) => string> = {
     mod(node, options) {
         return `\\operatorname{mod}\\left(${node.args[0].toTex(options)},\\ ${node.args[1].toTex(options)}\\right)`;
     },
