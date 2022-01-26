@@ -35,7 +35,7 @@
     "typescript": "^4.3.5"
   },
   "dependencies": {
-    "mathjs": "^9.4.4",
+    "mathjs": "^10.1.0",
     "ohm-js": "^16.2.0",
     "yargs": "^17.1.1"
   }
