@@ -1,0 +1,46 @@
+//This file contains the code used to compute the fractal itself. The values generated from here are then passed on to the renderer.
+
+//Computes one iteration.
+export function i_t(x, y, c) {
+    //If we've exceeded the maximum size, don't run any more iterations and just return the current value.
+    if(cAbs(c[1]) >= max_size) {
+        state = c;
+    } else {
+        //Run another iteration (z*z + x + yi) and increment the iteration count.
+        //We store the iteration count in a point because desmos can only work with lists that have the same elements. The y-value of the point is not used.
+        state = [cAdd(cMul(c[1], c[1]), (x, y)), (c[2].x+1, 0)];
+    }
+}
+
+//Calculate the fractional iteration count.
+export function f_rac(v) {
+    state = v[2].x + 1 - log_2(log(cAbs(v[1])));
+}
+
+//Find the iteration count for a point.
+inline function calculate(x, y) {
+    //Initialize it. The first (0, 0) is the point itself, and the other one stores the number of iterations. 
+    state = [(0, 0), (0, 0)];
+
+    //Run the iteration function on it for as many times as specififed.
+    iterate!({
+        state = i_t(x, y, state);
+    }, ITERATIONS);
+    
+    //Turn the point and iteration count into a fractional iteration count.
+    state = f_rac(state);
+}
+
+//Generates a set for a specific row.
+inline function gSet(num) {
+    //Loop through the image, divided by the number of splits we turn the image into (this creates a single split).
+    state = range(1, width * height/get!(SPLITS)).map(idx => {
+        //Get the x-position, centered at (0, 0).
+        const x = conv_1d_2d_x(idx, width) - width/2;
+        //Gets the y-position, centered at (0,0) and increased by the y-position of previous splits.
+        const y = conv_1d_2d_y(idx, width) - height/2 + height*(num-1)/get!(SPLITS);
+        
+        //Calculate the iteration count.
+        state = calculate(x/r_es + x_off, y/r_es + y_off);
+    });
+}
