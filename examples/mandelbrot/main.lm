@@ -4,7 +4,7 @@
 inline const width = 100;
 inline const height = 100;
 
-export const r_es = width/2 * 80;
+export const r_es = width/2 * 50;
 
 export const x_off = -.7326;
 export const y_off = 0.2411;

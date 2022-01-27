@@ -4,4 +4,4 @@ export const b_lack = rgb(0, 0, 0);
 display fill = 1;
 display thickness = 0;
 display color = b_lack;
-polygon((-1000, -1000), (1000, -1000), (1000, 1000), (-1000, 1000));
+polygon((-.5, -.5), (.5, -.5), (.5, .5), (-.5, .5));
