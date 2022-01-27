@@ -275,4 +275,23 @@ inline function map(input_start, input_end, output_start, output_end, val) {
 //between the two numbers.
 inline function lerp(from, to, amount) {
     state = from + (to - from) * amount;
+}
+
+//Stores a float and an integer into a single float. Digits defines the precision, and
+//should be at least as many digits that exist in the largest number.
+inline function pack(int, float, digits) {
+    const half = 10^(digits) / 2;
+    state = (int + half) + (float + half)*(10^digits);
+}
+
+//Extracts the float part from a packed number.
+inline function unpackFloat(packed, digits) {
+    const half = 10^(digits) / 2;
+    state = mod(packed, 10^digits) - half;
+}
+
+//Extracts the int part from a packed number.
+inline function unpackInt(packed, digits) {
+    const half = 10^(digits) / 2;
+    state = floor(packed / 10^digits) - half;
 }`;
