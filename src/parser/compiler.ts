@@ -199,12 +199,12 @@ export const Compile = async (input: string, useTex: boolean = false, noFS = fal
     let declarations: any[];
 
     try {
-        declarations = await TraverseTemplatesArr(tree.declarations, templates, state, templatesRef);
+        declarations = await TraverseTemplatesArr(tree.declarations, templates, state, templatesRef, simplificationMap);
 
         //Allow up to 50 layers of functions.
         while(templatesRef.handledTemplates && count < 50) {
             templatesRef.handledTemplates = false;
-            declarations = await TraverseTemplatesArr(declarations, templates, state, templatesRef);
+            declarations = await TraverseTemplatesArr(declarations, templates, state, templatesRef, simplificationMap);
 
             count++;
         }
@@ -218,7 +218,7 @@ export const Compile = async (input: string, useTex: boolean = false, noFS = fal
         //Allow up to 50 layers of functions.
         while(templatesRef.handledTemplates && count < 50) {
             templatesRef.handledTemplates = false;
-            declarations = await TraverseTemplatesArr(declarations, templates, state, templatesRef);
+            declarations = await TraverseTemplatesArr(declarations, templates, state, templatesRef, simplificationMap);
 
             count++;
         }
@@ -248,14 +248,14 @@ export const Compile = async (input: string, useTex: boolean = false, noFS = fal
     }
 }
 
-const TraverseTemplatesArr = async (input: any[], templates: Record<string, TemplateFunction>, state: LogimatTemplateState, ref: {handledTemplates: boolean}) : Promise<any[]> => {
+const TraverseTemplatesArr = async (input: any[], templates: Record<string, TemplateFunction>, state: LogimatTemplateState, ref: {handledTemplates: boolean}, simplificationMap: Record<string, string>) : Promise<any[]> => {
     const output: any[] = [];
 
     for (const val of input) {
         if(Array.isArray(val)) {
-            output.push([...await TraverseTemplatesArr(val, templates, state, ref)]);
+            output.push([...await TraverseTemplatesArr(val, templates, state, ref, simplificationMap)]);
         } else if(typeof(val) === "object") {
-            const newVal = await TraverseTemplatesObj(val, templates, state, ref);
+            const newVal = await TraverseTemplatesObj(val, templates, state, ref, simplificationMap);
             if(Array.isArray(newVal)) output.push(...newVal);
             else output.push(newVal);
         } else {
@@ -266,11 +266,11 @@ const TraverseTemplatesArr = async (input: any[], templates: Record<string, Temp
     return output;
 }
 
-const TraverseTemplatesObj = async (input: object, templates: Record<string, TemplateFunction>, state: LogimatTemplateState, ref: {handledTemplates: boolean}) : Promise<object | any[]> => {
+const TraverseTemplatesObj = async (input: object, templates: Record<string, TemplateFunction>, state: LogimatTemplateState, ref: {handledTemplates: boolean}, simplificationMap: Record<string, string>) : Promise<object | any[]> => {
     if(input == null) return null;
 
     if(input.hasOwnProperty("type") && ["template", "templatefunction"].includes(input["type"])) {
-        return await HandleTemplate(<Template>input, templates, state, ref);
+        return await HandleTemplate(<Template>input, templates, state, ref, simplificationMap);
     }
 
     const output: object = {};
@@ -278,9 +278,9 @@ const TraverseTemplatesObj = async (input: object, templates: Record<string, Tem
     for (const key in input) {
         const val = input[key];
         if(Array.isArray(val)) {
-            output[key] = await TraverseTemplatesArr(val, templates, state, ref);
+            output[key] = await TraverseTemplatesArr(val, templates, state, ref, simplificationMap);
         } else if(typeof(val) === "object") {
-            output[key] = await TraverseTemplatesObj(val, templates, state, ref);
+            output[key] = await TraverseTemplatesObj(val, templates, state, ref, simplificationMap);
         } else {
             output[key] = val;
         }
@@ -289,7 +289,7 @@ const TraverseTemplatesObj = async (input: object, templates: Record<string, Tem
     return output;
 }
 
-const HandleTemplate = async (templateDeclaration: Template, templates: Record<string, TemplateFunction>, state: LogimatTemplateState, ref: {handledTemplates: boolean}) : Promise<any[] | object> => {
+const HandleTemplate = async (templateDeclaration: Template, templates: Record<string, TemplateFunction>, state: LogimatTemplateState, ref: {handledTemplates: boolean}, simplificationMap: Record<string, string>) : Promise<any[] | object> => {
     let output;
 
     const name = templateDeclaration.name?.trim()?.toLowerCase();
@@ -310,7 +310,7 @@ const HandleTemplate = async (templateDeclaration: Template, templates: Record<s
                 if(arg && arg["expression"]) {
                     const definedNames = Object.keys(state.logimat.definitions).filter(key => typeof(state.logimat.definitions[key]) === "number");
 
-                    const handled = await TraverseTemplatesObj(arg["value"], templates, state, ref);
+                    const handled = await TraverseTemplatesObj(arg["value"], templates, state, ref, simplificationMap);
 
                     //Handle special cases like raw numbers and non-numerical definitions.
                     if(handled.hasOwnProperty("type")) {
@@ -343,7 +343,7 @@ const HandleTemplate = async (templateDeclaration: Template, templates: Record<s
                         vars: Object.fromEntries(Object.entries(state.logimat.definitions).filter(([key, value]) => typeof(value) === "number")) as Record<string, string>
                     });
 
-                    const simplified = SimplifyExpression(compiled, false, !arg["nonStrict"], definedNames, {});
+                    const simplified = SimplifyExpression(compiled, false, !arg["nonStrict"], definedNames, simplificationMap);
 
                     if(!isNumeric(simplified)) {
                         if(arg["nonStrict"]) {
@@ -357,7 +357,7 @@ const HandleTemplate = async (templateDeclaration: Template, templates: Record<s
                     templateArgs.push(parseFloat(simplified));
                     continue;
                 } else if(typeof(arg) === "object") {
-                    templateArgs.push(await TraverseTemplatesObj(arg, templates, state, ref) as TemplateArg);
+                    templateArgs.push(await TraverseTemplatesObj(arg, templates, state, ref, simplificationMap) as TemplateArg);
                     continue;
                 }
 
@@ -390,13 +390,13 @@ const HandleTemplate = async (templateDeclaration: Template, templates: Record<s
 
     switch(templateDeclaration.context) {
         case TemplateContext.OuterDeclaration:
-            return await TraverseTemplatesArr(GetTree(output).declarations, templates, state, ref);
+            return await TraverseTemplatesArr(GetTree(output).declarations, templates, state, ref, simplificationMap);
         case TemplateContext.InnerDeclaration:
-            return await TraverseTemplatesArr(GetStatementsTree(output), templates, state, ref);
+            return await TraverseTemplatesArr(GetStatementsTree(output), templates, state, ref, simplificationMap);
         case TemplateContext.Expression:
             const expr = GetExpression(output);
             if(typeof(expr) === "object") {
-                return await TraverseTemplatesObj(expr, templates, state, ref);
+                return await TraverseTemplatesObj(expr, templates, state, ref, simplificationMap);
             }
 
             return expr;
