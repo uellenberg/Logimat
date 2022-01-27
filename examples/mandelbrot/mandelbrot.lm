@@ -1,26 +1,48 @@
 //This file contains the code used to compute the fractal itself. The values generated from here are then passed on to the renderer.
 
+inline function pack(a, b, precision) {
+    state = a + b*(2^precision);
+}
+
+inline function unpackB(packed, precision) {
+    state = (packed - (packed % 2^precision)) / 2^precision;
+}
+
+inline function unpackA(packed, precision) {
+    const b = unpackB(packed, precision);
+    state = packed - b * 2^precision;
+}
+
+inline const pack_precision = 14;
+
 //Computes one iteration.
 export function i_t(x, y, c) {
+    const cPoint = (c.x, unpackA(c.y, pack_precision));
+    const iterations = unpackB(c.y, pack_precision);
+
     //If we've exceeded the maximum size, don't run any more iterations and just return the current value.
-    if(cAbs(c[1]) >= max_size) {
+    if(cAbs(cPoint) >= max_size) {
         state = c;
     } else {
         //Run another iteration (z*z + x + yi) and increment the iteration count.
         //We store the iteration count in a point because desmos can only work with lists that have the same elements. The y-value of the point is not used.
-        state = [cAdd(cMul(c[1], c[1]), (x, y)), (c[2].x+1, 0)];
+        const newPoint = cAdd(cMul(cPoint, cPoint), (x, y));
+        state = (newPoint.x, pack(newPoint.y, iterations+1, pack_precision));
     }
 }
 
 //Calculate the fractional iteration count.
 export function f_rac(v) {
-    state = v[2].x + 1 - log_2(log(cAbs(v[1])));
+    const cPoint = (v.x, unpackA(v.y, pack_precision));
+    const iterations = unpackB(v.y, pack_precision);
+
+    state = iterations + 1 - log_2(log(cAbs(cPoint)));
 }
 
 //Find the iteration count for a point.
 inline function calculate(x, y) {
-    //Initialize it. The first (0, 0) is the point itself, and the other one stores the number of iterations. 
-    state = [(0, 0), (0, 0)];
+    //Initialize it. The first number is the x-position, and the second is the y-position and iteration count packed together.
+    state = (0, 0);
 
     //Run the iteration function on it for as many times as specififed.
     iterate!({

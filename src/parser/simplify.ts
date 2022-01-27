@@ -17,7 +17,7 @@ export const SimplifyExpression = (input: string, useTex: boolean, strict: boole
     try {
         const res = math.simplify(input, simplifyRules, {}, {exactFractions: false});
         //They say they return a string but they can sometimes return numbers.
-        const text = useTex ? res.toTex(getTexOptions(strict, newNames)).toString() : res.toString(getStringOptions(strict, newNames)).toString();
+        const text = useTex ? res.toTex(getTexOptions(strict, newNames)) : res.toString(getStringOptions(strict, newNames));
         map[input] = text;
 
         return text;
@@ -43,7 +43,7 @@ const simplifyRules = math.simplify["rules"].concat([
     "if_func(1,n1,n2) -> n1"
 ]);
 
-const HandleFunction = (node: FunctionNode, options: object, builtIn: boolean = false) : string => {
+const HandleFunction = (node: FunctionNode, options: Options, builtIn: boolean = false) : string => {
     return (builtIn ? "\\operatorname{" : "") + node.fn.toString(options) + (builtIn ? "}" : "") + "(" + node.args.map(arg => arg.toString(options)).join(",") + ")";
 }
 
@@ -64,7 +64,7 @@ const handle = (node: MathNode, options: Options, tex: boolean) : string => {
 
     //Handle numerical values.
     if(node.type === "ConstantNode" && !isNaN(node.value)) {
-        return node.value;
+        return math.format(node.value, {notation: "fixed"});
     }
 
     //Handle default operators.
@@ -324,8 +324,6 @@ const handle = (node: MathNode, options: Options, tex: boolean) : string => {
         return HandleName(node.name);
     }
 
-    console.log(node, node.type);
-    throw new Error();
     return "";
 }
 
