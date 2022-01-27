@@ -94,20 +94,33 @@ export const Compile = async (input: string, useTex: boolean = false, noFS = fal
             return "";
         },
         iterate: (args, state1: LogimatTemplateState, context) => {
-            if(context !== TemplateContext.OuterDeclaration && context !== TemplateContext.InnerDeclaration) throw new Error("This cannot be used in expressions!");
             if(args.length < 1 || typeof(args[0]) !== "object" || !args[0]["block"]) throw new Error("A block to iterate is required!");
             if(args.length < 2 || typeof(args[1]) !== "number" || isNaN(args[1]) || args[1] < 1) throw new Error("A number specifying the number of times to iterate is required!");
 
             let output = "";
-            
-            for(let i = 0; i < args[1]; i++) {
-                output += args[0]["value"] + "\n";
+
+            if(args.length > 2 && typeof(args[2]) === "boolean" && args[2]) {
+                output += "[";
+
+                for(let i = 0; i < args[1]; i++) {
+                    output += "{" + args[0]["value"] + "}";
+                    if(i !== args[1]-1) output += ",\n";
+                }
+
+                output += "]";
+            } else {
+                if(context === TemplateContext.Expression) throw new Error("In order to use iterate inside of expressions, you must set it to output an array (by setting the third argument to \"true\").");
+
+                for(let i = 0; i < args[1]; i++) {
+                    output += args[0]["value"];
+                    if(i !== args[1]-1) output += "\n";
+                }
             }
-            
+
             return output;
         },
         define: (args, state1: LogimatTemplateState, context) => {
-            if(context !== TemplateContext.OuterDeclaration) throw new Error("This can only be used outside of any methods!");
+            if(context === TemplateContext.Expression) throw new Error("This template cannot be ran outside of an expression!");
             if(args.length < 1 || typeof(args[0]) !== "string" || !args[0]) throw new Error("A name is required!");
             if(args.length < 2) throw new Error("A value is required!");
 
