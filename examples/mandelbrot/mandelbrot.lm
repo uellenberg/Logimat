@@ -2,26 +2,19 @@
 
 inline const pack_digits = 6;
 
-export function p_a(a, b, c) => pack(a, b, c);
-export function u_a(a, b) => unpackFloat(a, b);
-export function u_b(a, b) => unpackInt(a, b);
-
-export const j = pack(100, 200, 6);
-export const k = unpackInt(pack(100, 200, 6), 6);
-
 //Computes one iteration.
 export function i_t(x, y, c) {
     const cPoint = (c.x, unpackFloat(c.y, pack_digits));
-    const iterations = u_b(c.y, pack_digits);
+    const iterations = unpackInt(c.y, pack_digits);
 
     //If we've exceeded the maximum size, don't run any more iterations and just return the current value.
-    if(cAbs(cPoint) >= max_size) {
+    if(distance(cPoint, (0, 0)) >= max_size) {
         state = c;
     } else {
         //Run another iteration (z*z + x + yi) and increment the iteration count.
         //We store the iteration count in a point because desmos can only work with lists that have the same elements. The y-value of the point is not used.
         const newPoint = cAdd(cMul(cPoint, cPoint), (x, y));
-        state = (newPoint.x, p_a(newPoint.y, iterations+1, pack_digits));
+        state = (newPoint.x, pack(newPoint.y, iterations+1, pack_digits));
     }
 }
 

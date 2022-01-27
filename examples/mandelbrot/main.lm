@@ -4,13 +4,13 @@
 inline const width = 100;
 inline const height = 100;
 
-export const r_es = width/200 * 8000;
+export const r_es = width/2 * 80;
 
-export const x_off = -.735;
-export const y_off = 0.2455;
+export const x_off = -.7326;
+export const y_off = 0.2411;
 
 //Defines the maximum size for something to be considered infinite.
-inline const max_size = 30;
+inline const max_size = 2;
 
 //Defines the number of iterations to use.
 define!(ITERATIONS, 20);
