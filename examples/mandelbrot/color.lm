@@ -12,7 +12,7 @@ inline function gColor(num, set) {
     //Loop through the image, divided by the number of splits we turn the image into (this creates a single split).
     state = range(1, width * height/get!(SPLITS)).map(idx => {
         //Find the color index from the iteration count, by mapping from 0-iterations to  1-colors.
-        const cIdx = map(0, get!(ITERATIONS), 1, length(c_olors1), set[idx]);
+        const cIdx = map(0, get!(ITERATIONS)*10, 1, length(c_olors1), set[idx]);
         
         //Find the colors above and below the index, as well as interpole value between them.
         const lower = floor(cIdx);

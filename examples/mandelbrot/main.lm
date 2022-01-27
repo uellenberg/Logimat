@@ -1,10 +1,10 @@
 //This file creates a rendering of the Mandelbrot set. It works by computing the number of iterations that each pixel takes to generate, then using that iteration number to color it based on a gradient.
 //Due to Desmos' limitations, only a 100x100 (10,000 element) grid of pixels is possible. This program gets around that by creating 4 200x50 strips of pixels (or whatever you have it configured to).
 
-inline const width = 200;
-inline const height = 200;
+inline const width = 100;
+inline const height = 100;
 
-export const r_es = 10000;
+export const r_es = width/200 * 8000;
 
 export const x_off = -.735;
 export const y_off = 0.2455;
@@ -13,11 +13,11 @@ export const y_off = 0.2455;
 inline const max_size = 30;
 
 //Defines the number of iterations to use.
-define!(ITERATIONS, 65);
+define!(ITERATIONS, 30);
 
 //Defines the amount of "splits" to use. For a 200x200 image, you need 4 splits (200*200 / 10,000 = 4).
 //This will create 4 images with 10,000 pixels each, which will be placed together to form a complete image.
-define!(SPLITS, 4);
+define!(SPLITS, 1);
 
 //Import everything.
 
