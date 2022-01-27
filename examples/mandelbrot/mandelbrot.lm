@@ -1,11 +1,18 @@
 //This file contains the code used to compute the fractal itself. The values generated from here are then passed on to the renderer.
 
-inline const pack_precision = 20;
+inline const pack_digits = 6;
+
+export function p_a(a, b, c) => pack(a, b, c);
+export function u_a(a, b) => unpackFloat(a, b);
+export function u_b(a, b) => unpackInt(a, b);
+
+export const j = pack(100, 200, 6);
+export const k = unpackInt(pack(100, 200, 6), 6);
 
 //Computes one iteration.
 export function i_t(x, y, c) {
-    const cPoint = (c.x, unpackA(c.y, pack_precision));
-    const iterations = unpackB(c.y, pack_precision);
+    const cPoint = (c.x, unpackFloat(c.y, pack_digits));
+    const iterations = u_b(c.y, pack_digits);
 
     //If we've exceeded the maximum size, don't run any more iterations and just return the current value.
     if(cAbs(cPoint) >= max_size) {
@@ -14,7 +21,7 @@ export function i_t(x, y, c) {
         //Run another iteration (z*z + x + yi) and increment the iteration count.
         //We store the iteration count in a point because desmos can only work with lists that have the same elements. The y-value of the point is not used.
         const newPoint = cAdd(cMul(cPoint, cPoint), (x, y));
-        state = (newPoint.x, pack(newPoint.y, iterations+1, pack_precision));
+        state = (newPoint.x, p_a(newPoint.y, iterations+1, pack_digits));
     }
 }
 
@@ -28,8 +35,8 @@ export function i_t10(x, y, c) {
 
 //Calculate the fractional iteration count.
 export function f_rac(v) {
-    const cPoint = (v.x, unpackA(v.y, pack_precision));
-    const iterations = unpackB(v.y, pack_precision);
+    const cPoint = (v.x, unpackFloat(v.y, pack_digits));
+    const iterations = unpackInt(v.y, pack_digits);
 
     state = iterations + 1 - log_2(log(cAbs(cPoint)));
 }
@@ -37,7 +44,7 @@ export function f_rac(v) {
 //Find the iteration count for a point.
 inline function calculate(x, y) {
     //Initialize it. The first number is the x-position, and the second is the y-position and iteration count packed together.
-    state = (0, pack(0, 0, pack_precision));
+    state = (0, pack(0, 0, pack_digits));
 
     //Run the iteration function on it for as many times as specified.
     iterate!({

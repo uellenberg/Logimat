@@ -721,7 +721,7 @@ const CompileExpression = (expression: Expression, data: CompileData) : string =
             const result = CompileBlock((<OuterFunctionDeclaration>data.inlines[<string>expression.args[0]].value).block, data, "", Object.fromEntries(fargnames.map((v, i) => [v, fargs[i]])));
             data.stack.pop();
 
-            return result;
+            return "(" + result + ")";
         case "v":
             const name = <string>expression.args[0];
 

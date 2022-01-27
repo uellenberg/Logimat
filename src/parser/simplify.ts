@@ -4,10 +4,12 @@ import {builtinMultiArgs, builtinOneArg, builtinThreeArgs, builtinTwoArgs, built
 
 const math = create(all);
 
-//Disable the range function because it conflicts with Logimat's.
-delete math["range"];
-delete math["expression"]["transform"]["range"];
-delete math["expression"]["mathWithTransform"]["range"];
+//Disable conflicting functions.
+for(const name of ["range"]) {
+    if(math.hasOwnProperty(name)) delete math[name];
+    if(math["expression"]["transform"].hasOwnProperty(name)) delete math["expression"]["transform"][name];
+    if(math["expression"]["mathWithTransform"].hasOwnProperty(name)) delete math["expression"]["mathWithTransform"][name];
+}
 
 export const SimplifyExpression = (input: string, useTex: boolean, strict: boolean, names: string[], map: Record<string, string>) : string => {
     if(map.hasOwnProperty(input)) return map[input];
@@ -217,29 +219,6 @@ const handle = (node: MathNode, options: Options, tex: boolean) : string => {
                 op = "+";
             }
         }
-        //If the operator is * and they are either 1a, a1, or aa, and neither operand is a point or list.
-        else if(
-            node.op === "*" &&
-            (
-                ((node.args[0].type === "SymbolNode" || node.args[0].type === "FunctionNode") && (node.args[1].type === "SymbolNode" || node.args[1].type === "FunctionNode")) ||
-                (node.args[0].type === "ConstantNode" && (node.args[1].type === "SymbolNode" || node.args[1].type === "FunctionNode")) ||
-                ((node.args[0].type === "SymbolNode" || node.args[0].type === "FunctionNode") && node.args[1].type === "ConstantNode")
-            ) &&
-            !(
-                (
-                    node.args[0].type === "FunctionNode" &&
-                    typeof(node.args[0].fn) === "object" &&
-                    ["point", "array"].includes(node.args[0].fn["name"])
-                ) ||
-                (
-                    node.args[1].type === "FunctionNode" &&
-                    typeof(node.args[1].fn) === "object" &&
-                    ["point", "array"].includes(node.args[1].fn["name"])
-                )
-            )
-        ) {
-            return `${a1}${a2}`;
-        }
 
         //If any of the ones here are an incompatible operation, encapsulate them.
 
@@ -258,6 +237,12 @@ const handle = (node: MathNode, options: Options, tex: boolean) : string => {
         switch(op) {
             case "/":
                 return `\\frac{${a1}}{${a2}}`;
+            case "^":
+                if((node.args[0].type === "FunctionNode" && typeof(node.args[0].fn) === "object" && node.args[0].fn["name"] === "pow") || /[-+*/]/g.test(a1)) {
+                    a1 = "(" + a1 + ")";
+                }
+
+                return `{${a1}}^{${a2}}`;
             default:
                 return `${a1}${op}${a2}`;
         }
@@ -381,7 +366,10 @@ const simplification: Record<string, (node: FunctionNode, options: object, tex: 
 
         //If the indexer is a number and the array is an array (and not a variable), we can simplify it.
         if(isNumeric(handledIndexer) && node.args[0]?.type === "FunctionNode" && typeof(node.args[0]?.fn) === "object" && node.args[0]?.fn["name"] === "array") {
-            return HandleNode(node.args[0].args[indexer-1], options, tex);
+            const handled = HandleNode(node.args[0].args[indexer-1], options, tex);
+
+            if(node.args[0].args[indexer-1].type === "OperatorNode") return "(" + handled + ")";
+            return handled;
         }
 
         return null;
@@ -389,7 +377,10 @@ const simplification: Record<string, (node: FunctionNode, options: object, tex: 
     point_x(node, options, tex) {
         //If the point is a point (and not a variable), we can simplify it.
         if(node.args[0]?.type === "FunctionNode" && typeof(node.args[0]?.fn) === "object" && node.args[0]?.fn["name"] === "point") {
-            return HandleNode(node.args[0].args[0], options, tex);
+            const handled = HandleNode(node.args[0].args[0], options, tex);
+
+            if(node.args[0].args[0].type === "OperatorNode") return "(" + handled + ")";
+            return handled;
         }
 
         return null;
@@ -397,7 +388,20 @@ const simplification: Record<string, (node: FunctionNode, options: object, tex: 
     point_y(node, options, tex) {
         //If the point is a point (and not a variable), we can simplify it.
         if(node.args[0]?.type === "FunctionNode" && typeof(node.args[0]?.fn) === "object" && node.args[0]?.fn["name"] === "point") {
-            return HandleNode(node.args[0].args[1], options, tex);
+            const handled = HandleNode(node.args[0].args[1], options, tex);
+
+            if(node.args[0].args[1].type === "OperatorNode") return "(" + handled + ")";
+            return handled;
+        }
+
+        return null;
+    },
+    pow(node, options, tex) {
+        const handledBase = HandleNode(node.args[0], options, tex);
+        const handledPower = HandleNode(node.args[1], options, tex);
+
+        if(isNumeric(handledBase) && isNumeric(handledPower)) {
+            return Math.pow(parseFloat(handledBase), parseFloat(handledPower)).toString();
         }
 
         return null;
