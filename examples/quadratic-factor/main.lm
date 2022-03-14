@@ -43,7 +43,7 @@ inline function factorQuadratic(a, b, c, selector) {
             const factor2Num = simplifyNumerator(factor2, a1);
             const factor2Den = simplifyDenominator(factor2, a1);
 
-            state = outputSwitch(selector, gcd1, factor1Den, factor2Den, -factor1Num, -factor2Num);
+            state = outputSwitch(selector, gcd1, factor1Den, factor2Den, -factor1Num*factor1Den, -factor2Num*factor2Den);
         }
     }
 }
