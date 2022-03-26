@@ -241,6 +241,94 @@ inline function cSub(a, b) {
     state = (cR(a) - cR(b), cI(a) - cI(b));
 }
 
+//Raises a real number to a complex power.
+inline function cPowRC(real, complex) {
+    const p1 = cos(cI(complex) * ln(real));
+    const p2 = sin(cI(complex) * ln(real));
+    
+    const mul = (real^cR(complex), 0);
+    
+    state = cMul(mul, (p1, p2));
+}
+
+//Raises a complex number to a real power.
+inline function cPowCR(complex, real) {
+    const r = cAbs(complex);
+    const theta = arctan(cI(complex)/cR(complex));
+    
+    const mul = r^real;
+    
+    const p1 = mul*cos(real*theta);
+    const p2 = mul*sin(real*theta);
+    
+    state = (p1, p2);
+}
+
+//Calculates the complex argument of a number.
+inline function cArg(a) {
+    state = mod(arctan(cI(a), cR(a)), 2*pi);
+}
+
+//Calculates the complex natural logarithm of a number.
+inline function cLn(a) {
+    const p1 = ln(cAbs(a));
+    const p2 = cArg(a);
+    
+    state = (p1, p2);
+}
+
+//The complex sine function.
+inline function cSin(a) {
+    const p1 = sin(cR(a)) * cosh(cI(a));
+    const p2 = cos(cR(a)) * sinh(cI(a));
+    
+    state = (p1, p2);
+}
+
+//The complex cosine function.
+inline function cCos(a) {
+    const p1 = cos(cR(a)) * cosh(cI(a));
+    const p2 = sin(cR(a)) * sinh(cI(a));
+    
+    state = (p1, -p2);
+}
+
+//The complex tangent function.
+inline function cTan(a) {
+    state = cDiv(cSin(a), cCos(a));
+}
+
+//The complex cotangent function.
+inline function cCot(a) {
+    state = cDiv(cCos(a), cSin(a));
+}
+
+//The complex hyperbolic sine function.
+inline function cSinh(a) {
+    const p1 = sinh(cR(a))*cos(cI(a));
+    const p2 = cosh(cR(a))*sin(cI(a));
+    
+    state = (p1, p2);
+}
+
+//The complex hyperbolic cosine function.
+inline function cCosh(a) {
+    const p1 = cosh(cR(a))*cos(cI(a));
+    const p2 = sinh(cR(a))*sin(cI(a));
+    
+    state = (p1, p2);
+}
+
+//The complex hyperbolic tangent function.
+inline function cTanh(a) {
+    state = cDiv(cSinh(a), cCosh(a));
+}
+
+//The complex hyperbolic cotangent function.
+inline function cCoth(a) {
+    state = cDiv(cCosh(a), cSinh(a));
+}
+
 //Checks if a number is NaN.
 inline function isNaN(a) {
     state = a != a;
@@ -294,4 +382,9 @@ inline function unpackFloat(packed, digits) {
 inline function unpackInt(packed, digits) {
     const half = (10^digits) / 2;
     state = floor(packed / 10^digits) - half;
+}
+
+//Rounds a number to the closest product of another number. For example, roundTo(1.2, .5) will give 1.
+inline function roundTo(num, to) {
+    state = to * round(num/to);
 }`;
