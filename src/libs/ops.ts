@@ -71,7 +71,7 @@ inline function isPositive(a) {
     const p1 = 2^a;
     const p2 = p1^-1;
     const p3 = floor(p2)+1;
-    const p4 = p4^-1;
+    const p4 = p3^-1;
 
     floor(p4)
 }
