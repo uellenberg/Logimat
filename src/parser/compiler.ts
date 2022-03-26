@@ -446,7 +446,7 @@ const InternalCompile = (useTex: boolean, tree: OuterDeclaration[], inlines: Rec
                     if(typeof(arg) === "string") return arg;
                     else return "${" + SimplifyExpression(CompileExpression(arg, data), useTex, strict, names, simplificationMap) + "}";
                 }).join("");
-                else if(declaration.value.type === "aargs") val = declaration.value.name + "(" + declaration.value.args.map(arg => {
+                else if(declaration.value.type === "aargs") val = HandleName(declaration.value.name) + "(" + declaration.value.args.map(arg => {
                     if(typeof(arg) === "string") {
                         if(arg === "index") return "\\operatorname{index}";
                         return arg;
