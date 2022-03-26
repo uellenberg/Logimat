@@ -5,7 +5,7 @@ export const s_eed = 81000;
 export const o_ldseed = 81000;
 
 action u_pdateseed = o_ldseed {
-    state = s_eed;
+    s_eed
 }
 
 //Primes
@@ -13,10 +13,10 @@ export const a = 0;
 export const b = 0;
 
 action u_pdatea = a {
-    state = handlePrimes(a, 3874.1244);
+    handlePrimes(a, 3874.1244)
 }
 action u_pdateb = b {
-    state = handlePrimes(b, 8756.6745);
+    handlePrimes(b, 8756.6745)
 }
 
 actions u_pdate = u_pdateseed, u_pdatea, u_pdateb;
@@ -24,13 +24,13 @@ actions u_pdate = u_pdateseed, u_pdatea, u_pdateb;
 //Returns val+1 if a is not prime, and a otherwise.
 //If it is not defined, a prime will be generated.
 inline function handlePrimes(val, mul) {
-    if(val == 0 || s_eed != o_ldseed) {
-        state = s_eed*mul;
+    const newVal = if(val == 0 || s_eed != o_ldseed) {
+        s_eed*mul
     } else if(isPrime(val)) {
-        state = val;
+        val
     } else {
-        state = val + 1;
-    }
+        val + 1
+    };
 
-    state = floor(state) % 10^3;
+    floor(newVal) % 10^3
 }

@@ -5,7 +5,7 @@ inline function factorQuadratic(a, b, c, selector) {
 
     if(c == 0) {
         const gcd1 = gcd(a, b);
-        state = outputSwitch(selector, 1, a/gcd1, 1, -b/gcd1, 0);
+        outputSwitch(selector, 1, a/gcd1, 1, -b/gcd1, 0)
     } else {
         //Next, we'll find an actual GCD between them, store it for later, then divide everything by it.
 
@@ -19,19 +19,19 @@ inline function factorQuadratic(a, b, c, selector) {
 
         //Now, we need to find the factor.
         const factor = sum(n=1; abs(factorNum)) {
-            state = checkFactor(b1, factorNum, n);
+            checkFactor(b1, factorNum, n)
         };
 
         //This is special code that will safely return undefined when factor is 0.
         //You are not expected to understand this.
         if(factor == 0) {
-            if(factor == 0 && c != 0) {
-                state = 0;
+            const div = if(factor == 0 && c != 0) {
+                0
             } else {
-                state = 1;
-            }
+                1
+            };
 
-            state = 1/state;
+            1/div
         } else {
             //Factor can be 0.
             const factor2 = safeDivide(c1, factor);
@@ -43,7 +43,7 @@ inline function factorQuadratic(a, b, c, selector) {
             const factor2Num = simplifyNumerator(factor2, a1);
             const factor2Den = simplifyDenominator(factor2, a1);
 
-            state = outputSwitch(selector, gcd1, factor1Den, factor2Den, -factor1Num*factor1Den, -factor2Num*factor2Den);
+            outputSwitch(selector, gcd1, factor1Den, factor2Den, -factor1Num*factor1Den, -factor2Num*factor2Den)
         }
     }
 }
@@ -62,42 +62,42 @@ inline function checkFactor(b1, c1, n) {
         if(isNegative(c1)) {
             //If it's negative, we must make one of either factor ne
             if(factor2-factor1 == b1) {
-                state = -factor1;
+                -factor1
             } else if(factor1-factor2 == b1) {
-                state = factor1;
+                factor1
             } else {
-                state = 0;
+                0
             }
         } else {
             //If it's positive, we can have both negative or both positive.
 
             if(-factor1-factor2 == b1) {
-                state = -factor1;
+                -factor1
             } else if(factor1+factor2 == b1) {
-                state = factor1;
+                factor1
             } else {
-                state = 0;
+                0
             }
          }
     } else {
-        state = 0;
+        0
     }
 }
 
 inline function outputSwitch(selector, gcd1, a1, a2, b1, b2) {
     if(selector == 0) {
-        state = gcd1;
+        gcd1
     } else if(selector == 1) {
-        state = a1;
+        a1
     } else if(selector == 2) {
-        state = a2;
+        a2
     } else if(selector == 3) {
-        state = b1;
+        b1
     } else {
-        state = b2;
+        b2
     }
 }
 
 export function f(a, b, c, s) {
-    state = factorQuadratic(a, b, c, s);
+    factorQuadratic(a, b, c, s)
 }

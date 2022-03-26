@@ -12,23 +12,23 @@ export function r_gb(i_d) {
     const lower = floor(i_d);
     const upper = ceil(i_d);
     const amount = i_d-floor(i_d);
-    
+
     //Lerp to find the r, g, and b values.
     const r = lerp(c_olors1[lower], c_olors1[upper], amount);
     const g = lerp(c_olors2[lower], c_olors2[upper], amount);
     const b = lerp(c_olors3[lower], c_olors3[upper], amount);
-        
+
     //Construct a color.
-    state = rgb(r, g, b);
+    rgb(r, g, b)
 }
 
 //Generates the colors for a split using a set.
 inline function gColor(num, set) {
     //Loop through the image, divided by the number of splits we turn the image into (this creates a single split).
-    state = range(1, width * height/get!(SPLITS)).map(idx => {
+    range(1, width * height/get!(SPLITS)).map(idx => {
         //Find the color index from the iteration count, by mapping from 0-iterations to  1-colors.
         const cIdx = map(0, get!(ITERATIONS)*10, 1, length(c_olors1), set[idx]);
-        
-        state = r_gb(cIdx);
-    });
+
+        r_gb(cIdx)
+    })
 }

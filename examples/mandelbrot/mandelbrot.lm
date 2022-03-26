@@ -9,18 +9,18 @@ export function i_t(x, y, c) {
 
     //If we've exceeded the maximum size, don't run any more iterations and just return the current value.
     if(distance(cPoint, (0, 0)) >= max_size) {
-        state = c;
+        c
     } else {
         //Run another iteration (z*z + x + yi) and increment the iteration count.
         //We store the iteration count in a point because desmos can only work with lists that have the same elements. The y-value of the point is not used.
         const newPoint = cAdd(cMul(cPoint, cPoint), (x, y));
-        state = (newPoint.x, pack(newPoint.y, iterations+1, pack_digits));
+        (newPoint.x, pack(newPoint.y, iterations+1, pack_digits))
     }
 }
 
 export function i_t10(x, y, c) {
     state = c;
-    
+
     iterate!({
         state = i_t(x, y, state);
     }, 10);
@@ -31,7 +31,7 @@ export function f_rac(v) {
     const cPoint = (v.x, unpackFloat(v.y, pack_digits));
     const iterations = unpackInt(v.y, pack_digits);
 
-    state = iterations + 1 - log_2(log(cAbs(cPoint)));
+    iterations + 1 - log_2(log(cAbs(cPoint)))
 }
 
 //Find the iteration count for a point.
@@ -43,21 +43,21 @@ inline function calculate(x, y) {
     iterate!({
         state = i_t10(x, y, state);
     }, ITERATIONS);
-    
+
     //Turn the point and iteration count into a fractional iteration count.
-    state = f_rac(state);
+    f_rac(state)
 }
 
 //Generates a set for a specific row.
 inline function gSet(num) {
     //Loop through the image, divided by the number of splits we turn the image into (this creates a single split).
-    state = range(1, width * height/get!(SPLITS)).map(idx => {
+    range(1, width * height/get!(SPLITS)).map(idx => {
         //Get the x-position, centered at (0, 0).
         const x = conv_1d_2d_x(idx, width) - width/2;
         //Gets the y-position, centered at (0,0) and increased by the y-position of previous splits.
         const y = conv_1d_2d_y(idx, width) - height/2 + height*(num-1)/get!(SPLITS);
-        
+
         //Calculate the iteration count.
-        state = calculate(x/r_es + x_off, y/r_es + y_off);
-    });
+        calculate(x/r_es + x_off, y/r_es + y_off)
+    })
 }

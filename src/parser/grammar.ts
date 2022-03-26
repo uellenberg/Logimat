@@ -89,14 +89,15 @@ LogiMat {
     ActionsArgs = ListOf<ActionName, ",">
     
     TemplateArg = string  -- string
-                | "{" (OuterDeclaration+ | InnerDeclaration+) "}"   -- block
+                | "{" (OuterDeclaration+ | InnerDeclarations) "}"   -- block
                 | Expression -- expression
                 | boolean -- boolean
                 | null    -- null
     
     ExpressionBlock = "{" Expression "}"
     Block = "{" InnerDeclarations "}"
-    InnerDeclarations = InnerDeclaration+
+    InnerDeclarations = InnerDeclaration+ SetStateImplicit? -- inner
+                      | SetStateImplicit -- state
     
     InnerDeclaration = InnerDefineTemplate
                      | InnerTemplate
@@ -107,6 +108,8 @@ LogiMat {
     ConstDeclaration = const #space TemplateIdentifier "=" Expression ";"
 
     SetState = state "=" Expression ";"
+    SetStateImplicit = Expression
+
     StateBlock = Block -- block
                | SetState -- state
 
@@ -118,6 +121,7 @@ LogiMat {
     Prod = prod "(" TemplateIdentifier "=" Expression ";" Expression ")" StateBlock
     
     PrimaryExpression = state -- state
+                      | IfStatement -- if
                       | templateName "(" TemplateArgs ")"   -- template
                       | "log_" (literal | PrimaryExpression_var) "(" Expression ")" -- log
                       | TemplateIdentifierName "(" ListOf<Expression, ","> ")"   -- func
@@ -444,6 +448,9 @@ semantic.addOperation("parse", {
     PrimaryExpression_paren(_, e, _2){
         return e.parse();
     },
+    PrimaryExpression_if(e){
+        return {type: "b", args: [[e.parse()]]};
+    },
     PrimaryExpression_log(_, e1, _1, e2, _2){
         return {type: "f", args: ["log_base", [e1.parse(), e2.parse()]]};
     },
@@ -552,13 +559,24 @@ semantic.addOperation("parse", {
     Block(_, e, _2){
         return e.parse();
     },
-    InnerDeclarations(e){
-        return e.children.map(part => part.parse());
+    InnerDeclarations_inner(items, setState){
+        const parsedItems = items.children.map(part => part.parse());
+
+        // Add the implicit set state to the end, if it exists.
+        parsedItems.push(...setState.parse());
+
+        return parsedItems;
+    },
+    InnerDeclarations_state(setState){
+        return [setState.parse()];
     },
     ConstDeclaration(_, _2, id, _3, expr, _4){
         return {type: "const", name: id.parse(), expr: expr.parse()};
     },
     SetState(_, _2, expr, _3){
+        return {type: "state", expr: expr.parse()};
+    },
+    SetStateImplicit(expr){
         return {type: "state", expr: expr.parse()};
     },
     StateBlock_block(block){

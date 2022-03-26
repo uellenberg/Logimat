@@ -23,7 +23,6 @@ import path from "path";
 import * as fs from "fs";
 import {HandleName, isNumeric, opMap} from "./util";
 import piecewiseOps from "../libs/piecewiseOps";
-import nonPiecewiseOps from "../libs/nonPiecewiseOps";
 
 const readFile = (path: string) => new Promise<string>((resolve, reject) => {
     fs.readFile(path, (err, val) => {
@@ -245,7 +244,6 @@ export const Compile = async (input: string, useTex: boolean = false, noFS = fal
         ...GetInlines(declarations),
         ...GetInlines(GetTree(stdlib).declarations),
         ...GetInlines(GetTree((piecewise ? piecewiseOps : ops)).declarations),
-        ...GetInlines(piecewise ? [] : GetTree(nonPiecewiseOps).declarations)
     };
 
     const stack = [];
