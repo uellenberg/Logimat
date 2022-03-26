@@ -1,1 +1,1 @@
-p(a,s)=\left\{\left\{a=1,a=2,0\right\}=1:-1,\left\{\operatorname{mod}(a,2)=0:\left\{s=0:a,\left\{s=1:\frac{{a}^{2}}{4}-1,\frac{{a}^{2}}{4}+1\right\}\right\},\left\{s=0:a,\left\{s=1:\frac{({a}^{2}+1)}{2}-1,\frac{({a}^{2}+1)}{2}\right\}\right\}\right\}\right\}
+p(a,s)=\left\{\left\{a=1,a=2,0\right\}=1:-1,\left\{\operatorname{mod}(a,2)=0:\left\{s=0:a,\left\{s=1:0.25*{a}^{2}-1,0.25*{a}^{2}+1\right\}\right\},\left\{s=0:a,\left\{s=1:0.5*({a}^{2}+1)-1,0.5*({a}^{2}+1)\right\}\right\}\right\}\right\}

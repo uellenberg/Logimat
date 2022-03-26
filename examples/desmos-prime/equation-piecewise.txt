@@ -3,6 +3,6 @@ o_{ldseed}=81000
 u_{pdateseed}=o_{ldseed}\to s_{eed}
 a=0
 b=0
-u_{pdatea}=a\to \operatorname{mod}(\operatorname{floor}(\left\{\left\{a=0,\left\{s_{eed}=o_{ldseed}:0,1\right\}=1,0\right\}=1:3874.1244s_{eed},\left\{{\sum_{n=2}^{\operatorname{floor}(\sqrt{a})}{(\left\{\operatorname{floor}(\frac{a}{n})=\frac{a}{n},0\right\})}}=0:a,a+1\right\}\right\}),1000)
-u_{pdateb}=b\to \operatorname{mod}(\operatorname{floor}(\left\{\left\{b=0,\left\{s_{eed}=o_{ldseed}:0,1\right\}=1,0\right\}=1:8756.6745s_{eed},\left\{{\sum_{n=2}^{\operatorname{floor}(\sqrt{b})}{(\left\{\operatorname{floor}(\frac{b}{n})=\frac{b}{n},0\right\})}}=0:b,b+1\right\}\right\}),1000)
+u_{pdatea}=a\to \operatorname{mod}(\operatorname{floor}(\left\{\left\{a=0,\left\{s_{eed}=o_{ldseed}:0,1\right\}=1,0\right\}=1:3874.1244*s_{eed},\left\{{\sum_{v_{1}=2}^{\operatorname{floor}(\sqrt{a})}{(\left\{\operatorname{floor}(\frac{a}{v_{1}})=\frac{a}{v_{1}},0\right\})}}=0:a,a+1\right\}\right\}),1000)
+u_{pdateb}=b\to \operatorname{mod}(\operatorname{floor}(\left\{\left\{b=0,\left\{s_{eed}=o_{ldseed}:0,1\right\}=1,0\right\}=1:8756.6745*s_{eed},\left\{{\sum_{v_{2}=2}^{\operatorname{floor}(\sqrt{b})}{(\left\{\operatorname{floor}(\frac{b}{v_{2}})=\frac{b}{v_{2}},0\right\})}}=0:b,b+1\right\}\right\}),1000)
 u_{pdate}=u_{pdateseed},u_{pdatea},u_{pdateb}
