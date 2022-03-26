@@ -223,10 +223,10 @@ inline function cDiv(a, b) {
 }
 
 //Adds two complex numbers.
-inline function cAdd(a, b) => (cR(a) + cR(b), cI(a) + cI(b));
+inline function cAdd(a, b) => a + b;
 
 //Subtracts two complex numbers.
-inline function cSub(a, b) => (cR(a) - cR(b), cI(a) - cI(b));
+inline function cSub(a, b) => a - b;
 
 //Raises a real number to a complex power.
 inline function cPowRC(real, complex) {
