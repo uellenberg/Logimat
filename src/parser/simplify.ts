@@ -460,17 +460,20 @@ const functions: Record<string, (node: FunctionNode, options: object, tex: boole
         const array = HandleNode(node.args[0], options, tex);
         const indexer = HandleNode(node.args[1], options, tex);
 
+        if(node.args[0].type === "OperatorNode") return `(${array})[${indexer}]`;
         return `${array}[${indexer}]`;
     },
     array_length(node, options, tex) {
         const array = HandleNode(node.args[0], options, tex);
 
+        if(node.args[0].type === "OperatorNode") return `(${array}).\\operatorname{length}`;
         return `${array}.\\operatorname{length}`;
     },
     array_filter(node, options, tex) {
         const array = HandleNode(node.args[0], options, tex);
         const condition = HandleNode(node.args[1], options, tex);
 
+        if(node.args[0].type === "OperatorNode") return `(${array})[${condition}=1]`;
         return `${array}[${condition}=1]`;
     },
     array_map(node, options, tex) {
@@ -546,10 +549,16 @@ const texFunctions: Record<string, (node: FunctionNode, options: object) => stri
         return `\\left[${node.args.map(arg => arg.toTex(options)).join(",")}\\right]`
     },
     array_idx(node, options) {
-        return `${node.args[0].toTex(options)}\\left[${node.args[1].toTex(options)}\\right]`;
+        let arr = node.args[0].toTex(options);
+        if(node.args[0].type === "OperatorNode") arr = `(${arr})`;
+
+        return `${arr}\\left[${node.args[1].toTex(options)}\\right]`;
     },
     array_filter(node, options) {
-        return `${node.args[0].toTex(options)}\\left[${node.args[1].toTex(options)}=1\\right]`;
+        let arr = node.args[0].toTex(options);
+        if(node.args[0].type === "OperatorNode") arr = `(${arr})`;
+
+        return `${arr}\\left[${node.args[1].toTex(options)}=1\\right]`;
     },
     array_map(node, options) {
         return `\\left[${node.args[1].toTex(options)}\\ \\operatorname{for}\\ ${node.args[2].toTex(options)}=${node.args[0].toTex(options)}\\right]`;
