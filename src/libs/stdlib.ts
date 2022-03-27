@@ -187,7 +187,7 @@ inline function cR(a) => a.x;
 inline function cI(a) => a.y;
 
 //Takes the absolute value of a complex number.
-inline function cAbs(a) => sqrt(cR(a)^2 + cI(a)^2);
+inline function cAbs(a) => distance(a, (0, 0));
 
 //Calculates the complex argument of a number.
 inline function cArg(a) => mod(arctan(cI(a), cR(a)), 2*pi);
