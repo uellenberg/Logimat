@@ -29,7 +29,7 @@ export const SimplifyExpression = (input: string, useTex: boolean, strict: boole
     }
 }
 
-const simplifyRules = math.simplify["rules"].concat([
+const simplifyRules = [
     //Or
     "n | 1 -> 1",
     "1 | n -> 1",
@@ -42,8 +42,15 @@ const simplifyRules = math.simplify["rules"].concat([
     "0 & n -> 0",
     //Func
     "if_func(0,n1,n2) -> n2",
-    "if_func(1,n1,n2) -> n1"
-]);
+    "if_func(1,n1,n2) -> n1",
+    //Point
+    "point(n1,n2) + point(n3,n4) -> point(n1+n3,n2+n4)",
+    "0 * point(n1,n2) -> point(0,0)",
+    "1 * point(n1,n2) -> point(n1,n2)",
+    "point(n1,n2) * 0 -> point(0,0)",
+    "point(n1,n2) * 1 -> point(n1,n2)",
+    "point(n1,n2) / 1 -> point(n1,n2)"
+].concat(math.simplify["rules"] as string[]);
 
 const HandleFunction = (node: FunctionNode, options: Options, builtIn: boolean = false) : string => {
     return (builtIn ? "\\operatorname{" : "") + node.fn.toString(options) + (builtIn ? "}" : "") + "(" + node.args.map(arg => arg.toString(options)).join(",") + ")";
@@ -440,11 +447,13 @@ const functions: Record<string, (node: FunctionNode, options: object, tex: boole
     point_x(node, options, tex) {
         const point = HandleNode(node.args[0], options, tex);
 
+        if(node.args[0].type === "OperatorNode") return `(${point}).x`;
         return `${point}.x`;
     },
     point_y(node, options, tex) {
         const point = HandleNode(node.args[0], options, tex);
 
+        if(node.args[0].type === "OperatorNode") return `(${point}).y`;
         return `${point}.y`;
     },
     array_idx(node, options, tex) {
