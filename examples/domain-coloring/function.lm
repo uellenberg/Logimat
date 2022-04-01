@@ -1,10 +1,7 @@
-export cPow;
-export cPolar;
-export cMul;
 export cSin;
-export cCos;
-export cTan;
-export cSinh;
+export cPow;
+export cMul;
+export cDiv;
 
 export const t_heta = 0;
 export const p_oint = (cos(t_heta), sin(t_heta));
