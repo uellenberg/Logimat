@@ -1,0 +1,25 @@
+export function c_olor(x) {
+    const h = cArg(x) * (180/pi);
+    const s = 1/(1 + .3*log(cAbs(x) + 1)) - .4;
+    const l = 1 - 1/(1.1 + 5*log(cAbs(x) + 1));
+    
+    state = hsv(h, s, l);
+}
+
+inline function gColor(num) {
+    //Loop through the image, divided by the number of splits we turn the image into (this creates a single split).
+    state = range(1, width * height/get!(SPLITS)).map(idx => {  
+        //Get the x-position, centered at (0, 0).
+        const x = conv_1d_2d_x(idx, width) - width/2;
+        //Gets the y-position, centered at (0,0) and increased by the y-position of previous splits.
+        const y = conv_1d_2d_y(idx, width) - height/2 + height*(num-1)/get!(SPLITS);
+    
+        const cX = x/r_es + x_off;
+        const cY = y/r_es + y_off;
+        const cVal = (cX, cY);
+    
+        const val = i_t(cVal);
+    
+        state = c_olor(val);
+    });
+}

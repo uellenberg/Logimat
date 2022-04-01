@@ -1,0 +1,16 @@
+//This file is responsible for creating the polygons that are used for rendering. Rendering in Desmos is fairly simple: we just need to create a polygon list that fills up the square. The actual coloring of this set of polygons is up to the color handler.
+
+//Renders the image. This just creates a grid of polygons.
+inline function gRender(num) {
+    //Loop through the image, divided by the number of splits we turn the image into (this creates a single split).
+    state = range(1, width * height/get!(SPLITS)).map(idx => {
+        //Get the x-position, centered at (0, 0).
+        const x = conv_1d_2d_x(idx, width) - width/2;
+        //Gets the y-position, centered at (0,0) and increased by the y-position of previous splits.
+        const y = conv_1d_2d_y(idx, width) - height/2 + height*(num-1)/get!(SPLITS);
+        
+        //Create a polygon using the x and y position.
+        //This is slightly bigger than 1x1 to remove grid lines that 1x1 creates.
+        state = polygon((x/width, y/height) + [(-.2/width, -.2/height), (-.2/width, 1.2/height), (1.2/width, 1.2/height), (1.2/width, -.2/height)]);
+    });
+}
