@@ -729,6 +729,10 @@ const CompileExpression = (expression: Expression, data: CompileData) : string =
             switch(name) {
                 case "pi":
                     return "pi()";
+                case "infinity":
+                case "infty":
+                case "inf":
+                    return "inf()";
             }
 
             return name;
@@ -762,6 +766,29 @@ const CompileExpression = (expression: Expression, data: CompileData) : string =
                 vars: {
                     ...data.vars,
                     ...prodVar
+                }
+            }, "", {}) + ")";
+        case "int":
+            const intName = "v_" + data.varIdx.value++;
+
+            //Map the user-chosen variable to generated name.
+            const intVar = {[<string>args[0]]: intName};
+
+            //Make the variable name used here a declared variable, in order to make it work in strict mode.
+            data.names.push(intName);
+
+            return "int(" + intName + "," + args[1] + "," + args[2] + "," + CompileBlock(<Statement[]>args[3], {
+                ...data,
+                vars: {
+                    ...data.vars,
+                    ...intVar
+                }
+            }, "", {}) + ")";
+        case "div":
+            return "div(" + args[0] + "," + CompileBlock(<Statement[]>args[1], {
+                ...data,
+                vars: {
+                    ...data.vars
                 }
             }, "", {}) + ")";
         case "b":

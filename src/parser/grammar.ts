@@ -119,16 +119,20 @@ LogiMat {
 
     Sum = sum "(" TemplateIdentifier "=" Expression ";" Expression ")" StateBlock
     Prod = prod "(" TemplateIdentifier "=" Expression ";" Expression ")" StateBlock
+    Int = int "(" TemplateIdentifier "=" Expression ";" Expression ")" StateBlock
+    Div = div "(" TemplateIdentifier ")" StateBlock
     
     PrimaryExpression = state -- state
                       | IfStatement -- if
                       | templateName "(" TemplateArgs ")"   -- template
                       | "log_" (literal | PrimaryExpression_var) "(" Expression ")" -- log
+                      | Sum
+                      | Prod
+                      | Int
+                      | Div
                       | TemplateIdentifierName "(" ListOf<Expression, ","> ")"   -- func
                       | TemplateIdentifier  -- var
                       | literal
-                      | Sum
-                      | Prod
                       | Block  -- block
                       | Array  -- array
                       | Point  -- point
@@ -205,6 +209,8 @@ LogiMat {
     state = "state" ~identifierPart
     sum = "sum" ~identifierPart
     prod = "prod" ~identifierPart
+    int = "int" ~identifierPart
+    div = "div" ~identifierPart
     if = "if" ~identifierPart
     else = "else" ~identifierPart
     boolean = ("true" | "false") ~identifierPart
@@ -225,6 +231,8 @@ LogiMat {
              | state
              | sum
              | prod
+             | int
+             | div
              | if
              | else
              | boolean
@@ -602,6 +610,12 @@ semantic.addOperation("parse", {
     Prod(_, _2, v, _3, expr1, _4, expr2, _6, action){
         return {type: "prod", args: [v.parse(), expr1.parse(), expr2.parse(), action.parse()]};
     },
+    Int(_, _2, v, _3, from, _4, to, _5, action){
+        return {type: "int", args: [v.parse(), from.parse(), to.parse(), action.parse()]};
+    },
+    Div(_, _2, v, _3, action){
+        return {type: "div", args: [v.parse(), action.parse()]};
+    },
     string(_, str, _3){
         return str.parse().join("");
     },
@@ -711,10 +725,10 @@ export interface ParsedActionArgs {
     args: (string | Expression)[];
 }
 export interface Expression {
-    type: "f" | "^" | "*" | "/" | "+" | "-" | "n" | "a_m" | "a_f" | "b" | "v" | "sum" | "prod";
+    type: "f" | "^" | "*" | "/" | "+" | "-" | "n" | "a_m" | "a_f" | "b" | "v" | "sum" | "prod" | "int" | "div";
     args: (string | object)[];
 }
-export type Statement = ConstDeclaration | Template | SetState | IfStatement | Sum | Prod;
+export type Statement = ConstDeclaration | Template | SetState | IfStatement;
 export interface ConstDeclaration {
     type: "const";
     name: string;
@@ -729,18 +743,6 @@ export interface IfStatement {
     condition: Expression;
     ifaction: Statement[];
     elseaction: Statement[];
-}
-export interface Sum {
-    type: "sum";
-    v: string;
-    n1: string;
-    n2: string;
-}
-export interface Prod {
-    type: "prod";
-    v: string;
-    n1: string;
-    n2: string;
 }
 
 export type Modifier = "export" | "inline";

@@ -109,13 +109,13 @@ inline function safeDivide(a, b) {
     } else {
         //This double check is needed because it will run, and needs to divide by a non-zero number. 1 is a "safe" value, but it's being used arbitrarily here.
         //No matter what number is used, it won't ever appear, unless it results in undefined (which will only happen if the value is 0 or infinity).
-        const div = if(b == 0) {
+        const num = if(b == 0) {
             1
         } else {
             b
         };
         
-        a/div
+        a/num
     }
 }
 
@@ -170,14 +170,14 @@ inline function safeLogBase(num, base) {
 
 //Simplifies a fraction and returns the numerator.
 inline function simplifyNumerator(numerator, denominator) {
-    const div = gcd(numerator, denominator);
-    numerator/div
+    const factor = gcd(numerator, denominator);
+    numerator/factor
 }
 
 //Simplifies a fraction and returns the denominator.
 inline function simplifyDenominator(numerator, denominator) {
-    const div = gcd(numerator, denominator);
-    denominator/div
+    const factor = gcd(numerator, denominator);
+    denominator/factor
 }
 
 //Gets the real part of a complex number.
@@ -332,10 +332,10 @@ inline function lerp(from, to, amount) => from + (to - from) * amount;
 
 //Stores a float and an integer into a single float. Digits defines the precision, and
 //should be at least as many digits that exist in the largest number.
-inline function pack(float, int, digits) {
+inline function pack(float, integer, digits) {
     const half = (10^digits) / 2;
     
-    (float + half) + (int + half)*(10^digits)
+    (float + half) + (integer + half)*(10^digits)
 }
 
 //Extracts the float part from a packed number.

@@ -422,6 +422,12 @@ const functions: Record<string, (node: FunctionNode, options: object, tex: boole
     prod(node, options, tex) {
         return `{\\prod_{${HandleNode(node.args[0], options, tex)}=${HandleNode(node.args[1], options, tex)}}^{${HandleNode(node.args[2], options, tex)}}{${tex ? "" : "("}${HandleNode(node.args[3], options, tex)}${tex ? "" : ")"}}}`;
     },
+    int(node, options, tex) {
+        return `{\\int_{${HandleNode(node.args[1], options, tex)}}^{${HandleNode(node.args[2], options, tex)}}{${tex ? "" : "("}${HandleNode(node.args[3], options, tex)}${tex ? "" : ")"}}d${HandleNode(node.args[0], options, tex)}}`;
+    },
+    div(node, options, tex) {
+        return `{{\\frac{d}{d${HandleNode(node.args[0], options, tex)}}}{${tex ? "" : "("}${HandleNode(node.args[1], options, tex)}${tex ? "" : ")"}}}`
+    },
     sqrt(node, options, tex) {
         return `\\sqrt{${HandleNode(node.args[0], options, tex)}}`;
     },
@@ -437,6 +443,9 @@ const functions: Record<string, (node: FunctionNode, options: object, tex: boole
     },
     pi() {
         return "\\pi ";
+    },
+    inf() {
+        return "\\infty ";
     },
     point(node, options, tex) {
         return `(${node.args.map(arg => HandleNode(arg, options, tex)).join(",")})`;
