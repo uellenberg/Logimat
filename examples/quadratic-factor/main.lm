@@ -25,13 +25,13 @@ inline function factorQuadratic(a, b, c, selector) {
         //This is special code that will safely return undefined when factor is 0.
         //You are not expected to understand this.
         if(factor == 0) {
-            const div = if(factor == 0 && c != 0) {
+            const num = if(factor == 0 && c != 0) {
                 0
             } else {
                 1
             };
 
-            1/div
+            1/num
         } else {
             //Factor can be 0.
             const factor2 = safeDivide(c1, factor);
