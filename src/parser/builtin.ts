@@ -84,6 +84,7 @@ export const builtinMultiArgs = [
 ];
 
 export const constants = [
+    "e",
     "pi",
     "tau",
     "infinity",

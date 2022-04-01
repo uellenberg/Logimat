@@ -251,6 +251,21 @@ inline function cPowCR(complex, real) {
     (p1, p2)
 }
 
+//Calculates a complex number to a complex power.
+inline function cPow(base, power) {
+    cExp(cMul(power, cLn(base)))
+}
+
+//Calculates the log of a complex number in a complex base.
+inline function cLog(base, power) {
+    cDiv(cLn(power), cLn(base))
+}
+
+//Raises e to a complex power.
+inline function cExp(a) {
+    e^cR(a) * (cos(cI(a)), sin(cR(a)))
+}
+
 //Calculates the complex natural logarithm of a number.
 inline function cLn(a) {
     const p1 = ln(cAbs(a));
