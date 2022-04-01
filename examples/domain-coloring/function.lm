@@ -2,18 +2,25 @@ export cPow;
 export cPolar;
 export cMul;
 export cSin;
+export cCos;
+export cTan;
+export cSinh;
 
-export const a = 0;
-export const p_oint = (a, a - 3);
+export const t_heta = 0;
+export const p_oint = (cos(t_heta), sin(t_heta));
 
 export function r_un(x) {
     cSin(cPow(x, p_oint))
 }
 
+export function g_o(a, b) {
+    cAdd(cMul(a, a), cDiv(b, p_oint))
+}
+
 export function i_t(x) {
-    state = p_oint;
+    state = (0, 0);
 
     iterate!({
-        state = cSin(cPow(x, state));
+        state = g_o(state, x);
     }, ITERATIONS);
 }
