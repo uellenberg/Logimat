@@ -230,12 +230,12 @@ inline function cSub(a, b) => a - b;
 
 //Raises a real number to a complex power.
 inline function cPowRC(real, complex) {
-    const p1 = cos(cI(complex) * ln(real));
-    const p2 = sin(cI(complex) * ln(real));
+    const p1 = cos(cI(complex));
+    const p2 = sin(cI(complex));
     
     const mul = (real^cR(complex), 0);
     
-    cMul(mul, (p1, p2))
+    cMul(mul, ln(real) * (p1, p2))
 }
 
 //Raises a complex number to a real power.
@@ -272,6 +272,11 @@ inline function cLn(a) {
     const p2 = cArg(a);
     
     (p1, p2)
+}
+
+//Creates a complex number from polar form.
+inline function cPolar(abs, arg) {
+    abs * (cos(arg), sin(arg))
 }
 
 //The complex sine function.
