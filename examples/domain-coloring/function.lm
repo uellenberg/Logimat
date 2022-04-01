@@ -1,0 +1,21 @@
+import!("util.lm");
+
+export cPow;
+export cPolar;
+export cMul;
+export cSin;
+
+export const a = 0;
+export const p_oint = (a, a - 3);
+
+export function r_un(x) {
+    cSin(cPow(x, p_oint))
+}
+
+export function i_t(x) {
+    state = p_oint;
+
+    iterate!({
+        state = cSin(cPow(x, state));
+    }, ITERATIONS);
+}

@@ -2,7 +2,7 @@
 
 //The way that splitting works is we split up out final big image into multiple smaller ones, to avoid hitting Desmos' limit. We must define the amount of splits (or number of smaller images) below, and also define the images themselves.
 
-define!(SPLIT_NUM, 1);
+/*define!(SPLIT_NUM, 1);
 
 iterate!({
     export const "s_et${get!(SPLIT_NUM)}" = gSet(get!(SPLIT_NUM));
@@ -16,4 +16,38 @@ iterate!({
     expression => gRender(get!(SPLIT_NUM));
 
     define!(SPLIT_NUM, SPLIT_NUM + 1);
-}, SPLITS);
+}, SPLITS);*/
+
+//Create a behavior for our renderer.
+createBehavior!("display", {
+    setValArgs!("num", 0);
+    
+    behaviorCustom!({
+        display fill = 1;
+        display thickness = 0;
+        display color = "c_olor${getVal!("num")}";
+        expression => getVal!("set");
+    });
+
+    setVal!("set", {
+        range(1, width * height/get!(SPLITS)).map(idx => {
+            (0, pack(0, 0, pack_digits))
+        })
+    });
+    setMut!("set");
+    
+    /*setValAction!("set", {
+        gSet(getVal!("num"), set)
+    });*/
+    
+    setVal!("color", 0);
+    setMut!("color");
+    
+    /*setValAction!("color", {
+        gColor(getVal!("num"), getVal!("set"))
+    });*/
+});
+
+createObject!({
+    useBehavior!("display", 1);
+});
