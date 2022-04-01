@@ -10,7 +10,7 @@ LogiMat {
     Import = ImportTemplates
     ImportTemplates = "import" #space "templates" #space "from" #space string ";"
     
-    OuterDeclaration = DefineTemplate | Template | OuterConstDeclaration | FunctionDeclaration | ActionDeclaration | ActionsDeclaration | ExpressionDeclaration | GraphDeclaration | PointDeclaration | PolygonDeclaration | DisplayDeclarations
+    OuterDeclaration = DefineTemplate | Template | OuterConstDeclaration | FunctionDeclaration | ExportDeclaration | ActionDeclaration | ActionsDeclaration | ExpressionDeclaration | GraphDeclaration | PointDeclaration | PolygonDeclaration | DisplayDeclarations
     
     Template = templateName "(" TemplateArgs ")" ";"
     InnerTemplate = templateName "(" TemplateArgs ")" ";"
@@ -25,6 +25,8 @@ LogiMat {
     FunctionDeclaration = ExportFunctionDeclaration | InlineFunctionDeclaration
     ExportFunctionDeclaration = export #space function #space TemplateExportIdentifier "(" ExportFunctionArgs ")" FunctionBody
     InlineFunctionDeclaration = inline #space function #space TemplateIdentifier "(" FunctionArgs ")" FunctionBody
+    
+    ExportDeclaration =  export #space TemplateIdentifier ";"
 
     ActionDeclaration = UnnamedActionDeclaration | NamedActionDeclaration
     UnnamedActionDeclaration = action #space TemplateExportIdentifier FunctionBody
@@ -335,6 +337,9 @@ semantic.addOperation("parse", {
     InlineFunctionDeclaration(_1, _2, _3, _4, name, _6, args, _8, block){
         return {type: "function", modifier: "inline", name: name.parse(), args: args.parse(), block: block.parse()};
     },
+    ExportDeclaration(_1, _2, name, _3){
+        return {type: "export", modifier: "export", name: name.parse()};
+    },
     UnnamedActionDeclaration(_1, _2, name, block){
         return {type: "action", modifier: "export", name: name.parse(), funcName: "", block: block.parse()};
     },
@@ -638,7 +643,7 @@ export interface Import {
     importType: string;
     path: string;
 }
-export type OuterDeclaration = Template | OuterConstDeclaration | OuterFunctionDeclaration | ActionDeclaration | ActionsDeclaration | ExpressionDeclaration | GraphDeclaration | PointDeclaration | PolygonDeclaration | DisplayDeclaration;
+export type OuterDeclaration = Template | OuterConstDeclaration | OuterFunctionDeclaration | ExportDeclaration | ActionDeclaration | ActionsDeclaration | ExpressionDeclaration | GraphDeclaration | PointDeclaration | PolygonDeclaration | DisplayDeclaration;
 
 export type InternalTemplateArg = string | number | boolean | TemplateBlock | TemplateDeclareValue | TemplateExpression;
 export interface TemplateDeclareValue {
@@ -653,7 +658,7 @@ export interface TemplateExpression {
 }
 export interface Template {
     type: "template" | "templatefunction";
-    modifier: Modifier;
+    modifier: undefined;
     name: string;
     args: InternalTemplateArg[];
     context: TemplateContext;
@@ -671,6 +676,11 @@ export interface OuterFunctionDeclaration {
     name: string;
     args: string[];
     block: Statement[];
+}
+export interface ExportDeclaration {
+    type: "export";
+    modifier: "export";
+    name: string;
 }
 export interface ActionDeclaration {
     type: "action";

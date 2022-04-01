@@ -240,16 +240,131 @@ export const Compile = async (input: string, useTex: boolean = false, noFS = fal
         throw e;
     }
 
+    // Next, we want to handle export declarations. Exports work by creating an export with a random name, along with the contents
+    // of the inline specified by the export. Next, the original inline's contents are changed to point to the new export.
+    const fileInlines = GetInlines(declarations);
+    const stdLibInlines = GetInlines(GetTree(stdlib).declarations);
+    const opsInlines = GetInlines(GetTree((piecewise ? piecewiseOps : ops)).declarations);
+
+    const exportInlines = {
+        ...fileInlines,
+        ...stdLibInlines,
+        ...opsInlines
+    };
+
+    const exportDeclarations = [];
+
+    let varIdx = 1;
+
+    for (const exportName of GetExportDeclarations(declarations)) {
+        // This exportName is the name of an inline.
+        // First, we should look up the inline.
+        const inline = exportInlines[exportName];
+
+        // If it doesn't exist, no need to proceed.
+        if(!inline) continue;
+
+        // Now, let's create a variable for the new export.
+        const name = "v_" + varIdx++;
+
+        // Remove the value from declarations.
+        const idx = declarations.indexOf(inline.value);
+        if(idx !== -1) declarations.splice(idx, 1);
+
+        if(inline.function) {
+            // Create an export function.
+            const exportFunction = (inline.value as OuterFunctionDeclaration);
+
+            const inlineName = exportFunction.name;
+            exportFunction.name = name;
+            exportFunction.modifier = "export";
+
+            // Create args which are the length of the original's args.
+            const inlineArgs = [...exportFunction.args];
+            exportFunction.args = Array(inlineArgs.length).fill("").map(() => "v_" + varIdx++);
+
+            // Finally, we to insert something to map between the old and new names.
+            const maps: Statement[] = inlineArgs.map((inlineArg, idx) => {
+                const exportArg = exportFunction.args[idx];
+
+                return {
+                    type: "const",
+                    name: inlineArg,
+                    expr: {
+                        type: "v",
+                        args: [exportArg]
+                    }
+                }
+            });
+            exportFunction.block.unshift(...maps);
+
+            // Create an inline function.
+            const inlineFunction: OuterFunctionDeclaration = {
+                type: "function",
+                modifier: "inline",
+                name: inlineName,
+                args: inlineArgs,
+                block: [
+                    {
+                        type: "state",
+                        expr: {
+                            type: "f",
+                            args: [
+                                name,
+                                inlineArgs.map(arg => ({
+                                    type: "v",
+                                    args: [
+                                        arg
+                                    ]
+                                }))
+                            ]
+                        }
+                    }
+                ]
+            };
+
+            // Add the new functions to declarations.
+            declarations.push(exportFunction);
+            exportDeclarations.push(inlineFunction);
+        } else {
+            // Create an export const.
+            const exportConst = (inline.value as OuterConstDeclaration);
+
+            const inlineName = exportConst.name;
+            exportConst.name = name;
+            exportConst.modifier = "export";
+
+            // Create an inline const.
+            const inlineConst: OuterConstDeclaration = {
+                type: "const",
+                modifier: "inline",
+                name: inlineName,
+                expr: {
+                    type: "v",
+                    args: [
+                        name
+                    ]
+                }
+            };
+
+            // Add the new functions to declarations.
+            declarations.push(exportConst);
+            exportDeclarations.push(inlineConst);
+        }
+    }
+
+    // We need to run GetInlines again because declarations is changed.
     const inlines: Record<string, Inline> = {
         ...GetInlines(declarations),
-        ...GetInlines(GetTree(stdlib).declarations),
-        ...GetInlines(GetTree((piecewise ? piecewiseOps : ops)).declarations),
+        ...stdLibInlines,
+        ...opsInlines,
+        ...GetInlines(exportDeclarations)
     };
 
     const stack = [];
 
     try {
-        const output = InternalCompile(useTex, declarations, inlines, templates, state, stack, strict, simplificationMap);
+        const output = InternalCompile(useTex, declarations, inlines, templates, state, varIdx, stack, strict, simplificationMap);
 
         if(outputMaps) return {...output, importMap};
         else return output.output.join("\n");
@@ -416,12 +531,12 @@ const HandleTemplate = async (templateDeclaration: Template, templates: Record<s
     return [];
 }
 
-const InternalCompile = (useTex: boolean, tree: OuterDeclaration[], inlines: Record<string, Inline>, templates: Record<string, TemplateFunction>, state: TemplateState, stack: string[], strict: boolean, simplificationMap: Record<string, string> = {}) : {output: string[], simplificationMap: Record<string, string>} => {
+const InternalCompile = (useTex: boolean, tree: OuterDeclaration[], inlines: Record<string, Inline>, templates: Record<string, TemplateFunction>, state: TemplateState, varIdx: number, stack: string[], strict: boolean, simplificationMap: Record<string, string> = {}) : {output: string[], simplificationMap: Record<string, string>} => {
     const out: string[] = [];
     const outerNames = GetDeclaredNames(tree);
     const display: Record<string, string> = {};
 
-    let data: CompileData = {inlines, templates, state, stack, names: [], vars: {}, varIdx: {value: 1}};
+    let data: CompileData = {inlines, templates, state, stack, names: [], vars: {}, varIdx: {value: varIdx}};
 
     for (const declaration of tree) {
         if (declaration.modifier === "inline") continue;
@@ -559,6 +674,16 @@ const GetInlines = (tree: OuterDeclaration[]) : Record<string, Inline> => {
     }
 
     return inlines;
+}
+
+const GetExportDeclarations = (tree: OuterDeclaration[]) : string[] => {
+    const exports: string[] = [];
+
+    for (const declaration of tree) {
+        if(declaration.type === "export" && !exports.includes(declaration.name)) exports.push(declaration.name);
+    }
+
+    return exports;
 }
 
 const GetDeclaredNames = (tree: OuterDeclaration[]) : string[] => {
