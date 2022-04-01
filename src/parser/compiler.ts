@@ -886,7 +886,7 @@ const CompileExpression = (expression: Expression, data: CompileData) : string =
             //Make the variable name used here a declared variable, in order to make it work in strict mode.
             data.names.push(prodName);
 
-            return "prod(" + prodVar + "," + args[1] + "," + args[2] + "," + CompileBlock(<Statement[]>args[3], {
+            return "prod(" + prodName + "," + args[1] + "," + args[2] + "," + CompileBlock(<Statement[]>args[3], {
                 ...data,
                 vars: {
                     ...data.vars,
