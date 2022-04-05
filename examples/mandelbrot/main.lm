@@ -1,11 +1,8 @@
 //This file creates a rendering of the Mandelbrot set. It works by computing the number of iterations that each pixel takes to generate, then using that iteration number to color it based on a gradient.
 //Due to Desmos' limitations, only a 100x100 (10,000 element) grid of pixels is possible. This program gets around that by creating 4 200x50 strips of pixels (or whatever you have it configured to).
 
-import templates from "graphgame";
-initialize!();
-
-inline const width = 10;
-inline const height = 10;
+inline const width = 100;
+inline const height = 100;
 
 export const r_es = width/2 * 50;
 

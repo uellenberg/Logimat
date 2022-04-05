@@ -1,11 +1,5 @@
 //This file contains the code used to compute the fractal itself. The values generated from here are then passed on to the renderer.
 
-//This exports our functions to make things more efficient.
-export pack;
-export unpackFloat;
-export unpackInt;
-export cMul;
-
 inline const pack_digits = 6;
 
 //Computes one iteration.
@@ -14,7 +8,7 @@ export function i_t(x, y, c) {
     const iterations = unpackInt(c.y, pack_digits);
 
     //If we've exceeded the maximum size, don't run any more iterations and just return the current value.
-    if(cAbs(cPoint) >= max_size) {
+    if(distance(cPoint, (0, 0)) >= max_size) {
         c
     } else {
         //Run another iteration (z*z + x + yi) and increment the iteration count.
@@ -40,8 +34,22 @@ export function f_rac(v) {
     iterations + 1 - log_2(log(cAbs(cPoint)))
 }
 
+//Find the iteration count for a point.
+inline function calculate(x, y) {
+    //Initialize it. The first number is the x-position, and the second is the y-position and iteration count packed together.
+    state = (0, pack(0, 0, pack_digits));
+
+    //Run the iteration function on it for as many times as specified.
+    iterate!({
+        state = i_t10(x, y, state);
+    }, ITERATIONS);
+
+    //Turn the point and iteration count into a fractional iteration count.
+    f_rac(state)
+}
+
 //Generates a set for a specific row.
-inline function gSet(num, set) {
+inline function gSet(num) {
     //Loop through the image, divided by the number of splits we turn the image into (this creates a single split).
     range(1, width * height/get!(SPLITS)).map(idx => {
         //Get the x-position, centered at (0, 0).
@@ -50,9 +58,6 @@ inline function gSet(num, set) {
         const y = conv_1d_2d_y(idx, width) - height/2 + height*(num-1)/get!(SPLITS);
 
         //Calculate the iteration count.
-        i_t(x/r_es + x_off, y/r_es + y_off, set[idx])
+        calculate(x/r_es + x_off, y/r_es + y_off)
     })
 }
-
-export gSet;
-export calculate;
