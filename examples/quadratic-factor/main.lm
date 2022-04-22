@@ -14,18 +14,22 @@ inline function factorQuadratic(a, b, c, selector) {
         const a1 = a/gcd1;
         const b1 = b/gcd1;
         const c1 = c/gcd1;
-
-        const factorNum = a1*c1;
+        
+        //After this, we'll want to start solving. We'll be using the "Diamond Fraction" method, which is a common way people solve quadratics by hand.
+        const rMul = a1 * c1;
+        const rAdd = b1;
 
         //Now, we need to find the factor.
-        const factor = sum(n=1; abs(factorNum)) {
-            checkFactor(b1, factorNum, n)
+        //This is a number that adds to rAdd and
+        //multiplies to rMul.
+        const factor1 = sum(n=1; abs(rMul)) {
+            checkFactor(rAdd, rMul, n)
         };
 
         //This is special code that will safely return undefined when factor is 0.
         //You are not expected to understand this.
-        if(factor == 0) {
-            const num = if(factor == 0 && c != 0) {
+        if(factor1 == 0) {
+            const num = if(factor1 == 0 && c != 0) {
                 0
             } else {
                 1
@@ -34,16 +38,24 @@ inline function factorQuadratic(a, b, c, selector) {
             1/num
         } else {
             //Factor can be 0.
-            const factor2 = safeDivide(c1, factor);
+            const factor2 = safeDivide(rMul, factor1);
+            
+            //Now, we have our factors, so we can begin solving. We start by solving by "grouping", where we take a1(x^2) + factor1(x) and factor2(x) + c1. We factor out all terms from these groups, and take the factors multiplied by the result of factoring them.
+            //For example, the first would be fx(a1/f(x) + factor1/f), and the other would be g(factor2/g(x) + c1/g).
+            const gcdA = gcd(a1, factor1);
+            const gcdB = gcd(factor2, c1);
+            
+            //We now have gcdA(x) + gcdB on one side,
+            //and a1/gcdA(x) + factor1/gcdA on the other.
 
             //Next, we need to simplify factor/a.
-            const factor1Num = simplifyNumerator(factor, a1);
-            const factor1Den = simplifyDenominator(factor, a1);
+            const out_a1 = gcdA;
+            const out_a2 = a1/gcdA;
+            const out_b1 = gcdB;
+            const out_b2 = factor1/gcdA;
 
-            const factor2Num = simplifyNumerator(factor2, a1);
-            const factor2Den = simplifyDenominator(factor2, a1);
-
-            outputSwitch(selector, gcd1, factor1Den, factor2Den, -factor1Num*factor1Den, -factor2Num*factor2Den)
+            //We need to make our Bs negative because they're in the form (ax+b), but we need (ax-b).
+            outputSwitch(selector, gcd1, out_a1, out_a2, -out_b1, -out_b2)
         }
     }
 }
