@@ -1,33 +1,32 @@
+// This is the main function for factoring.
+// It works using the "Diamond Fraction" method. More info about this method can be found at https://www.hancockcollege.edu/mathcenter/documents/Diamond%20Method%20of%20Factoring.pdf.
 inline function factorQuadratic(a, b, c, selector) {
-    //First, we have to check if there is a GCD.
-    //It can be that c is zero, which makes a GCD of x.
-    //In that case, we can simply return (ax+b)(x+0).
-
+    // First, we have to check if there is a GCD.
+    // It can be that c is zero, which makes a GCD of x.
+    // In that case, we can simply return (ax+b)(x+0).
     if(c == 0) {
         const gcd1 = gcd(a, b);
         outputSwitch(selector, 1, a/gcd1, 1, -b/gcd1, 0)
     } else {
-        //Next, we'll find an actual GCD between them, store it for later, then divide everything by it.
-
+        // Next, we'll find an actual GCD between them, store it for later, then divide everything by it.
         const gcd1 = gcd(a, b, c);
 
         const a1 = a/gcd1;
         const b1 = b/gcd1;
         const c1 = c/gcd1;
         
-        //After this, we'll want to start solving. We'll be using the "Diamond Fraction" method, which is a common way people solve quadratics by hand.
+        // After this, we'll want to start solving. We'll be using the "Diamond Fraction" method, which is a common way people solve quadratics by hand.
         const rMul = a1 * c1;
         const rAdd = b1;
 
-        //Now, we need to find the factor.
-        //This is a number that adds to rAdd and
-        //multiplies to rMul.
+        // Now, we need to find the factor.
+        // This is a number that adds to rAdd and multiplies to rMul.
         const factor1 = sum(n=1; abs(rMul)) {
             checkFactor(rAdd, rMul, n)
         };
 
-        //This is special code that will safely return undefined when factor is 0.
-        //You are not expected to understand this.
+        // This is special code that will safely return undefined when factor is 0.
+        // You are not expected to understand this.
         if(factor1 == 0) {
             const num = if(factor1 == 0 && c != 0) {
                 0
@@ -37,55 +36,53 @@ inline function factorQuadratic(a, b, c, selector) {
 
             1/num
         } else {
-            //Factor can be 0.
+            // Factor can be 0.
             const factor2 = safeDivide(rMul, factor1);
             
-            //Now, we have our factors, so we can begin solving. We start by solving by "grouping", where we take a1(x^2) + factor1(x) and factor2(x) + c1. We factor out all terms from these groups, and take the factors multiplied by the result of factoring them.
-            //For example, the first would be fx(a1/f(x) + factor1/f), and the other would be g(factor2/g(x) + c1/g).
+            // Now, we have our factors, so we can begin solving. We start by solving by "grouping", where we take a1(x^2) + factor1(x) and factor2(x) + c1. We factor out all terms from these groups, and take the factors multiplied by the result of factoring them.
+            // For example, the first would be fx(a1/f(x) + factor1/f), and the other would be g(factor2/g(x) + c1/g).
             const gcdA = gcd(a1, factor1);
             const gcdB = gcd(factor2, c1);
             
-            //We now have gcdA(x) + gcdB on one side,
-            //and a1/gcdA(x) + factor1/gcdA on the other.
+            // We now have gcdA(x) + gcdB on one side,
+            // and a1/gcdA(x) + factor1/gcdA on the other.
 
-            //Next, we need to simplify factor/a.
+            // Next, we need to simplify factor/a.
             const out_a1 = gcdA;
             const out_a2 = a1/gcdA;
             const out_b1 = gcdB;
             const out_b2 = factor1/gcdA;
 
-            //We need to make our Bs negative because they're in the form (ax+b), but we need (ax-b).
+            // We need to make our Bs negative because they're in the form (ax+b), but we need (ax-b).
             outputSwitch(selector, gcd1, out_a1, out_a2, -out_b1, -out_b2)
         }
     }
 }
 
-inline function checkFactor(b1, c1, n) {
-    const absC = abs(c1);
+inline function checkFactor(rAdd, rMul, n) {
+    const absRMul = abs(rMul);
 
-    //We'll check to see if this is a viable factor.
-    //We also have a second check to make sure that only one of the factors is chosen.
-    if(isDivisibleBy(c1, n) && absC/n <= n) {
-        //Next, we need to check if it is summable to b.
-
+    // We'll check to see if this is a viable factor.
+    // We also have a second check to make sure that only one of the factors is chosen.
+    if(isDivisibleBy(rMul, n) && absRMul/n <= n) {
+        // Next, we need to check if it sums to rAdd.
         const factor1 = n;
-        const factor2 = absC/n;
+        const factor2 = absRMul/n;
 
-        if(isNegative(c1)) {
-            //If it's negative, we must make one of either factor ne
-            if(factor2-factor1 == b1) {
+        if(isNegative(rMul)) {
+            // If it's negative, we must make one of either factor negative.
+            if(factor2-factor1 == rAdd) {
                 -factor1
-            } else if(factor1-factor2 == b1) {
+            } else if(factor1-factor2 == rAdd) {
                 factor1
             } else {
                 0
             }
         } else {
-            //If it's positive, we can have both negative or both positive.
-
-            if(-factor1-factor2 == b1) {
+            // If it's positive, we can have both negative or both positive.
+            if(-factor1-factor2 == rAdd) {
                 -factor1
-            } else if(factor1+factor2 == b1) {
+            } else if(factor1+factor2 == rAdd) {
                 factor1
             } else {
                 0
@@ -96,6 +93,7 @@ inline function checkFactor(b1, c1, n) {
     }
 }
 
+// Outputs a number based on a selector.
 inline function outputSwitch(selector, gcd1, a1, a2, b1, b2) {
     if(selector == 0) {
         gcd1
@@ -110,6 +108,13 @@ inline function outputSwitch(selector, gcd1, a1, a2, b1, b2) {
     }
 }
 
+// The main entry point.
 export function f(a, b, c, s) {
     factorQuadratic(a, b, c, s)
 }
+
+// These can be uncommented to split the output into multiple functions to reduce the overall size.
+/*
+export outputSwitch;
+export checkFactor;
+*/
