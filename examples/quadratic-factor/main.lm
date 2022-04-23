@@ -5,16 +5,16 @@ inline function factorQuadratic(a, b, c, selector) {
     // It can be that c is zero, which makes a GCD of x.
     // In that case, we can simply return (ax+b)(x+0).
     if(c == 0) {
-        const gcd1 = gcd(a, b);
+        const gcd1 = gcdNeg(a, b);
         outputSwitch(selector, 1, a/gcd1, 1, -b/gcd1, 0)
     } else {
         // Next, we'll find an actual GCD between them, store it for later, then divide everything by it.
-        const gcd1 = gcd(a, b, c);
+        const gcd1 = gcdNeg1(a, b, c);
 
         const a1 = a/gcd1;
         const b1 = b/gcd1;
         const c1 = c/gcd1;
-        
+
         // After this, we'll want to start solving. We'll be using the "Diamond Fraction" method, which is a common way people solve quadratics by hand.
         const rMul = a1 * c1;
         const rAdd = b1;
@@ -38,12 +38,12 @@ inline function factorQuadratic(a, b, c, selector) {
         } else {
             // Factor can be 0.
             const factor2 = safeDivide(rMul, factor1);
-            
+
             // Now, we have our factors, so we can begin solving. We start by solving by "grouping", where we take a1(x^2) + factor1(x) and factor2(x) + c1. We factor out all terms from these groups, and take the factors multiplied by the result of factoring them.
             // For example, the first would be fx(a1/f(x) + factor1/f), and the other would be g(factor2/g(x) + c1/g).
-            const gcdA = gcd(a1, factor1);
-            const gcdB = gcd(factor2, c1);
-            
+            const gcdA = gcdNeg(a1, factor1);
+            const gcdB = gcdNeg(factor2, c1);
+
             // We now have gcdA(x) + gcdB on one side,
             // and a1/gcdA(x) + factor1/gcdA on the other.
 
@@ -59,6 +59,25 @@ inline function factorQuadratic(a, b, c, selector) {
     }
 }
 
+// Takes the GCD of two numbers, returning negative if both are negative.
+inline function gcdNeg(a, b) {
+    if(a < 0 && b < 0) {
+        -gcd(a, b)
+    } else {
+        gcd(a, b)
+    }
+}
+
+// 3 argument gcdNeg.
+inline function gcdNeg1(a, b, c) {
+    if(a < 0 && b < 0 && c < 0) {
+        -gcd(a, b, c)
+    } else {
+        gcd(a, b, c)
+    }
+}
+
+// Checks if a number is a valid factor.
 inline function checkFactor(rAdd, rMul, n) {
     const absRMul = abs(rMul);
 
