@@ -323,6 +323,29 @@ inline function cTanh(a) => cDiv(cSinh(a), cCosh(a));
 //The complex hyperbolic cotangent function.
 inline function cCoth(a) => cDiv(cCosh(a), cSinh(a));
 
+//Calculates the complex a mod b.
+inline function cMod(a, b) {
+    const p1 = cFloor(cDiv(a, b));
+    const p2 = cMul(p1, b);
+    
+    a - p2
+}
+
+//Applies the floor function to both parts of a complex number.
+inline function cFloor(a) {
+    (floor(cR(a)), floor(cI(a)))
+}
+
+//Applies the ceil function to both parts of a complex number.
+inline function cCeil(a) {
+    (ceil(cR(a)), ceil(cI(a)))
+}
+
+//Applies the round function to both parts of a complex number.
+inline function cRound(a) {
+    (round(cR(a)), round(cI(a)))
+}
+
 //Checks if a number is NaN.
 inline function isNaN(a) => a != a;
 
