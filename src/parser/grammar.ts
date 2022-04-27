@@ -316,6 +316,7 @@ semantic.addOperation("parse", {
     InnerTemplate(name, _2, args, _3, _4){
         return {type: "template", name: name.parse(), args: args.parse(), context: TemplateContext.InnerDeclaration};
     },
+    // TODO: Allow other templates to do this.
     DefineTemplate(_, _2, name, _3, arg, _4, _5){
         return {type: "template", name: "define", args: [name.parse(), arg.parse()], context: TemplateContext.OuterDeclaration};
     },
