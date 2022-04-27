@@ -27,3 +27,10 @@ export interface TemplateBlock {
     block: true;
     value: string;
 }
+
+export interface LogimatTemplateState {
+    logimat: {
+        files: string[],
+        definitions: Record<string, TemplateArg>
+    }
+}
