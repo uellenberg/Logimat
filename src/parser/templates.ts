@@ -3,8 +3,8 @@ import path from "path";
 import {HandleName} from "./util";
 import fs from "fs";
 
-export function createTemplates(noFS: boolean, state: LogimatTemplateState, importMap: Record<string, TemplateModule | string>) {
-    const templates: Record<string, TemplateFunction> = {
+export function createTemplates(noFS: boolean, state: LogimatTemplateState, importMap: Record<string, TemplateModule | string>) : Record<string, TemplateFunction> {
+    return {
         import: async (args, state1: LogimatTemplateState, context) => {
             if (noFS) throw new Error("Import failed: filesystem operations have been disabled.");
             if (context !== TemplateContext.OuterDeclaration) throw new Error("The import template can only be used outside of any methods!");
@@ -114,7 +114,6 @@ export function createTemplates(noFS: boolean, state: LogimatTemplateState, impo
             return "${" + args[0] + "}";
         }
     };
-    return templates;
 }
 
 const readFile = (path: string) => new Promise<string>((resolve, reject) => {
