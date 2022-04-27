@@ -10,14 +10,17 @@ export function r_un(x) {
     cSin(cPow(x, p_oint))
 }
 
-export function g_o(a, b) {
+export function g_o(a, b, n) {
     cAdd(cMul(a, a), cDiv(b, p_oint))
 }
 
 export function i_t(x) {
-    state = (0, 0);
+    state = x;
 
+    define!(ITERATIONS, 1);
     iterate!({
-        state = g_o(state, x);
+        state = g_o(state, x, get!(ITERATIONS));
+
+        define!(ITERATIONS, ITERATIONS + 1);
     }, ITERATIONS);
 }
