@@ -17,10 +17,10 @@ export function g_o(a, b, n) {
 export function i_t(x) {
     state = x;
 
-    define!(ITERATIONS, 1);
+    define!(ITERATION, 1);
     iterate!({
-        state = g_o(state, x, get!(ITERATIONS));
+        state = g_o(state, x, get!(ITERATION));
 
-        define!(ITERATIONS, ITERATIONS + 1);
+        define!(ITERATION, ITERATION + 1);
     }, ITERATIONS);
 }
