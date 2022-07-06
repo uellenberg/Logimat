@@ -121,8 +121,8 @@ LogiMat {
 
     Sum = sum "(" TemplateIdentifier "=" Expression ";" Expression ")" StateBlock
     Prod = prod "(" TemplateIdentifier "=" Expression ";" Expression ")" StateBlock
-    Int = int "(" TemplateIdentifier "=" Expression ";" Expression ")" StateBlock
-    Div = div "(" TemplateIdentifier ")" StateBlock
+    Integral = integral "(" TemplateIdentifier "=" Expression ";" Expression ")" StateBlock
+    Derivative = derivative "(" TemplateIdentifier ")" StateBlock
     
     PrimaryExpression = state -- state
                       | IfStatement -- if
@@ -130,8 +130,8 @@ LogiMat {
                       | "log_" (literal | PrimaryExpression_var) "(" Expression ")" -- log
                       | Sum
                       | Prod
-                      | Int
-                      | Div
+                      | Integral
+                      | Derivative
                       | TemplateIdentifierName "(" ListOf<Expression, ","> ")"   -- func
                       | TemplateIdentifier  -- var
                       | literal
@@ -211,8 +211,8 @@ LogiMat {
     state = "state" ~identifierPart
     sum = "sum" ~identifierPart
     prod = "prod" ~identifierPart
-    int = "int" ~identifierPart
-    div = "div" ~identifierPart
+    integral = "integral" ~identifierPart
+    derivative = "derivative" ~identifierPart
     if = "if" ~identifierPart
     else = "else" ~identifierPart
     boolean = ("true" | "false") ~identifierPart
@@ -233,8 +233,8 @@ LogiMat {
              | state
              | sum
              | prod
-             | int
-             | div
+             | integral
+             | derivative
              | if
              | else
              | boolean
@@ -615,10 +615,10 @@ semantic.addOperation("parse", {
     Prod(_, _2, v, _3, expr1, _4, expr2, _6, action){
         return {type: "prod", args: [v.parse(), expr1.parse(), expr2.parse(), action.parse()]};
     },
-    Int(_, _2, v, _3, from, _4, to, _5, action){
+    Integral(_, _2, v, _3, from, _4, to, _5, action){
         return {type: "int", args: [v.parse(), from.parse(), to.parse(), action.parse()]};
     },
-    Div(_, _2, v, _3, action){
+    Derivative(_, _2, v, _3, action){
         return {type: "div", args: [v.parse(), action.parse()]};
     },
     string(_, str, _3){
