@@ -91,10 +91,10 @@ LogiMat {
     ActionsArgs = ListOf<ActionName, ",">
     
     TemplateArg = string  -- string
-                | "{" (OuterDeclaration+ | InnerDeclarations) "}"   -- block
-                | Expression -- expression
                 | boolean -- boolean
                 | null    -- null
+                | "{" (OuterDeclaration+ | InnerDeclarations) "}"   -- block
+                | Expression -- expression
     
     ExpressionBlock = "{" Expression "}"
     Block = "{" InnerDeclarations "}"
@@ -104,16 +104,20 @@ LogiMat {
     InnerDeclaration = InnerDefineTemplate
                      | InnerTemplate
                      | ConstDeclaration
-                     | SetState
+                     | LetDeclaration
+                     | LetDeclarationEmpty
+                     | SetVar
                      | IfStatement
 
     ConstDeclaration = const #space TemplateIdentifier "=" Expression ";"
+    LetDeclaration = let #space TemplateIdentifier "=" Expression ";"
+    LetDeclarationEmpty = let #space TemplateIdentifier ";"
 
-    SetState = state "=" Expression ";"
     SetStateImplicit = Expression
+    
+    SetVar = identifier "=" Expression ";"
 
     StateBlock = Block -- block
-               | SetState -- state
 
     IfStatement = if "(" Expression ")" StateBlock (else (StateBlock | IfStatement))?
     
@@ -124,8 +128,7 @@ LogiMat {
     Integral = integral "(" TemplateIdentifier "=" Expression ";" Expression ")" StateBlock
     Derivative = derivative "(" TemplateIdentifier ")" StateBlock
     
-    PrimaryExpression = state -- state
-                      | IfStatement -- if
+    PrimaryExpression = IfStatement -- if
                       | templateName "(" TemplateArgs ")"   -- template
                       | "log_" (literal | PrimaryExpression_var) "(" Expression ")" -- log
                       | Sum
@@ -184,7 +187,9 @@ LogiMat {
     
     Expression = TernaryExpression
 
-    literal = numericLiteral
+    literal = numericLiteral | booleanLiteral
+    
+    booleanLiteral = boolean
 
     numericLiteral = decimalLiteral
 
@@ -200,6 +205,7 @@ LogiMat {
     export = "export" ~identifierPart
     inline = "inline" ~identifierPart
     const = "const" ~identifierPart
+    let = "let" ~identifierPart
     function = "function" ~identifierPart
     action = "action" ~identifierPart
     actions = "actions" ~identifierPart
@@ -208,7 +214,6 @@ LogiMat {
     point = "point" ~identifierPart
     array = "array" ~identifierPart
     polygon = "polygon" ~identifierPart
-    state = "state" ~identifierPart
     sum = "sum" ~identifierPart
     prod = "prod" ~identifierPart
     integral = "integral" ~identifierPart
@@ -222,6 +227,7 @@ LogiMat {
     keywords = export
              | inline
              | const
+             | let
              | function
              | action
              | actions
@@ -230,7 +236,6 @@ LogiMat {
              | point
              | array
              | polygon
-             | state
              | sum
              | prod
              | integral
@@ -408,7 +413,7 @@ semantic.addOperation("parse", {
         return block.parse();
     },
     FunctionBody_arrow(_1, expression, _2){
-        return [{type: "state", expr: expression.parse()}];
+        return [{type: "var", name: "state", expr: expression.parse()}];
     },
     ActionName(name, _1, args, _2){
         const arr = [name.parse()];
@@ -473,9 +478,6 @@ semantic.addOperation("parse", {
     },
     PrimaryExpression_var(e){
         return {type: "v", args: [e.parse()]};
-    },
-    PrimaryExpression_state(e){
-        return {type: "v", args: ["state"]};
     },
     PrimaryExpression_point(e){
         return {type: "f", args: ["point", e.parse()]};
@@ -552,6 +554,9 @@ semantic.addOperation("parse", {
     OrExpression_or(e, _, e2){
         return {type: "f", args: ["or", [e.parse(), e2.parse()]]};
     },
+    booleanLiteral(_) {
+        return this.sourceString === "true" ? 1 : 0;
+    },
     decimalLiteral_bothParts(_, _2, _3){
         return this.sourceString;
     },
@@ -587,17 +592,20 @@ semantic.addOperation("parse", {
     ConstDeclaration(_, _2, id, _3, expr, _4){
         return {type: "const", name: id.parse(), expr: expr.parse()};
     },
-    SetState(_, _2, expr, _3){
-        return {type: "state", expr: expr.parse()};
+    LetDeclaration(_, _2, id, _3, expr, _4){
+        return {type: "let", name: id.parse(), expr: expr.parse()};
+    },
+    LetDeclarationEmpty(_, _2, id, _3){
+        return {type: "let", name: id.parse(), expr: null};
     },
     SetStateImplicit(expr){
-        return {type: "state", expr: expr.parse()};
+        return {type: "var", name: "state", expr: expr.parse()};
+    },
+    SetVar(id, _2, expr, _3){
+        return {type: "var", name: id.parse(), expr: expr.parse()};
     },
     StateBlock_block(block){
         return block.parse();
-    },
-    StateBlock_state(state){
-        return [state.parse()];
     },
     IfStatement(_, _2, condition, _3, ifaction, _4, elseaction){
         let elseAction = elseaction.parse();
@@ -608,7 +616,7 @@ semantic.addOperation("parse", {
         return {type: "if", condition: condition.parse(), ifaction: ifaction.parse(), elseaction: elseAction};
     },
     Ternary(condition, _1, tRes, _2, fRes){
-        return {type: "b", args: [[{type: "if", condition: condition.parse(), ifaction: [{type: "state", expr: tRes.parse()}], elseaction: [{type: "state", expr: fRes.parse()}]}]]};
+        return {type: "b", args: [[{type: "if", condition: condition.parse(), ifaction: [{type: "var", name: "state", expr: tRes.parse()}], elseaction: [{type: "var", name: "state", expr: fRes.parse()}]}]]};
     },
     Sum(_, _2, v, _3, expr1, _4, expr2, _6, action){
         return {type: "sum", args: [v.parse(), expr1.parse(), expr2.parse(), action.parse()]};
@@ -739,14 +747,20 @@ export interface Expression {
     type: "f" | "^" | "*" | "/" | "+" | "-" | "n" | "a_m" | "a_f" | "b" | "v" | "sum" | "prod" | "int" | "div";
     args: (string | object)[];
 }
-export type Statement = ConstDeclaration | Template | SetState | IfStatement;
+export type Statement = ConstDeclaration | LetDeclaration | Template | SetVar | IfStatement;
 export interface ConstDeclaration {
     type: "const";
     name: string;
     expr: Expression;
 }
-export interface SetState {
-    type: "state";
+export interface LetDeclaration {
+    type: "let";
+    name: string;
+    expr: Expression;
+}
+export interface SetVar {
+    type: "var";
+    name: string;
     expr: Expression;
 }
 export interface IfStatement {
