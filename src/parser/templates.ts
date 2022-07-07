@@ -3,8 +3,8 @@ import path from "path";
 import {HandleName} from "./util";
 import fs from "fs";
 
-export function createTemplates(noFS: boolean, state: LogimatTemplateState, importMap: Record<string, TemplateModule | string>) {
-    const templates: Record<string, TemplateFunction> = {
+export function createTemplates(noFS: boolean, state: LogimatTemplateState, importMap: Record<string, TemplateModule | string>) : Record<string, TemplateFunction> {
+    return {
         import: async (args, state1: LogimatTemplateState, context) => {
             if (noFS) throw new Error("Import failed: filesystem operations have been disabled.");
             if (context !== TemplateContext.OuterDeclaration) throw new Error("The import template can only be used outside of any methods!");
@@ -112,9 +112,130 @@ export function createTemplates(noFS: boolean, state: LogimatTemplateState, impo
             if (args.length < 1 || typeof (args[0]) !== "string" || !args[0]) throw new Error("A value to wrap is required!");
 
             return "${" + args[0] + "}";
-        }
+        },
+        complexfunction: (args, state1: LogimatTemplateState, context) => {
+            if (context !== TemplateContext.Expression) throw new Error("This template can only be ran inside of an expression!");
+            if (args.length < 1 || typeof (args[0]) !== "number" || isNaN(args[0])) throw new Error("A version number is required!");
+            if (args.length < 2 || typeof (args[1]) !== "number" || isNaN(args[1])) throw new Error("A function number is required!");
+            if (args.length < 3 || typeof (args[2]) !== "string" || !args[2]) throw new Error("A curVal string is required!");
+            if (args.length < 4 || typeof (args[3]) !== "string" || !args[3]) throw new Error("A pos string is required!");
+            if (args.length < 5 || typeof (args[4]) !== "string" || !args[4]) throw new Error("An iter string is required!");
+
+            // TODO: Implement versioning.
+            const version = args[0];
+            const func = [...args[1].toString()].map(a => parseInt(a));
+            const curVal = args[2];
+            const pos = args[3];
+            const iter = args[4];
+
+            // The complex function generator works by using a simple context-free grammar.
+            // This grammar works on functions, numbers, and the variables given to this function.
+            // The grammar is as follows:
+            //
+            // Start = ComplexFunction
+            //
+            // ComplexValue = ComplexFunction | ComplexNumber | [curVal] | [pos]
+            // RealValue = RealFunction | RealNumber | [iter]
+            //
+            // ComplexFunction = CFunctionC | CCFunctionC | CRFunctionC | RCFunctionC | RRFunctionC
+            // RealFunction = CFunctionR
+            //
+            // CFunctionC = [list] "(" ComplexValue ")"
+            // CCFunctionC = [list] "(" ComplexValue "," ComplexValue ")"
+            // CRFunctionC = [list] "(" ComplexValue "," RealValue ")"
+            // RCFunctionC = [list] "(" RealValue "," ComplexValue ")"
+            // RRFunctionC = [list] "(" RealValue "," RealValue ")"
+            //
+            // CFunctionR = [list] "(" ComplexValue ")"
+            // ROpFunction = [list] RealValue op RealValue
+            //
+            // ComplexNumber = "(" RealValue "," RealValue ")"
+            // RealNumber = [random number]
+            // op = "+" | "-" | "*" | "/" | "^"
+
+            const cFcList = ["cExp", "cLn", "cSin", "cCos", "cTan", "cCot", "cSinh", "cCosh", "cTanh", "cCoth", "cFloor", "cCeil", "cRound"];
+            const ccFcList = ["cMul", "cDiv", "cAdd", "cSub", "cPow", "cLog", "cMod"];
+            const crFcList = ["cPowCR"];
+            const rcFcList = ["cPowRC"];
+            const rrFcList = ["cPolar"];
+
+            const cFrList = ["cR", "cI", "cAbs", "cArg"];
+            const rOpFunctionList = ["+", "-", "*", "/", "^"];
+
+            let idx = 0;
+
+            /**
+             * Generates a random number between [0, 1).
+             */
+            const rand = () => {
+                // Generate a seed from the idx.
+                const seed = func[idx % (func.length-1)] + idx;
+                idx++;
+
+                // Generate a random number.
+                return mulberry32(xmur3(seed.toString())())();
+            };
+
+            /**
+             * Picks a random element using the function number.
+             * @param arr {((() => string) | string)[]} - is the ending index (exclusive).
+             */
+            const pick = (arr: ((() => string) | string)[]) : string => {
+                // We can multiply by the range to get the random number.
+                const index = Math.floor(rand() * arr.length);
+
+                // Finally, select.
+                const el = arr[index];
+
+                if(typeof el === "function") return el();
+                return el;
+            };
+
+            // Make terminals impossible at the start, but slowly
+            // increase their likelihood as we go.
+            const terminalIncrement = .5;
+            let numTerminals = -terminalIncrement;
+
+            const ComplexValue = () : string => {
+                numTerminals+=terminalIncrement;
+
+                return pick([ComplexFunction, ...new Array(Math.floor(numTerminals)).fill([ComplexNumber, curVal, pos]).flatMap(a => a)]);
+            };
+            const RealValue = () : string => {
+                numTerminals+=terminalIncrement;
+
+                return pick([RealFunction, ...new Array(Math.floor(numTerminals)).fill([RealNumber, iter]).flatMap(a => a)]);
+            };
+
+            // Pick probabilities based on the total number of functions and not categories.
+            const ComplexFunction = () : string => pick([
+                ...cFcList.map(() => CFunctionC),
+                ...ccFcList.map(() => CCFunctionC),
+                ...crFcList.map(() => CRFunctionC),
+                ...rcFcList.map(() => RCFunctionC),
+                ...rrFcList.map(() => RRFunctionC),
+            ]);
+            const RealFunction = () : string => pick([
+                ...cFrList.map(() => CFunctionR),
+                ...rOpFunctionList.map(() => ROpFunction),
+            ]);
+
+            const CFunctionC = () : string => `${pick(cFcList)}(${ComplexValue()})`;
+            const CCFunctionC = () : string => `${pick(ccFcList)}(${ComplexValue()},${ComplexValue()})`;
+            const CRFunctionC = () : string => `${pick(crFcList)}(${ComplexValue()},${RealValue()})`;
+            const RCFunctionC = () : string => `${pick(rcFcList)}(${RealValue()},${ComplexValue()})`;
+            const RRFunctionC = () : string => `${pick(rrFcList)}(${RealValue()},${RealValue()})`;
+
+            const CFunctionR = () : string => `${pick(cFrList)}(${ComplexValue()})`;
+            const ROpFunction = () : string => `(${RealValue()}${pick(rOpFunctionList)}${RealValue()})`;
+            // TODO: Maybe implement more real functions.
+
+            const ComplexNumber = () : string => `(${RealValue()},${RealValue()})`;
+            const RealNumber = () : string => ((rand() - .5) * 10).toString();
+
+            return ComplexFunction();
+        },
     };
-    return templates;
 }
 
 const readFile = (path: string) => new Promise<string>((resolve, reject) => {
@@ -123,3 +244,29 @@ const readFile = (path: string) => new Promise<string>((resolve, reject) => {
         resolve(val.toString());
     });
 });
+
+/**
+ * Random seed generator. Source: https://stackoverflow.com/a/47593316.
+ */
+function xmur3(str: string) : () => number {
+    for(var i = 0, h = 1779033703 ^ str.length; i < str.length; i++) {
+        h = Math.imul(h ^ str.charCodeAt(i), 3432918353);
+        h = h << 13 | h >>> 19;
+    } return function() {
+        h = Math.imul(h ^ (h >>> 16), 2246822507);
+        h = Math.imul(h ^ (h >>> 13), 3266489909);
+        return (h ^= h >>> 16) >>> 0;
+    }
+}
+
+/**
+ * Random number generator. Source: https://stackoverflow.com/a/47593316.
+ */
+function mulberry32(a: number) : () => number {
+    return function() {
+        var t = a += 0x6D2B79F5;
+        t = Math.imul(t ^ t >>> 15, t | 1);
+        t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+        return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    }
+}
