@@ -80,7 +80,7 @@ const handle = (node: MathNode, options: Options, tex: boolean) : string => {
     if(node.type === "OperatorNode" && node.op) {
         if(node.fn?.startsWith("unary")) {
             if(node.args[0]?.type === "OperatorNode" && node.args[0]?.op) {
-                return node.op + "(" + HandleNode(node.args[0], options, tex) + ")";
+                return node.op + Encapsulate(HandleNode(node.args[0], options, tex), tex);
             }
 
             return node.op + HandleNode(node.args[0], options, tex);
@@ -246,7 +246,7 @@ const handle = (node: MathNode, options: Options, tex: boolean) : string => {
                 return `\\frac{${a1}}{${a2}}`;
             case "^":
                 if((node.args[0].type === "FunctionNode" && typeof(node.args[0].fn) === "object" && node.args[0].fn["name"] === "pow") || /[-+*/]/g.test(a1)) {
-                    a1 = "(" + a1 + ")";
+                    a1 = Encapsulate(a1, tex);
                 }
 
                 return `{${a1}}^{${a2}}`;
@@ -375,7 +375,7 @@ const simplification: Record<string, (node: FunctionNode, options: object, tex: 
         if(isNumeric(handledIndexer) && node.args[0]?.type === "FunctionNode" && typeof(node.args[0]?.fn) === "object" && node.args[0]?.fn["name"] === "array") {
             const handled = HandleNode(node.args[0].args[indexer-1], options, tex);
 
-            if(node.args[0].args[indexer-1].type === "OperatorNode") return "(" + handled + ")";
+            if(node.args[0].args[indexer-1].type === "OperatorNode") return Encapsulate(handled, tex);
             return handled;
         }
 
@@ -386,7 +386,7 @@ const simplification: Record<string, (node: FunctionNode, options: object, tex: 
         if(node.args[0]?.type === "FunctionNode" && typeof(node.args[0]?.fn) === "object" && node.args[0]?.fn["name"] === "point") {
             const handled = HandleNode(node.args[0].args[0], options, tex);
 
-            if(node.args[0].args[0].type === "OperatorNode") return "(" + handled + ")";
+            if(node.args[0].args[0].type === "OperatorNode") return Encapsulate(handled, tex);
             return handled;
         }
 
@@ -397,7 +397,7 @@ const simplification: Record<string, (node: FunctionNode, options: object, tex: 
         if(node.args[0]?.type === "FunctionNode" && typeof(node.args[0]?.fn) === "object" && node.args[0]?.fn["name"] === "point") {
             const handled = HandleNode(node.args[0].args[1], options, tex);
 
-            if(node.args[0].args[1].type === "OperatorNode") return "(" + handled + ")";
+            if(node.args[0].args[1].type === "OperatorNode") return Encapsulate(handled, tex);
             return handled;
         }
 
@@ -436,7 +436,7 @@ const functions: Record<string, (node: FunctionNode, options: object, tex: boole
         const exp = HandleNode(node.args[1], options, tex);
 
         if((node.args[0].type === "FunctionNode" && typeof(node.args[0].fn) === "object" && node.args[0].fn["name"] === "pow") || /[-+*/]/g.test(base)) {
-            base = "(" + base + ")";
+            base = Encapsulate(base, tex);
         }
 
         return `{${base}}^{${exp}}`;
