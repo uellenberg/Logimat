@@ -236,10 +236,11 @@ const handle = (node: MathNode, options: Options, tex: boolean) : string => {
         const op2 = node.args[1].type === "OperatorNode" ? operatorMap[node.args[1].op] : null;
 
         //We want to group any non-single terms that have an operator that isn't equal to the current operator.
-        if(!IsSingleTerm(op1) && op1 !== operator) {
+        //Division is the one exception, where we don't need to use parentheses.
+        if(!IsSingleTerm(op1) && op1 !== operator && node.op !== "/") {
             a1 = Encapsulate(a1, tex);
         }
-        if(!IsSingleTerm(op2) && op2 !== operator) {
+        if(!IsSingleTerm(op2) && op2 !== operator && node.op !== "/") {
             a2 = Encapsulate(a2, tex);
         }
 
