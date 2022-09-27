@@ -229,9 +229,9 @@ const handle = (node: MathNode, options: Options, tex: boolean) : string => {
 
         //If any of the ones here are an incompatible operation, encapsulate them.
 
-        const operator = node.op;
-        const op1 = node.args[0].type === "OperatorNode" ? node.args[0].op : null;
-        const op2 = node.args[1].type === "OperatorNode" ? node.args[1].op : null;
+        const operator = operatorMap[node.op];
+        const op1 = node.args[0].type === "OperatorNode" ? operatorMap[node.args[0].op] : null;
+        const op2 = node.args[1].type === "OperatorNode" ? operatorMap[node.args[1].op] : null;
 
         //We want to group any non-single terms that have an operator that isn't equal to the current operator.
         if(!IsSingleTerm(op1) && op1 !== operator) {
@@ -417,16 +417,16 @@ const simplification: Record<string, (node: FunctionNode, options: object, tex: 
 
 const functions: Record<string, (node: FunctionNode, options: object, tex: boolean) => string> = {
     sum(node, options, tex) {
-        return `${tex ? "" : "("}{\\sum_{${HandleNode(node.args[0], options, tex)}=${HandleNode(node.args[1], options, tex)}}^{${HandleNode(node.args[2], options, tex)}}{${tex ? "" : "("}${HandleNode(node.args[3], options, tex)}${tex ? "" : ")"}}}${tex ? "" : ")"}`;
+        return `({\\sum_{${HandleNode(node.args[0], options, tex)}=${HandleNode(node.args[1], options, tex)}}^{${HandleNode(node.args[2], options, tex)}}{(${HandleNode(node.args[3], options, tex)})}})`;
     },
     prod(node, options, tex) {
-        return `${tex ? "" : "("}{\\prod_{${HandleNode(node.args[0], options, tex)}=${HandleNode(node.args[1], options, tex)}}^{${HandleNode(node.args[2], options, tex)}}{${tex ? "" : "("}${HandleNode(node.args[3], options, tex)}${tex ? "" : ")"}}}${tex ? "" : ")"}`;
+        return `({\\prod_{${HandleNode(node.args[0], options, tex)}=${HandleNode(node.args[1], options, tex)}}^{${HandleNode(node.args[2], options, tex)}}{(${HandleNode(node.args[3], options, tex)})}})`;
     },
     int(node, options, tex) {
-        return `${tex ? "" : "("}{\\int_{${HandleNode(node.args[1], options, tex)}}^{${HandleNode(node.args[2], options, tex)}}{${tex ? "" : "("}${HandleNode(node.args[3], options, tex)}${tex ? "" : ")"}}d${HandleNode(node.args[0], options, tex)}}${tex ? "" : ")"}`;
+        return `({\\int_{${HandleNode(node.args[1], options, tex)}}^{${HandleNode(node.args[2], options, tex)}}{(${HandleNode(node.args[3], options, tex)})}d${HandleNode(node.args[0], options, tex)}})`;
     },
     div(node, options, tex) {
-        return `${tex ? "" : "("}{{\\frac{d}{d${HandleNode(node.args[0], options, tex)}}}{${tex ? "" : "("}${HandleNode(node.args[1], options, tex)}${tex ? "" : ")"}}}${tex ? "" : ")"}`
+        return `({{\\frac{d}{d${HandleNode(node.args[0], options, tex)}}}{(${HandleNode(node.args[1], options, tex)})}})`
     },
     sqrt(node, options, tex) {
         return `\\sqrt{${HandleNode(node.args[0], options, tex)}}`;
@@ -539,6 +539,18 @@ const functions: Record<string, (node: FunctionNode, options: object, tex: boole
 };
 
 const texFunctions: Record<string, (node: FunctionNode, options: object) => string> = {
+    sum(node, options) {
+        return `{\\sum_{${node.args[0].toTex(options)}=${node.args[1].toTex(options)}}^{${node.args[2].toTex(options)}}{\\left(${node.args[3].toTex(options)}\\right)}}`;
+    },
+    prod(node, options) {
+        return `{\\prod_{${node.args[0].toTex(options)}=${node.args[1].toTex(options)}}^{${node.args[2].toTex(options)}}{\\left(${node.args[3].toTex(options)}\\right)}}`;
+    },
+    int(node, options) {
+        return `{\\int_{${node.args[1].toTex(options)}}^{${node.args[2].toTex(options)}}{\\left(${node.args[3].toTex(options)}\\right)}d${node.args[0].toTex(options)}}`;
+    },
+    div(node, options) {
+        return `{{\\frac{d}{d${node.args[0].toTex(options)}}}{\\left(${node.args[1].toTex(options)}\\right)}}`
+    },
     mod(node, options) {
         return `\\operatorname{mod}\\left(${node.args[0].toTex(options)},\\ ${node.args[1].toTex(options)}\\right)`;
     },
