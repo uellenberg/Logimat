@@ -11,32 +11,22 @@ for(const name of ["range"]) {
     if(math["expression"]["mathWithTransform"].hasOwnProperty(name)) delete math["expression"]["mathWithTransform"][name];
 }
 
-export const SimplifyExpression = (input: string, {useTex, strict, names, map, partialSimplify}: SimplifyData) : string => {
-    // We're separating partial and non-partial simplifications in our map to prevent
-    // a partial simplify from overriding a full simplify (or vice-versa).
-    if(map.hasOwnProperty((partialSimplify ? "~" : "") + input) && !partialSimplify) return map[input];
+export const SimplifyExpression = (input: string, useTex: boolean, strict: boolean, names: string[], map: Record<string, string>) : string => {
+    if(map.hasOwnProperty(input)) return map[input];
 
     const newNames = names.concat(builtinNames);
 
     try {
         const res = math.simplify(input, simplifyRules, {}, {exactFractions: false});
         //They say they return a string but they can sometimes return numbers.
-        const text = useTex ? res.toTex(getTexOptions(strict, newNames, partialSimplify)) : res.toString(getStringOptions(strict, newNames, partialSimplify));
-        map[(partialSimplify ? "~" : "") + input] = text;
+        const text = useTex ? res.toTex(getTexOptions(strict, newNames)) : res.toString(getStringOptions(strict, newNames));
+        map[input] = text;
 
         return text;
     } catch(e) {
         console.error("An error has occurred while attempting to simplify \"" + input + "\":");
         throw e;
     }
-}
-
-export interface SimplifyData {
-    useTex: boolean;
-    strict: boolean;
-    names: string[];
-    map: Record<string, string>;
-    partialSimplify: boolean;
 }
 
 const simplifyRules = [
@@ -50,21 +40,9 @@ const simplifyRules = [
     "1 & n -> n",
     "n & 0 -> 0",
     "0 & n -> 0",
-    //Multiplication,
-    "n * 0 -> 0",
-    "0 * n -> 0",
-    "n * 1 -> n",
-    "1 * n -> n",
-    //Division,
-    "n / 1 -> n",
-    "n / 0 -> undef(n)",
-    "Infinity -> inf()",
     //Func
     "if_func(0,n1,n2) -> n2",
     "if_func(1,n1,n2) -> n1",
-    "if_func(n1,n2,n2) -> n2",
-    "if_func(n1,if_func(n1,n2,n3),n4) -> if_func(n1,n2,n4)",
-    "if_func(n1==0,n2,if_func(n1,n3,n4)) -> if_func(n1,n3,n2)",
     //Point
     "point(n1,n2) + point(n3,n4) -> point(n1+n3,n2+n4)",
     "0 * point(n1,n2) -> point(0,0)",
@@ -109,10 +87,6 @@ const handle = (node: MathNode, options: Options, tex: boolean) : string => {
         }
 
         let op = node.op;
-
-        // WAIT: In order for partial simplifications to work, we can't handle special functions
-        // unless we are instructed to.
-        if(options.partialSimplify) return `(${HandleNode(node.args[0], options, tex)})${op}(${HandleNode(node.args[1], options, tex)})`;
 
         if(op === "|") {
             const opOptions = Object.assign({}, options);
@@ -291,10 +265,6 @@ const handle = (node: MathNode, options: Options, tex: boolean) : string => {
             if(simplified != null) return simplified;
         }
 
-        // WAIT: In order for partial simplifications to work, we can't handle special functions
-        // unless we are instructed to.
-        if(options.partialSimplify) return HandleFunction(node, options);
-
         //If we have tex-only special handling for it, then handle it.
         if(tex && texFunctions.hasOwnProperty(name)) {
             return texFunctions[name](node, options);
@@ -338,10 +308,6 @@ const handle = (node: MathNode, options: Options, tex: boolean) : string => {
 
     //Handle variables.
     if(node.type === "SymbolNode") {
-        // WAIT: In order for partial simplifications to work, we can't handle special functions
-        // unless we are instructed to. We can also leave strict checking to the full simplify.
-        if(options.partialSimplify) return node.name;
-
         if(options.strict && !options.names.includes(node.name)) {
             throw new Error("The function or variable \"" + node.name + "\" does not exist.");
         }
@@ -368,27 +334,25 @@ const HandleNode = (node: MathNodeCommon, options: object, tex: boolean) : strin
     return tex ? node.toTex(options).toString() : node.toString(options).toString();
 }
 
-const getStringOptions = (strict: boolean, names: string[], partialSimplify: boolean) : Options => {
+const getStringOptions = (strict: boolean, names: string[]) : Options => {
     return {
         handler(node, options) {
             return handle(node, options, false);
         },
         strict,
         names,
-        partialSimplify,
         encaseLogicalOperators: true,
         secondaryBinary: false
     };
 }
 
-const getTexOptions = (strict: boolean, names: string[], partialSimplify: boolean) : Options => {
+const getTexOptions = (strict: boolean, names: string[]) : Options => {
     return {
         handler(node, options) {
             return handle(node, options, true);
         },
         strict,
         names,
-        partialSimplify,
         encaseLogicalOperators: true,
         secondaryBinary: false
     };
@@ -398,7 +362,6 @@ interface Options {
     handler: (node: any, options: Options) => string;
     strict: boolean;
     names: string[];
-    partialSimplify: boolean;
     encaseLogicalOperators: boolean;
     secondaryBinary: boolean;
 }
@@ -483,9 +446,6 @@ const functions: Record<string, (node: FunctionNode, options: object, tex: boole
     },
     inf() {
         return "\\infty ";
-    },
-    undef(node, options, tex) {
-        return `\\frac{${HandleNode(node.args[0], options, tex)}}{0}`;
     },
     point(node, options, tex) {
         return `(${node.args.map(arg => HandleNode(arg, options, tex)).join(",")})`;
