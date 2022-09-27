@@ -3,18 +3,15 @@ export default
 //Accepts integers greater or equal to zero.
 //
 //All this function does is loop through every number < floor(sqrt(a)), then checks if a is divisible by it.
-//If it is, then it adds 1 to the sum, otherwise zero. This is then put through select, which will make it 0
-//if prime and 1 otherwise. Next, it's put through not, to make it the opposite.
+//If it is, then it will multiply by one, but if one number divides it, it will multiply by zero and return zero.
 inline function isPrime(a) {
-    const p1 = sum(n=2; floor(sqrt(a))) {
+    prod(n=2; floor(sqrt(a))) {
         if(floor(a/n) == a/n) {
-            1
-        } else {
             0
+        } else {
+            1
         }
-    };
-
-    notSelect(p1)
+    }
 }
 
 //Returns the number of digits in the input.
