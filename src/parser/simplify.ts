@@ -49,7 +49,9 @@ const simplifyRules = [
     "1 * point(n1,n2) -> point(n1,n2)",
     "point(n1,n2) * 0 -> point(0,0)",
     "point(n1,n2) * 1 -> point(n1,n2)",
-    "point(n1,n2) / 1 -> point(n1,n2)"
+    "point(n1,n2) / 1 -> point(n1,n2)",
+    //Exponents
+    "pow(pow(n1,n2),n3) -> pow(n1,n2*n3)"
 ].concat(math.simplify["rules"] as string[]);
 
 const HandleFunction = (node: FunctionNode, options: Options, builtIn: boolean = false) : string => {

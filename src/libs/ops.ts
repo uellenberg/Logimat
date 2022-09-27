@@ -68,12 +68,11 @@ inline function notEqual(a, b) => select(a - b);
 
 //Returns a > 0.
 inline function isPositive(a) {
-    const p1 = 2^a;
-    const p2 = p1^-1;
-    const p3 = floor(p2)+1;
-    const p4 = p3^-1;
+    const p1 = 2^(-a);
+    const p2 = floor(p1)+1;
+    const p3 = 1/p2;
 
-    floor(p4)
+    floor(p3)
 }
 
 //Returns a >= 0.
