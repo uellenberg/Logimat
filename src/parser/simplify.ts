@@ -417,16 +417,16 @@ const simplification: Record<string, (node: FunctionNode, options: object, tex: 
 
 const functions: Record<string, (node: FunctionNode, options: object, tex: boolean) => string> = {
     sum(node, options, tex) {
-        return `{\\sum_{${HandleNode(node.args[0], options, tex)}=${HandleNode(node.args[1], options, tex)}}^{${HandleNode(node.args[2], options, tex)}}{${tex ? "" : "("}${HandleNode(node.args[3], options, tex)}${tex ? "" : ")"}}}`;
+        return `${tex ? "" : "("}{\\sum_{${HandleNode(node.args[0], options, tex)}=${HandleNode(node.args[1], options, tex)}}^{${HandleNode(node.args[2], options, tex)}}{${tex ? "" : "("}${HandleNode(node.args[3], options, tex)}${tex ? "" : ")"}}}${tex ? "" : ")"}`;
     },
     prod(node, options, tex) {
-        return `{\\prod_{${HandleNode(node.args[0], options, tex)}=${HandleNode(node.args[1], options, tex)}}^{${HandleNode(node.args[2], options, tex)}}{${tex ? "" : "("}${HandleNode(node.args[3], options, tex)}${tex ? "" : ")"}}}`;
+        return `${tex ? "" : "("}{\\prod_{${HandleNode(node.args[0], options, tex)}=${HandleNode(node.args[1], options, tex)}}^{${HandleNode(node.args[2], options, tex)}}{${tex ? "" : "("}${HandleNode(node.args[3], options, tex)}${tex ? "" : ")"}}}${tex ? "" : ")"}`;
     },
     int(node, options, tex) {
-        return `{\\int_{${HandleNode(node.args[1], options, tex)}}^{${HandleNode(node.args[2], options, tex)}}{${tex ? "" : "("}${HandleNode(node.args[3], options, tex)}${tex ? "" : ")"}}d${HandleNode(node.args[0], options, tex)}}`;
+        return `${tex ? "" : "("}{\\int_{${HandleNode(node.args[1], options, tex)}}^{${HandleNode(node.args[2], options, tex)}}{${tex ? "" : "("}${HandleNode(node.args[3], options, tex)}${tex ? "" : ")"}}d${HandleNode(node.args[0], options, tex)}}${tex ? "" : ")"}`;
     },
     div(node, options, tex) {
-        return `{{\\frac{d}{d${HandleNode(node.args[0], options, tex)}}}{${tex ? "" : "("}${HandleNode(node.args[1], options, tex)}${tex ? "" : ")"}}}`
+        return `${tex ? "" : "("}{{\\frac{d}{d${HandleNode(node.args[0], options, tex)}}}{${tex ? "" : "("}${HandleNode(node.args[1], options, tex)}${tex ? "" : ")"}}}${tex ? "" : ")"}`
     },
     sqrt(node, options, tex) {
         return `\\sqrt{${HandleNode(node.args[0], options, tex)}}`;
