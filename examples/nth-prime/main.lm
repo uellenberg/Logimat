@@ -1,7 +1,7 @@
 export function p(n) {
     // First, we should determine an upper bound.
     // These are inclusive bounds.
-    const upper = 1.5 * n * ln(n);
+    const upper = floor(1.5 * n * ln(n));
 
     // Now, we need to calculate the number.
     // We'll do this by counting the number of numbers
