@@ -1,8 +1,8 @@
 # Logimat
-First, to preface, this Logimat's pure math compilation is not useful for anything. It does not serve any purpose, other than being an interesting concept to mess around with, and making some interesting functions. That being said, Logimat is also intended to be able to compile to Desmos, and is made more powerful by extensions to it (such as Graphgame).
+First, to preface, this Logimat's pure math compilation is not useful for anything. It does not serve any purpose, other than being an interesting concept to mess around with, and making some interesting functions. That being said, Logimat is also intended to be able to compile to Desmos (and can use piecewise instead of pure math with the `-p` compiler option), and is made more powerful by extensions to it (such as Graphgame).
 
 ## Desmos
-Logimat was originally made to be a language to explore logical math, but it has since found its use in compiling to Desmos, both by creating more efficient output by taking advantage of certain Desmos features (such as piecewise expressions), and by directly supporting certain Desmos features (such as polygons, points, arrays, etc). In Logimat's documentation, certain features will be marked as Desmos-only.
+Logimat was originally made to be a language to explore logical math, but it has since found its use in compiling to Desmos, both by creating more efficient output by taking advantage of certain Desmos features (such as piecewise expressions with the `-p` compiler option), and by directly supporting certain Desmos features (such as polygons, points, arrays, etc). In Logimat's documentation, certain features will be marked as Desmos-only.
 
 ## Graphgame
 Logimat's big feature program is Graphgame, a game/animation engine for Desmos. Check it out [here](https://github.com/uellenberg/Graphgame.git)!
