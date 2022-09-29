@@ -51,7 +51,12 @@ const simplifyRules = [
     "point(n1,n2) * 1 -> point(n1,n2)",
     "point(n1,n2) / 1 -> point(n1,n2)",
     //Exponents
-    "pow(pow(n1,n2),n3) -> pow(n1,n2*n3)"
+    "pow(pow(n1,n2),n3) -> pow(n1,n2*n3)",
+    //General Simplification
+    "n1-+n2 -> n1-n2",
+    "n1+-n2 -> n1-n2",
+    "n1--n2 -> n1+n2",
+    "n1++n2 -> n1+n2"
 ].concat(math.simplify["rules"] as string[]);
 
 const HandleFunction = (node: FunctionNode, options: Options, builtIn: boolean = false) : string => {
@@ -231,9 +236,9 @@ const handle = (node: MathNode, options: Options, tex: boolean) : string => {
 
         //If any of the ones here are an incompatible operation, encapsulate them.
 
-        const operator = operatorMap[node.op];
-        const op1 = node.args[0].type === "OperatorNode" ? operatorMap[node.args[0].op] : null;
-        const op2 = node.args[1].type === "OperatorNode" ? operatorMap[node.args[1].op] : null;
+        const operator = node.op;
+        const op1 = node.args[0].type === "OperatorNode" ? node.args[0].op : null;
+        const op2 = node.args[1].type === "OperatorNode" ? node.args[1].op : null;
 
         //We want to group any non-single terms that have an operator that isn't equal to the current operator.
         //Division is the one exception, where we don't need to use parentheses.
