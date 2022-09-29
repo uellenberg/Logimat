@@ -1,17 +1,25 @@
 export default
 `//Returns on 0 on 0, and 1 for anything else.
 inline function select(a) {
-    const p1 = 2^(-abs(a));
-    const p2 = not(p1);
-    
-    ceil(p2)
+    if!(UNSAFE, {
+        not(notSelect(a))
+    }, {
+        const p1 = 2^(-abs(a));
+        const p2 = not(p1);
+
+        ceil(p2)
+    })
 }
 
 //A more efficient representation of not(select(a)).
 inline function notSelect(a) {
-    const p1 = 2^(-abs(a));
-    
-    floor(p1)
+    if!(UNSAFE, {
+        0^abs(a)
+    }, {
+        const p1 = 2^(-abs(a));
+
+        floor(p1)
+    })
 }
 
 //Returns 1 if both inputs are 1, otherwise 0.
@@ -68,11 +76,17 @@ inline function notEqual(a, b) => select(a - b);
 
 //Returns a > 0.
 inline function isPositive(a) {
-    const p1 = 2^(-a);
-    const p2 = floor(p1)+1;
-    const p3 = 1/p2;
+    if!(UNSAFE, {
+        const p1 = (0^a) + 1;
+        const p2 = 1/p1;
+        floor(p2)
+    }, {
+        const p1 = 2^(-a);
+        const p2 = floor(p1)+1;
+        const p3 = 1/p2;
 
-    floor(p3)
+        floor(p3)
+    })
 }
 
 //Returns a >= 0.
