@@ -3,6 +3,7 @@
 //The way that Desmos works is that you can define a color array, then apply that color array to a polygon array of the same size. The first color will be used on the first polygon, second on the second polygon, and so on. This file creates that color array.
 
 //Stores the colors used in the gradient.
+//https://stackoverflow.com/a/16505538
 export const c_olors1 = [66, 25, 9, 4, 0, 12, 24, 57, 134, 211, 241, 248, 255, 204, 153, 106];
 export const c_olors2 = [30, 7, 1, 4, 7, 44, 82, 125, 181, 236, 233, 201, 170, 128, 87, 52];
 export const c_olors3 = [15, 26, 47, 73, 100, 138, 177, 209, 229, 248, 191, 95, 0, 0, 0, 3];
