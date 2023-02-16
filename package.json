@@ -11,14 +11,14 @@
   "bin": "dist/bin.js",
   "repository": {
     "type": "git",
-    "url": "https://github.com/uellenberg/LogiMat.git"
+    "url": "https://github.com/uellenberg/Logimat.git"
   },
   "author": "Jonah Uellenberg",
   "license": "Apache-2.0",
   "bugs": {
-    "url": "https://github.com/uellenberg/LogiMat/issues"
+    "url": "https://github.com/uellenberg/Logimat/issues"
   },
-  "homepage": "https://github.com/uellenberg/LogiMat",
+  "homepage": "https://github.com/uellenberg/Logimat",
   "engines": {
     "node": ">=0.16"
   },

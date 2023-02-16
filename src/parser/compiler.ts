@@ -34,8 +34,8 @@ import piecewiseOps from "../libs/piecewiseOps";
 import {createTemplates} from "./templates";
 
 /**
- * Compiles LogiMat to a math function (or multiple). Each function/variable will be on a separate line.
- * @param input {string} - is the input LogiMat code that will be compiled.
+ * Compiles Logimat to a math function (or multiple). Each function/variable will be on a separate line.
+ * @param input {string} - is the input Logimat code that will be compiled.
  * @param useTex {boolean} - is a value indicating if the output should be converted to Tex.
  * @param noFS {boolean} - is a valid indicating if untrusted filesystem operations should be blocked (for example, code telling the compiler to load an NPM module). This is not a security feature.
  * @param filePath {string} - is a path to the file currently being compiled.

@@ -4,7 +4,7 @@ import {TemplateBlock, TemplateContext} from "../types";
 export const grammar = ohm.grammar(`
 //Based on https://github.com/harc/ohm/blob/master/examples/ecmascript/src/es5.ohm.
 
-LogiMat {
+Logimat {
     Program = Import* OuterDeclaration*
     
     Import = ImportTemplates
