@@ -77,9 +77,7 @@ inline function notEqual(a, b) => select(a - b);
 //Returns a > 0.
 inline function isPositive(a) {
     if!(UNSAFE, {
-        const p1 = (0^a) + 1;
-        const p2 = 1/p1;
-        floor(p2)
+        0^(0^(a))
     }, {
         const p1 = 2^(-a);
         const p2 = floor(p1)+1;
@@ -89,11 +87,11 @@ inline function isPositive(a) {
     })
 }
 
-//Returns a >= 0.
-inline function isPositiveOrZero(a) => isPositive(a+1);
-
 //Returns a < 0.
 inline function isNegative(a) => isPositive(-a);
+
+//Returns a >= 0.
+inline function isPositiveOrZero(a) => not(isNegative(a));
 
 //Returns a <= 0;
 inline function isNegativeOrZero(a) => not(isPositive(a));

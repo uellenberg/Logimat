@@ -17,8 +17,8 @@ inline function xnor(a, b) => a == b;
 
 inline function isPositive(a) => a > 0;
 
-inline function isPositiveOrZero(a) => a >= 0;
-
 inline function isNegative(a) => a < 0;
+
+inline function isPositiveOrZero(a) => a >= 0;
 
 inline function isNegativeOrZero(a) => a <= 0;`;
