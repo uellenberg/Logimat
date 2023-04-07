@@ -188,7 +188,9 @@ const handle = (node: MathNode, options: Options, tex: boolean) : string => {
 
         const pA1 = parseFloat(a1);
         const pA2 = parseFloat(a2);
-        const numeric = isNumeric(a1) && isNumeric(a2);
+        const a1Numeric = isNumeric(a1);
+        const a2Numeric = isNumeric(a2);
+        const numeric = a1Numeric && a2Numeric;
 
         //Handle logical operators.
         if(["==", ">", ">=", "<", "<="].includes(op)) {
@@ -257,7 +259,18 @@ const handle = (node: MathNode, options: Options, tex: boolean) : string => {
                     a1 = Encapsulate(a1, tex);
                 }
 
-                return `{${a1}}^{${a2}}`;
+                return `{${a1}}^{${a2}}`
+            case "*":
+            {
+                //Explicit * is only required between two numbers.
+                //If both start with a digit, and at least one actually is one, we'll consider it to be numeric.
+                //This fits the case of n*n, and also n*n^n.
+                //It ignores n^n*n^n, however, which is what we want.
+                const digitRegex = /^{*\d/;
+
+                if((a1Numeric || a2Numeric) && digitRegex.test(a1) && digitRegex.test(a2)) return `${a1}\\cdot${a2}`;
+                return `${a1}${a2}`;
+            }
             default:
                 return `${a1}${op}${a2}`;
         }
