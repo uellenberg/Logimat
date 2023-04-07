@@ -1,24 +1,24 @@
 export default
-`//Returns on 0 on 0, and 1 for anything else.
-inline function select(a) {
-    if!(UNSAFE, {
-        not(notSelect(a))
-    }, {
-        const p1 = 2^(-abs(a));
-        const p2 = not(p1);
-
-        ceil(p2)
-    })
-}
-
-//A more efficient representation of not(select(a)).
-inline function notSelect(a) {
+`// Returns 1 on 0, and 0 for everything else.
+inline function isZero(a) {
     if!(UNSAFE, {
         0^abs(a)
     }, {
         const p1 = 2^(-abs(a));
 
         floor(p1)
+    })
+}
+
+//A more efficient representation of not(isZero(a)).
+inline function isNotZero(a) {
+    if!(UNSAFE, {
+        not(isZero(a))
+    }, {
+        const p1 = 2^(-abs(a));
+        const p2 = not(p1);
+
+        ceil(p2)
     })
 }
 
@@ -67,12 +67,11 @@ inline function xnor(a, b) => not(xor(a, b));
 //Returns 1 when both inputs are the same, and zero otherwise.
 //
 //Essentially, this works because two numbers being subtracted will be zero if they are
-//the same. The select function can then be used to turn all non-zeros to one, and
-//the not turns one to zero and zero to one, so the output is in the correct format.
-inline function equal(a, b) => notSelect(a - b);
+//the same.
+inline function equal(a, b) => isZero(a - b);
 
 //A more efficient representation of not(equal(a, b)).
-inline function notEqual(a, b) => select(a - b);
+inline function notEqual(a, b) => isNotZero(a - b);
 
 //Returns a > 0.
 inline function isPositive(a) {

@@ -1,9 +1,9 @@
-//This file provides fills for some functions that don't exist in piecewise (select, etc).
+//This file provides fills for some functions that don't exist in piecewise (isZero, etc).
 
 export default `
-inline function select(a) => a != 0;
+inline function isZero(a) => a == 0;
 
-inline function notSelect(a) => a == 0;
+inline function isNotZero(a) => a != 0;
 
 inline function not(a) => a == 0;
 
