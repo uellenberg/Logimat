@@ -10,6 +10,7 @@ export const HandleName = (name: string): string => {
 export const opMap = {
     "=": "=",
     ">": ">",
+    "<": "<",
     ">=": "\\ge ",
     "=>": "\\ge ",
     "<=": "\\le ",
