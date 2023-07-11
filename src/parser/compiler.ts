@@ -41,13 +41,14 @@ import {createTemplates} from "./templates";
  * @param filePath {string} - is a path to the file currently being compiled.
  * @param piecewise {boolean} - is a value indicating if the output should use piecewise instead of pure math for logic.
  * @param strict {boolean} - is a value indicating if an error should be thrown if an undefined function/variable is used.
+ * @param noPolyfill {boolean} - should polyfills be disabled?
  * @param outputMaps {boolean} - is a value indicating if the output should be a map of simplified to unsimplified output.
  * @param simplificationMap {Record<string, string>} - is a map of simplified values to unsimplified values.
  * @param importMap {Record<string, TemplateModule>} - is a map of imports which will be used instead of require if specified.
  * @param unsafe {boolean} - is a value indicating if unsafe features (something where there can be ambiguity in how it is handled, such as with 0^0) are allowed. Enabling this generally makes compiled output smaller/faster.
  * @param unstable {boolean} - is a value indicating if unstable features (something which may not work in all cases but has todate, such as an unproven conjecture) are allowed. Enabling this generally makes compiled output smaller/faster.
  */
-export const Compile = async (input: string, useTex: boolean = false, noFS = false, filePath: string = null, piecewise: boolean = false, strict: boolean = false, outputMaps: boolean = false, simplificationMap: Record<string, string> = {}, importMap: Record<string, TemplateModule | string> = {}, unsafe: boolean = false, unstable: boolean = false) : Promise<string | {output: string[], simplificationMap: Record<string, string>, importMap: Record<string, TemplateModule | string>}> => {
+export const Compile = async (input: string, useTex: boolean = false, noFS = false, filePath: string = null, piecewise: boolean = false, strict: boolean = false, noPolyfill = false, outputMaps: boolean = false, simplificationMap: Record<string, string> = {}, importMap: Record<string, TemplateModule | string> = {}, unsafe: boolean = false, unstable: boolean = false) : Promise<string | {output: string[], simplificationMap: Record<string, string>, importMap: Record<string, TemplateModule | string>}> => {
     const tree = GetTree(input);
 
     const state: LogimatTemplateState = {logimat: {files: [], definitions: {
@@ -100,9 +101,9 @@ export const Compile = async (input: string, useTex: boolean = false, noFS = fal
 
     // Next, we want to handle export declarations. Exports work by creating an export with a random name, along with the contents
     // of the inline specified by the export. Next, the original inline's contents are changed to point to the new export.
-    const fileInlines = GetInlines(declarations);
-    const stdLibInlines = GetInlines(stdLibDeclarations);
-    const opsInlines = GetInlines(opsDeclarations);
+    const fileInlines = GetInlines(declarations, noPolyfill);
+    const stdLibInlines = GetInlines(stdLibDeclarations, noPolyfill);
+    const opsInlines = GetInlines(opsDeclarations, noPolyfill);
 
     const exportInlines = {
         ...fileInlines,
@@ -216,7 +217,7 @@ export const Compile = async (input: string, useTex: boolean = false, noFS = fal
         ...fileInlines,
         ...stdLibInlines,
         ...opsInlines,
-        ...GetInlines(exportDeclarations)
+        ...GetInlines(exportDeclarations, noPolyfill)
     };
 
     const stack = [];
@@ -566,11 +567,17 @@ const GetExpression = (input: string) : Expression => {
     return semantic(match).parse();
 }
 
-const GetInlines = (tree: OuterDeclaration[]) : Record<string, Inline> => {
+const GetInlines = (tree: OuterDeclaration[], noPolyfill: boolean) : Record<string, Inline> => {
     const inlines: Record<string, Inline> = {};
 
     for (const declaration of tree) {
-        if(declaration.modifier === "inline") inlines[declaration["name"]] = {function: declaration.type === "function", value: declaration};
+        if(declaration.modifier !== "inline") continue;
+
+        if(declaration.type === "function" && declaration.polyfill && noPolyfill) {
+            continue;
+        }
+
+        inlines[declaration["name"]] = {function: declaration.type === "function", value: declaration};
     }
 
     return inlines;

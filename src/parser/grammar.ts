@@ -22,9 +22,10 @@ Logimat {
     ExportOuterConstDeclaration = export #space const #space TemplateExportIdentifier "=" Expression ";"
     InlineOuterConstDeclaration = inline #space const #space TemplateIdentifier "=" Expression ";"
 
-    FunctionDeclaration = ExportFunctionDeclaration | InlineFunctionDeclaration
+    FunctionDeclaration = ExportFunctionDeclaration | InlineFunctionDeclaration | InlinePolyfillFunctionDeclaration
     ExportFunctionDeclaration = export #space function #space TemplateExportIdentifier "(" ExportFunctionArgs ")" FunctionBody
     InlineFunctionDeclaration = inline #space function #space TemplateIdentifier "(" FunctionArgs ")" FunctionBody
+    InlinePolyfillFunctionDeclaration = inline #space polyfill #space function #space TemplateIdentifier "(" FunctionArgs ")" FunctionBody
     
     ExportDeclaration =  export #space TemplateIdentifier ";"
 
@@ -201,6 +202,7 @@ Logimat {
     inline = "inline" ~identifierPart
     const = "const" ~identifierPart
     function = "function" ~identifierPart
+    polyfill = "polyfill" ~identifierPart
     action = "action" ~identifierPart
     actions = "actions" ~identifierPart
     expression = "expression" ~identifierPart
@@ -337,6 +339,9 @@ semantic.addOperation("parse", {
     },
     InlineFunctionDeclaration(_1, _2, _3, _4, name, _6, args, _8, block){
         return {type: "function", modifier: "inline", name: name.parse(), args: args.parse(), block: block.parse()};
+    },
+    InlinePolyfillFunctionDeclaration(_1, _2, _3, _4, _5, _6, name, _7, args, _8, block){
+        return {type: "function", modifier: "inline", polyfill: true, name: name.parse(), args: args.parse(), block: block.parse()};
     },
     ExportDeclaration(_1, _2, name, _3){
         return {type: "export", modifier: "export", name: name.parse()};
@@ -674,6 +679,7 @@ export interface OuterConstDeclaration {
 export interface OuterFunctionDeclaration {
     type: "function";
     modifier: Modifier;
+    polyfill?: true;
     name: string;
     args: string[];
     block: Statement[];

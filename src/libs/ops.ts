@@ -114,7 +114,7 @@ inline function gte(a, b) => lte(b, a);
 inline function if_func(a, b, c) => a*b + not(a)*c;
 
 //Returns the smallest number.
-inline function min(a, b) {
+inline polyfill function min(a, b) {
     if(a < b) {
         a
     } else {
@@ -123,7 +123,7 @@ inline function min(a, b) {
 }
 
 //Returns the biggest number.
-inline function max(a, b) {
+inline polyfill function max(a, b) {
     if(a > b) {
         a
     } else {
@@ -132,4 +132,4 @@ inline function max(a, b) {
 }
 
 //Rounds a number.
-inline function round(a) => floor(a + .5);`;
+inline polyfill function round(a) => floor(a + .5);`;

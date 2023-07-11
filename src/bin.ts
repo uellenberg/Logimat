@@ -33,6 +33,11 @@ yargs(hideBin(process.argv))
             type: "boolean",
             describe: "Throws an error if any undefined functions or variables are used."
         },
+        nopolyfill: {
+            default: false,
+            type: "boolean",
+            describe: "Disables polyfill functions."
+        },
         unsafe: {
             default: false,
             type: "boolean",
@@ -51,7 +56,7 @@ yargs(hideBin(process.argv))
             fs.accessSync(file, fs.constants.R_OK);
 
             const data = fs.readFileSync(file, "utf-8");
-            const compiled = await Compile(data, args.latex, args.nofs, path.resolve(file), args.piecewise, args.strict, false, {}, {}, args.unsafe, args.unstable);
+            const compiled = await Compile(data, args.latex, args.nofs, path.resolve(file), args.piecewise, args.strict, args.nopolyfill, false, {}, {}, args.unsafe, args.unstable);
 
             if(typeof(compiled) === "string") process.stdout.write(compiled);
             else process.stdout.write(JSON.stringify(compiled));
