@@ -60,7 +60,7 @@ const simplifyRules = [
 ].concat(math.simplify["rules"] as string[]);
 
 const HandleFunction = (node: FunctionNode, options: Options, builtIn: boolean = false) : string => {
-    return (builtIn ? "\\operatorname{" : "") + node.fn.toString(options) + (builtIn ? "}" : "") + "(" + node.args.map(arg => arg.toString(options)).join(",") + ")";
+    return (builtIn ? "\\operatorname{" : "") + node.fn.toString(options) + (builtIn ? "}" : "") + "\\left(" + node.args.map(arg => arg.toString(options)).join(",") + "\\right)";
 }
 
 const operatorMap = {
@@ -346,7 +346,7 @@ const IsSingleTerm = (op: string) : boolean => {
 }
 
 const Encapsulate = (val: string, tex: boolean) : string => {
-    return tex ? `\\left(${val}\\right)` : `(${val})`;
+    return tex ? `\\left(${val}\\right)` : `\\left(${val}\\right)`;
 }
 
 const HandleNode = (node: MathNodeCommon, options: object, tex: boolean) : string => {
@@ -438,16 +438,24 @@ const simplification: Record<string, (node: FunctionNode, options: object, tex: 
 
 const functions: Record<string, (node: FunctionNode, options: object, tex: boolean) => string> = {
     sum(node, options, tex) {
-        return `({\\sum_{${HandleNode(node.args[0], options, tex)}=${HandleNode(node.args[1], options, tex)}}^{${HandleNode(node.args[2], options, tex)}}{(${HandleNode(node.args[3], options, tex)})}})`;
+        const encapsulate = !(node.args[3].type === "FunctionNode" && typeof(node.args[3].fn) === "object" && ["sum", "prod", "int", "div"].includes(node.args[3].fn["name"]));
+
+        return `\\left({\\sum_{${HandleNode(node.args[0], options, tex)}=${HandleNode(node.args[1], options, tex)}}^{${HandleNode(node.args[2], options, tex)}}{${encapsulate ? "\\left(" : ""}${HandleNode(node.args[3], options, tex)}${encapsulate ? "\\right)" : ""}}}\\right)`;
     },
     prod(node, options, tex) {
-        return `({\\prod_{${HandleNode(node.args[0], options, tex)}=${HandleNode(node.args[1], options, tex)}}^{${HandleNode(node.args[2], options, tex)}}{(${HandleNode(node.args[3], options, tex)})}})`;
+        const encapsulate = !(node.args[3].type === "FunctionNode" && typeof(node.args[3].fn) === "object" && ["sum", "prod", "int", "div"].includes(node.args[3].fn["name"]));
+
+        return `\\left({\\prod_{${HandleNode(node.args[0], options, tex)}=${HandleNode(node.args[1], options, tex)}}^{${HandleNode(node.args[2], options, tex)}}{${encapsulate ? "\\left(" : ""}${HandleNode(node.args[3], options, tex)}${encapsulate ? "\\right)" : ""}}}\\right)`;
     },
     int(node, options, tex) {
-        return `({\\int_{${HandleNode(node.args[1], options, tex)}}^{${HandleNode(node.args[2], options, tex)}}{(${HandleNode(node.args[3], options, tex)})}d${HandleNode(node.args[0], options, tex)}})`;
+        const encapsulate = !(node.args[3].type === "FunctionNode" && typeof(node.args[3].fn) === "object" && ["sum", "prod", "int", "div"].includes(node.args[3].fn["name"]));
+
+        return `\\left({\\int_{${HandleNode(node.args[1], options, tex)}}^{${HandleNode(node.args[2], options, tex)}}{${encapsulate ? "\\left(" : ""}${HandleNode(node.args[3], options, tex)}${encapsulate ? "\\right)" : ""}}d${HandleNode(node.args[0], options, tex)}}\\right)`;
     },
     div(node, options, tex) {
-        return `({{\\frac{d}{d${HandleNode(node.args[0], options, tex)}}}{(${HandleNode(node.args[1], options, tex)})}})`
+        const encapsulate = !(node.args[1].type === "FunctionNode" && typeof(node.args[1].fn) === "object" && ["sum", "prod", "int", "div"].includes(node.args[1].fn["name"]));
+
+        return `\\left({{\\frac{d}{d${HandleNode(node.args[0], options, tex)}}}{${encapsulate ? "\\left(" : ""}${HandleNode(node.args[1], options, tex)}${encapsulate ? "\\right)" : ""}}}\\right)`
     },
     sqrt(node, options, tex) {
         return `\\sqrt{${HandleNode(node.args[0], options, tex)}}`;
@@ -469,7 +477,7 @@ const functions: Record<string, (node: FunctionNode, options: object, tex: boole
         return "\\infty ";
     },
     point(node, options, tex) {
-        return `(${node.args.map(arg => HandleNode(arg, options, tex)).join(",")})`;
+        return `\\left(${node.args.map(arg => HandleNode(arg, options, tex)).join(",")}\\right)`;
     },
     array(node, options, tex) {
         return `[${node.args.map(arg => HandleNode(arg, options, tex)).join(",")}]`;
@@ -477,33 +485,33 @@ const functions: Record<string, (node: FunctionNode, options: object, tex: boole
     point_x(node, options, tex) {
         const point = HandleNode(node.args[0], options, tex);
 
-        if(node.args[0].type === "OperatorNode") return `(${point}).x`;
+        if(node.args[0].type === "OperatorNode") return `\\left(${point}\\right).x`;
         return `${point}.x`;
     },
     point_y(node, options, tex) {
         const point = HandleNode(node.args[0], options, tex);
 
-        if(node.args[0].type === "OperatorNode") return `(${point}).y`;
+        if(node.args[0].type === "OperatorNode") return `\\left(${point}\\right).y`;
         return `${point}.y`;
     },
     array_idx(node, options, tex) {
         const array = HandleNode(node.args[0], options, tex);
         const indexer = HandleNode(node.args[1], options, tex);
 
-        if(node.args[0].type === "OperatorNode") return `(${array})[${indexer}]`;
+        if(node.args[0].type === "OperatorNode") return `\\left(${array}\\right)[${indexer}]`;
         return `${array}[${indexer}]`;
     },
     array_length(node, options, tex) {
         const array = HandleNode(node.args[0], options, tex);
 
-        if(node.args[0].type === "OperatorNode") return `(${array}).\\operatorname{length}`;
+        if(node.args[0].type === "OperatorNode") return `\\left(${array}\\right).\\operatorname{length}`;
         return `${array}.\\operatorname{length}`;
     },
     array_filter(node, options, tex) {
         const array = HandleNode(node.args[0], options, tex);
         const condition = HandleNode(node.args[1], options, tex);
 
-        if(node.args[0].type === "OperatorNode") return `(${array})[${condition}=1]`;
+        if(node.args[0].type === "OperatorNode") return `\\left(${array}\\right)[${condition}=1]`;
         return `${array}[${condition}=1]`;
     },
     array_map(node, options, tex) {
