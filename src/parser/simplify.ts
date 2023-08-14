@@ -262,13 +262,15 @@ const handle = (node: MathNode, options: Options, tex: boolean) : string => {
                 return `{${a1}}^{${a2}}`
             case "*":
             {
-                //Explicit * is only required between two numbers.
+                //Explicit * is only required between two numbers or when an array is involved.
                 //If both start with a digit, and at least one actually is one, we'll consider it to be numeric.
                 //This fits the case of n*n, and also n*n^n.
                 //It ignores n^n*n^n, however, which is what we want.
                 const digitRegex = /^{*\d/;
 
-                if((a1Numeric || a2Numeric) && digitRegex.test(a1) && digitRegex.test(a2)) return `${a1}\\cdot${a2}`;
+                const isDigit = (a1Numeric || a2Numeric) && digitRegex.test(a1) && digitRegex.test(a2);
+                const isArray = (node.args[0].type === "FunctionNode" && typeof(node.args[0].fn) === "object" && node.args[0].fn["name"] === "array") || (node.args[1].type === "FunctionNode" && typeof(node.args[1].fn) === "object" && node.args[1].fn["name"] === "array");
+                if(isDigit || isArray) return `${a1}\\cdot${a2}`;
                 return `${a1}${a2}`;
             }
             default:
