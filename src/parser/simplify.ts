@@ -43,6 +43,7 @@ const simplifyRules = [
     //Func
     "if_func(0,n1,n2) -> n2",
     "if_func(1,n1,n2) -> n1",
+    "if_func(n1,1,0) -> n1",
     //Point
     "point(n1,n2) + point(n3,n4) -> point(n1+n3,n2+n4)",
     "0 * point(n1,n2) -> point(0,0)",
