@@ -1,0 +1,12 @@
+// The rotational vector that represents where the light is pointing
+// away from.
+// The array represents where the light is pointing towards, and the negative makes it point in the opposite direction.
+export const l_ight_vec = -[1/sqrt(2), 1/sqrt(2), 0];
+
+export function u_v_to_color(u, v, n_ormal) {
+    // dot is in the range -1 to 1.
+    // This needs to be re-mapped to 0 to 1.
+    const intensity = (d_ot(l_ight_vec, n_ormal) + 1) / 2;
+    
+    hsv((mod(u, 0.2) + mod(v, 0.2)) * 2.5 * 360, 0.75, intensity)
+}

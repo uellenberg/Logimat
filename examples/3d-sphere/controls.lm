@@ -1,0 +1,28 @@
+inline function get_rotation_vector() {
+    // z is forward
+    c_amera_rotate([0, 0, 1])
+}
+
+action f_x = c_amera_x {
+    c_amera_x + get_rotation_vector()[1]
+}
+
+action f_y = c_amera_y {
+    c_amera_y + get_rotation_vector()[2]
+}
+
+action f_z = c_amera_z {
+    c_amera_z + get_rotation_vector()[3]
+}
+
+action b_x = c_amera_x {
+    c_amera_x - get_rotation_vector()[1]
+}
+
+action b_y = c_amera_y {
+    c_amera_y - get_rotation_vector()[2]
+}
+
+action b_z = c_amera_z {
+    c_amera_z - get_rotation_vector()[3]
+}
