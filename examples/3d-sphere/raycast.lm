@@ -68,10 +68,14 @@ inline function raycast_sphere(ray_start, ray_dir) {
             // This can be easily determined with the normal:
             // an x rotation specifies the u axes, and a z rotation
             // specifies the v.
-            // These both need to be re-mapped from -1 to 1
-            // to 0 to 1.
-            const u = (sphere_hit_normal[1] + 1) / 2;
-            const v = abs(sphere_hit_normal[3]);
+            //
+            // To extract the u axis, the y (up axis) can be
+            // ignored and arctan will extract it from the two remaining
+            // axes.
+            // Arctan is from -pi to pi, which needs to be remapped to 0 to 1.
+            const u = (arctan(sphere_hit_normal[1], sphere_hit_normal[3]) + pi) / (2*pi);
+            // v is similar, except the z axis is ignored. Also, the remapping should do an absolute value, as the top part of the sphere doesn't unwrap to a full circumference.
+            const v = abs(arctan(sphere_hit_normal[2], sphere_hit_normal[1])) / pi;
             
             u_v_to_color(u, v, sphere_hit_normal)
         }

@@ -9,7 +9,8 @@ export function u_v_to_color(u, v, n_ormal) {
     const intensity = (d_ot(l_ight_vec, n_ormal) + 1) / 2;
     
     // Map u and v from 0 to 1 to -1 to 1.
-    const iterations = calculate((u * 2) - 1, (v * 2) - 1);
+    // v is half sized on a sphere so reduce it to match.
+    const iterations = calculate((u * 2) - 1, ((v * 2) - 1) / 2);
     const color_idx = map(0, get!(ITERATIONS)*10, 1, length(c_olors1), iterations);
     
     r_gb(color_idx)
