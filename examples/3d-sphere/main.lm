@@ -1,5 +1,5 @@
-inline const width = 50;
-inline const height = 50;
+inline const width = 100;
+inline const height = 100;
 
 export const r_es = width;
 
@@ -15,7 +15,7 @@ export const c_amera_rot_y = 0.9;
 export const c_amera_rot_z = 0;
 
 //Defines the number of iterations to use.
-define!(ITERATIONS, 3);
+define!(ITERATIONS, 5);
 
 //Defines the amount of "splits" to use. For a 200x200 image, you need 4 splits (200*200 / 10,000 = 4).
 //This will create 4 images with 10,000 pixels each, which will be placed together to form a complete image.
@@ -25,7 +25,7 @@ define!(SPLITS, 1);
 // 0 - Flat
 // 1 - Gradient
 // 2 - Mandelbrot
-define!(COLORING, 2);
+define!(COLORING, 1);
 
 //Import everything.
 

@@ -19,9 +19,8 @@ export function r_aycast(x, y) {
     // This can be used to intersect the ray with a sphere.
     
     const centered_point = [x, y, focal_length];
-    const center_point_magnitude = sqrt((centered_point[1] ^ 2) + (centered_point[2] ^ 2) + (centered_point[3] ^ 2));
     
-    const normalized_point = [centered_point[1] / center_point_magnitude, centered_point[2] / center_point_magnitude, centered_point[3] / center_point_magnitude];
+    const normalized_point = n_ormalize(centered_point);
     
     const dir_vec = c_amera_rotate(normalized_point);
     
@@ -56,22 +55,26 @@ inline function raycast_sphere(ray_start, ray_dir) {
             const hit_pos = ray_start + hit_offset;
             
             // Find the sphere's normal.
-            const sphere_hit_centered = hit_pos - sphere_pos;
-            // Rotate the sphere.
-            const sphere_hit_rotated = if!(SPHERE_ROTATION, { s_phere_rotate(sphere_hit_centered) }, { sphere_hit_centered });
+            const sphere_hit = hit_pos - sphere_pos;
+            const sphere_hit_normalized = n_ormalize(sphere_hit);
             
-            const sphere_hit_magnitude = sqrt((sphere_hit_rotated[1] ^ 2) + (sphere_hit_rotated[2] ^ 2) + (sphere_hit_rotated[3] ^ 2));
-
-            const sphere_hit_normal = [sphere_hit_rotated[1] / sphere_hit_magnitude, sphere_hit_rotated[2] / sphere_hit_magnitude, sphere_hit_rotated[3] / sphere_hit_magnitude];
+            // Rotate the sphere (just for texturing).
+            const sphere_hit_rotated = if!(SPHERE_ROTATION, { s_phere_rotate(sphere_hit_normalized) }, { sphere_hit_normalized });
             
             // UV map the sphere.
             // https://en.wikipedia.org/wiki/UV_mapping#Finding_UV_on_a_sphere
-            const u = 0.5 + arctan(sphere_hit_normal[2], sphere_hit_normal[1])/(2*pi);
-            const v = 0.5 + arcsin(sphere_hit_normal[3])/pi;
+            const u = 0.5 + arctan(sphere_hit_rotated[2], sphere_hit_rotated[1])/(2*pi);
+            const v = 0.5 + arcsin(sphere_hit_rotated[3])/pi;
             
-            u_v_to_color(u, v, sphere_hit_normal)
+            // The normal shouldn't be rotated, as rotation is "faked" and only rotates the texture.
+            u_v_to_color(u, v, sphere_hit_normalized)
         }
     }
+}
+
+export function n_ormalize(v_ec) {
+    const magnitude = sqrt(total(v_ec^2));
+    v_ec / magnitude
 }
 
 export function d_ot(a, b) {
