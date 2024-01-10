@@ -1,0 +1,102 @@
+// Here's the basic idea behind the prime sine.
+// First, we'll figure out the two primes above and below us.
+// If we are a prime, those will both be us.
+// Then, we'll find the y-value for the sine between
+// those two points.
+// If we are a prime, then that sine will always be y=0.
+//
+// This function will produce a function that has roots at every
+// prime, but that isn't differentiable everywhere.
+
+inline function nthPrime(n) {
+    // First, we should determine an upper bound.
+    // These are inclusive bounds.
+    const upper = floor(1.5 * n * ln(n));
+
+    // Now, we need to calculate the number.
+    // We'll do this by counting the number of numbers
+    // which have less than n primes below them.
+    // This is based on Willans' formula for primes.
+    //
+    // The first prime is 2. We need to add 2 back as we
+    // start at it.
+    sum(num = 2; upper) {
+        const numPrimesBelow = sum(bNum = 2; num) {
+            isPrime(bNum)
+        };
+
+        numPrimesBelow < n
+    } + 2
+}
+
+// Returns the n of the prime below this num (or for this num, if it's a prime).
+inline function primeToNthBelow(num) {
+    // This is much simpler. All we
+    // need to do is count the number of primes
+    // up to us.
+    sum(bNum = 2; num) {
+        isPrime(bNum)
+    }
+}
+
+// Returns the n of the prime above this num (or for this num, if it's a prime).
+inline function primeToNthAbove(num) {
+    // If we're a prime, we can just return the result of
+    // primeToNthBelow directly. Otherwise, we need to add one.
+    const add = if(isPrime(num)) { 0 } else { 1 };
+
+    primeToNthBelow(num) + add
+}
+
+// Finds the sine between (a, 0) and (b, 0),
+// then gets the y-value on it for the given x-value.
+inline function sineBetween(a, b, x) {
+    // The formula for this function is
+    // sin(pi(x-a)/dist) * dist, where dist is just b-a.
+    // This moves the sine to the starting point
+    // (sine is 0 there, so it works), then scales
+    // it so it spans the distance between them.
+    // Finally, it adjusts its height so that all sines
+    // come in at the same angle and stay differentiable.
+    //
+    // One thing of note is that, if a == b,
+    // this function will be undefined.
+    // We'll prevent this with a safe divide. The safe divide
+    // returns 0 when they're the same, and as sin(0) == 0,
+    // it does what we want.
+
+    const dist = b - a;
+    const offset = x - a;
+
+    sin(safeDivide((pi * offset), dist)) * dist
+}
+
+inline function primeSine(x) {
+    // As described, we need to find the primes above and below us.
+    // We're going below, so we want to floor.
+    const primeBelow = nthPrime(primeToNthBelow(floor(x)));
+    const primeAbove = nthPrime(primeToNthAbove(ceil(x)));
+
+    // Now, we just need to find the sine for this.
+    const sineVal = sineBetween(primeBelow, primeAbove, x);
+
+    // Finally, for added effect, we'll make the sine value positive
+    // or negative depending on which number prime we're on.
+    // This takes the nth prime below us, and mods it by 2 to
+    // get 1 or 0 (the first prime will be 1, so positive).
+    // Then, that's adjusted to 1 or -1.
+    const posNeg = (mod(primeToNthBelow(floor(x)), 2) * 2) - 1;
+
+    sineVal * posNeg
+}
+
+// Uncomment these lines to export each function as a separate line.
+/*
+export isPrime;
+export nthPrime;
+export primeToNthBelow;
+export primeToNthAbove;
+export sineBetween;
+*/
+
+export primeSine;
