@@ -83,6 +83,9 @@ const simplifyRules = [
 ].concat(math.simplify["rules"] as string[]);
 
 const HandleFunction = (node: FunctionNode, options: Options, builtIn: boolean = false) : string => {
+    // WAIT: We need special handling for partialSimplify to not add unparsable syntax.
+    if(options.partialSimplify) return node.fn.toString(options) + "(" + node.args.map(arg => arg.toString(options)).join(",") + ")";
+
     return (builtIn ? "\\operatorname{" : "") + node.fn.toString(options) + (builtIn ? "}" : "") + "\\left(" + node.args.map(arg => arg.toString(options)).join(",") + "\\right)";
 }
 
@@ -110,7 +113,7 @@ const handle = (node: MathNode, options: Options, tex: boolean) : string => {
     if(node.type === "OperatorNode" && node.op) {
         if(node.fn?.startsWith("unary")) {
             if(node.args[0]?.type === "OperatorNode" && node.args[0]?.op) {
-                return node.op + Encapsulate(HandleNode(node.args[0], options, tex), tex);
+                return node.op + Encapsulate(HandleNode(node.args[0], options, tex), options.partialSimplify);
             }
 
             return node.op + HandleNode(node.args[0], options, tex);
@@ -272,10 +275,10 @@ const handle = (node: MathNode, options: Options, tex: boolean) : string => {
         //We want to group any non-single terms that have an operator that isn't equal to the current operator.
         //Division is the one exception, where we don't need to use parentheses.
         if(!IsSingleTerm(op1) && op1 !== operator && node.op !== "/") {
-            a1 = Encapsulate(a1, tex);
+            a1 = Encapsulate(a1, options.partialSimplify);
         }
         if(!IsSingleTerm(op2) && op2 !== operator && node.op !== "/") {
-            a2 = Encapsulate(a2, tex);
+            a2 = Encapsulate(a2, options.partialSimplify);
         }
 
         switch(op) {
@@ -283,7 +286,7 @@ const handle = (node: MathNode, options: Options, tex: boolean) : string => {
                 return `\\frac{${a1}}{${a2}}`;
             case "^":
                 if((node.args[0].type === "FunctionNode" && typeof(node.args[0].fn) === "object" && node.args[0].fn["name"] === "pow") || /[-+*/]/g.test(a1)) {
-                    a1 = Encapsulate(a1, tex);
+                    a1 = Encapsulate(a1, options.partialSimplify);
                 }
 
                 return `{${a1}}^{${a2}}`
@@ -382,8 +385,10 @@ const IsSingleTerm = (op: string) : boolean => {
     return !op || operatorMap[op] !== "+";
 }
 
-const Encapsulate = (val: string, tex: boolean) : string => {
-    return tex ? `\\left(${val}\\right)` : `\\left(${val}\\right)`;
+const Encapsulate = (val: string, partialSimplify: boolean) : string => {
+    // WAIT: To prevent partial simplifications from breaking, we can
+    // only use latex if it's disabled.
+    return partialSimplify ? `(${val})` : `\\left(${val}\\right)`;
 }
 
 const HandleNode = (node: MathNodeCommon, options: object, tex: boolean) : string => {
@@ -427,7 +432,7 @@ interface Options {
     secondaryBinary: boolean;
 }
 
-const simplification: Record<string, (node: FunctionNode, options: object, tex: boolean) => string | null> = {
+const simplification: Record<string, (node: FunctionNode, options: Options, tex: boolean) => string | null> = {
     array_idx(node, options, tex) {
         const handledIndexer = HandleNode(node.args[1], options, tex);
         const indexer = parseInt(handledIndexer);
@@ -436,7 +441,7 @@ const simplification: Record<string, (node: FunctionNode, options: object, tex: 
         if(isNumeric(handledIndexer) && node.args[0]?.type === "FunctionNode" && typeof(node.args[0]?.fn) === "object" && node.args[0]?.fn["name"] === "array") {
             const handled = HandleNode(node.args[0].args[indexer-1], options, tex);
 
-            if(node.args[0].args[indexer-1].type === "OperatorNode") return Encapsulate(handled, tex);
+            if(node.args[0].args[indexer-1].type === "OperatorNode") return Encapsulate(handled, options.partialSimplify);
             return handled;
         }
 
@@ -447,7 +452,7 @@ const simplification: Record<string, (node: FunctionNode, options: object, tex: 
         if(node.args[0]?.type === "FunctionNode" && typeof(node.args[0]?.fn) === "object" && node.args[0]?.fn["name"] === "point") {
             const handled = HandleNode(node.args[0].args[0], options, tex);
 
-            if(node.args[0].args[0].type === "OperatorNode") return Encapsulate(handled, tex);
+            if(node.args[0].args[0].type === "OperatorNode") return Encapsulate(handled, options.partialSimplify);
             return handled;
         }
 
@@ -458,7 +463,7 @@ const simplification: Record<string, (node: FunctionNode, options: object, tex: 
         if(node.args[0]?.type === "FunctionNode" && typeof(node.args[0]?.fn) === "object" && node.args[0]?.fn["name"] === "point") {
             const handled = HandleNode(node.args[0].args[1], options, tex);
 
-            if(node.args[0].args[1].type === "OperatorNode") return Encapsulate(handled, tex);
+            if(node.args[0].args[1].type === "OperatorNode") return Encapsulate(handled, options.partialSimplify);
             return handled;
         }
 
@@ -476,7 +481,7 @@ const simplification: Record<string, (node: FunctionNode, options: object, tex: 
     }
 };
 
-const functions: Record<string, (node: FunctionNode, options: object, tex: boolean) => string> = {
+const functions: Record<string, (node: FunctionNode, options: Options, tex: boolean) => string> = {
     sum(node, options, tex) {
         const encapsulate = !(node.args[3].type === "FunctionNode" && typeof(node.args[3].fn) === "object" && ["sum", "prod", "int", "div"].includes(node.args[3].fn["name"]));
 
@@ -505,7 +510,7 @@ const functions: Record<string, (node: FunctionNode, options: object, tex: boole
         const exp = HandleNode(node.args[1], options, tex);
 
         if((node.args[0].type === "FunctionNode" && typeof(node.args[0].fn) === "object" && node.args[0].fn["name"] === "pow") || /[-+*/]/g.test(base)) {
-            base = Encapsulate(base, tex);
+            base = Encapsulate(base, options.partialSimplify);
         }
 
         return `{${base}}^{${exp}}`;
