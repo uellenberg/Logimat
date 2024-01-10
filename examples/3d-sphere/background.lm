@@ -1,0 +1,4 @@
+display fill = 1;
+display thickness = 0;
+display color = b_g;
+polygon((-.5, -.5), (.5, -.5), (.5, .5), (-.5, .5));

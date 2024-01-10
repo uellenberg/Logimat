@@ -11,7 +11,11 @@ export function r_un(x) {
 }
 
 export function g_o(a, b, n) {
-    cAdd(cMul(a, a), cDiv(b, p_oint))
+    const fn1 = complexfunction!(0, 656546453547, "a", "b", "n");
+    const fn2 = complexfunction!(0, 65345756756, "a", "b", "n");
+    const fn3 = complexfunction!(0, 2434746352412356342, "a", "b", "n");
+    
+    cMod(cLog(fn1, fn2), fn3)
 }
 
 export function i_t(x) {

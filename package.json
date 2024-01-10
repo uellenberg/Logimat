@@ -1,24 +1,24 @@
 {
   "name": "logimat",
-  "version": "1.0.40",
+  "version": "1.0.43",
   "description": "A language for performing logical operations inside of mathematical functions.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
     "build": "tsc",
-    "postbuild": "copyfiles --exclude src/**/*.{ts,js} --up 1 src/**/* dist"
+    "postbuild": "copyfiles --exclude src/**/**/*.{ts,js} --up 1 src/**/**/* dist"
   },
   "bin": "dist/bin.js",
   "repository": {
     "type": "git",
-    "url": "https://github.com/uellenberg/LogiMat.git"
+    "url": "https://github.com/uellenberg/Logimat.git"
   },
   "author": "Jonah Uellenberg",
   "license": "Apache-2.0",
   "bugs": {
-    "url": "https://github.com/uellenberg/LogiMat/issues"
+    "url": "https://github.com/uellenberg/Logimat/issues"
   },
-  "homepage": "https://github.com/uellenberg/LogiMat",
+  "homepage": "https://github.com/uellenberg/Logimat",
   "engines": {
     "node": ">=0.16"
   },

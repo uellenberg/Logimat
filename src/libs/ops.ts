@@ -1,17 +1,25 @@
 export default
-`//Returns on 0 on 0, and 1 for anything else.
-inline function select(a) {
-    const p1 = 2^(-abs(a));
-    const p2 = not(p1);
-    
-    ceil(p2)
+`// Returns 1 on 0, and 0 for everything else.
+inline function isZero(a) {
+    if!(UNSAFE, {
+        0^abs(a)
+    }, {
+        const p1 = 2^(-abs(a));
+
+        floor(p1)
+    })
 }
 
-//A more efficient representation of not(select(a)).
-inline function notSelect(a) {
-    const p1 = 2^(-abs(a));
-    
-    floor(p1)
+//A more efficient representation of not(isZero(a)).
+inline function isNotZero(a) {
+    if!(UNSAFE, {
+        not(isZero(a))
+    }, {
+        const p1 = 2^(-abs(a));
+        const p2 = not(p1);
+
+        ceil(p2)
+    })
 }
 
 //Returns 1 if both inputs are 1, otherwise 0.
@@ -59,28 +67,30 @@ inline function xnor(a, b) => not(xor(a, b));
 //Returns 1 when both inputs are the same, and zero otherwise.
 //
 //Essentially, this works because two numbers being subtracted will be zero if they are
-//the same. The select function can then be used to turn all non-zeros to one, and
-//the not turns one to zero and zero to one, so the output is in the correct format.
-inline function equal(a, b) => notSelect(a - b);
+//the same.
+inline function equal(a, b) => isZero(a - b);
 
 //A more efficient representation of not(equal(a, b)).
-inline function notEqual(a, b) => select(a - b);
+inline function notEqual(a, b) => isNotZero(a - b);
 
 //Returns a > 0.
 inline function isPositive(a) {
-    const p1 = 2^a;
-    const p2 = p1^-1;
-    const p3 = floor(p2)+1;
-    const p4 = p3^-1;
+    if!(UNSAFE, {
+        0^(0^(a))
+    }, {
+        const p1 = 2^(-a);
+        const p2 = floor(p1)+1;
+        const p3 = 1/p2;
 
-    floor(p4)
+        floor(p3)
+    })
 }
-
-//Returns a >= 0.
-inline function isPositiveOrZero(a) => isPositive(a+1);
 
 //Returns a < 0.
 inline function isNegative(a) => isPositive(-a);
+
+//Returns a >= 0.
+inline function isPositiveOrZero(a) => not(isNegative(a));
 
 //Returns a <= 0;
 inline function isNegativeOrZero(a) => not(isPositive(a));
@@ -104,7 +114,7 @@ inline function gte(a, b) => lte(b, a);
 inline function if_func(a, b, c) => a*b + not(a)*c;
 
 //Returns the smallest number.
-inline function min(a, b) {
+inline polyfill function min(a, b) {
     if(a < b) {
         a
     } else {
@@ -113,7 +123,7 @@ inline function min(a, b) {
 }
 
 //Returns the biggest number.
-inline function max(a, b) {
+inline polyfill function max(a, b) {
     if(a > b) {
         a
     } else {
@@ -122,4 +132,4 @@ inline function max(a, b) {
 }
 
 //Rounds a number.
-inline function round(a) => floor(a + .5);`;
+inline polyfill function round(a) => floor(a + .5);`;

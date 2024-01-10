@@ -1,0 +1,43 @@
+inline const width = 100;
+inline const height = 100;
+
+export const r_es = width;
+
+actions f_orward = f_x, f_y, f_z;
+actions b_ackward = b_x, b_y, b_z;
+
+export const c_amera_x = 1.39805;
+export const c_amera_y = 1.69393;
+export const c_amera_z = 2.04354;
+
+export const c_amera_rot_x = -0.57;
+export const c_amera_rot_y = 0.9;
+export const c_amera_rot_z = 0;
+
+//Defines the number of iterations to use.
+define!(ITERATIONS, 5);
+
+//Defines the amount of "splits" to use. For a 200x200 image, you need 4 splits (200*200 / 10,000 = 4).
+//This will create 4 images with 10,000 pixels each, which will be placed together to form a complete image.
+define!(SPLITS, 1);
+
+// Set up the coloring.
+// 0 - Flat
+// 1 - Gradient
+// 2 - Mandelbrot
+define!(COLORING, 1);
+
+//Import everything.
+
+//First, add a background.
+import!("background.lm");
+//Next, make it possible to compute the Raycast to the sphere.
+import!("raycast.lm");
+//After that, use the UV position to compute the colors.
+import!("color/main.lm");
+//Create an object that the colors can be applied to.
+import!("rendering.lm");
+//Use the methods defined above to display everything.
+import!("display.lm");
+// Add movement actions.
+import!("controls.lm");

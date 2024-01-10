@@ -1,0 +1,97 @@
+// The rotational vector that represents where the light is pointing
+// away from.
+// The array represents where the light is pointing towards, and the negative makes it point in the opposite direction.
+export const l_ight_vec = -[1/sqrt(2), 1/sqrt(2), 0];
+
+export function u_v_to_color(u, v, n_ormal) {
+    // dot is in the range -1 to 1.
+    // This needs to be re-mapped to 0 to 1.
+    const intensity = (d_ot(l_ight_vec, n_ormal) + 1) / 2;
+    
+    // Map u and v from 0 to 1 to -2 to 2.
+    // v is half sized on a sphere so reduce it to match.
+    const iterations = calculate((u * 4) - 2, ((v * 4) - 2) / 2);
+    const color_idx = map(0, get!(ITERATIONS)*10, 1, length(c_olors1), iterations);
+    
+    r_gb(color_idx)
+}
+
+// EVERYTHING ELSE IS TAKEN FROM THE MANDELBROT SET RENDERER!
+
+//This file contains the code used to compute the fractal itself. The values generated from here are then passed on to the renderer.
+
+//Defines the maximum size for something to be considered infinite.
+inline const max_size = 2;
+
+inline const pack_digits = 6;
+
+//Computes one iteration.
+export function i_t(x, y, c) {
+    const cPoint = (c.x, unpackFloat(c.y, pack_digits));
+    const iterations = unpackInt(c.y, pack_digits);
+
+    //If we've exceeded the maximum size, don't run any more iterations and just return the current value.
+    if(distance(cPoint, (0, 0)) >= max_size) {
+        c
+    } else {
+        //Run another iteration (z*z + x + yi) and increment the iteration count.
+        //We store the iteration count in a point because desmos can only work with lists that have the same elements. The y-value of the point is not used.
+        const newPoint = cAdd(cMul(cPoint, cPoint), (x, y));
+        (newPoint.x, pack(newPoint.y, iterations+1, pack_digits))
+    }
+}
+
+export function i_t10(x, y, c) {
+    state = c;
+
+    iterate!({
+        state = i_t(x, y, state);
+    }, 10);
+}
+
+//Calculate the fractional iteration count.
+export function f_rac(v) {
+    const cPoint = (v.x, unpackFloat(v.y, pack_digits));
+    const iterations = unpackInt(v.y, pack_digits);
+
+    iterations + 1 - log_2(log(cAbs(cPoint)))
+}
+
+//Find the iteration count for a point.
+inline function calculate(x, y) {
+    //Initialize it. The first number is the x-position, and the second is the y-position and iteration count packed together.
+    state = (0, pack(0, 0, pack_digits));
+
+    //Run the iteration function on it for as many times as specified.
+    iterate!({
+        state = i_t10(x, y, state);
+    }, ITERATIONS);
+
+    //Turn the point and iteration count into a fractional iteration count.
+    f_rac(state)
+}
+
+//This file contains the code used to color the fractal. It does this using a pre-computed gradient (see the arrays below) and lerping between gradient values to get smooth transitions.
+
+//The way that Desmos works is that you can define a color array, then apply that color array to a polygon array of the same size. The first color will be used on the first polygon, second on the second polygon, and so on. This file creates that color array.
+
+//Stores the colors used in the gradient.
+//https://stackoverflow.com/a/16505538
+export const c_olors1 = [66, 25, 9, 4, 0, 12, 24, 57, 134, 211, 241, 248, 255, 204, 153, 106];
+export const c_olors2 = [30, 7, 1, 4, 7, 44, 82, 125, 181, 236, 233, 201, 170, 128, 87, 52];
+export const c_olors3 = [15, 26, 47, 73, 100, 138, 177, 209, 229, 248, 191, 95, 0, 0, 0, 3];
+
+export function r_gb(i_d) {
+    //Find the colors above and below the index, as well as interpole value between them.
+    const lower = floor(i_d);
+    const upper = ceil(i_d);
+    const amount = i_d-floor(i_d);
+
+    //Lerp to find the r, g, and b values.
+    const r = lerp(c_olors1[lower], c_olors1[upper], amount);
+    const g = lerp(c_olors2[lower], c_olors2[upper], amount);
+    const b = lerp(c_olors3[lower], c_olors3[upper], amount);
+
+    //Construct a color.
+    rgb(r, g, b)
+}

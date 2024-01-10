@@ -90,15 +90,23 @@ export function createTemplates(noFS: boolean, state: LogimatTemplateState, impo
             return result;
         },
         if: (args, state1: LogimatTemplateState, context) => {
-            if (context === TemplateContext.Expression) throw new Error("This template cannot be ran inside of an expression!");
             if (args.length < 1 || (typeof (args[0]) !== "boolean" && typeof (args[0]) !== "number" && typeof (args[0]) !== "string")) throw new Error("A condition is required!");
             if (args.length < 2 || typeof (args[1]) !== "object" || !args[1]["block"]) throw new Error("An if action is required!");
 
+            const wrap = context === TemplateContext.Expression;
+            const wrapL = wrap ? "{" : "";
+            const wrapR = wrap ? "}" : "";
+
+            // True
             if (args[0] === true || args[0] === 1 || args[0] === "1") {
-                return args[1]["value"];
+                return wrapL + args[1]["value"] + wrapR;
             }
 
-            if (args.length > 2 && typeof (args[2]) === "object" && args[2]["block"]) return args[2]["value"];
+            // False
+            if (args.length > 2 && typeof (args[2]) === "object" && args[2]["block"]) return wrapL + args[2]["value"] + wrapR;
+
+            // False with no else action.
+            if(wrap) throw new Error("An else is required for if statements which return expressions!");
             return "";
         },
         parse: (args, state1: LogimatTemplateState, context) => {

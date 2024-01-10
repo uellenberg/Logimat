@@ -32,6 +32,21 @@ yargs(hideBin(process.argv))
             default: false,
             type: "boolean",
             describe: "Throws an error if any undefined functions or variables are used."
+        },
+        nopolyfill: {
+            default: false,
+            type: "boolean",
+            describe: "Disables polyfill functions."
+        },
+        unsafe: {
+            default: false,
+            type: "boolean",
+            describe: "Allows unsafe features (something where there can be ambiguity in how it is handled, such as with 0^0) to be used. Enabling this generally makes compiled output smaller/faster."
+        },
+        unstable: {
+            default: false,
+            type: "boolean",
+            describe: "Allows unstable features (something which may not work in all cases but has to date, such as an unproven conjecture) are allowed. Enabling this generally makes compiled output smaller/faster."
         }
     }, async (args) => {
         try {
@@ -41,7 +56,7 @@ yargs(hideBin(process.argv))
             fs.accessSync(file, fs.constants.R_OK);
 
             const data = fs.readFileSync(file, "utf-8");
-            const compiled = await Compile(data, args.latex, args.nofs, path.resolve(file), args.piecewise, args.strict);
+            const compiled = await Compile(data, args.latex, args.nofs, path.resolve(file), args.piecewise, args.strict, args.nopolyfill, false, {}, {}, args.unsafe, args.unstable);
 
             if(typeof(compiled) === "string") process.stdout.write(compiled);
             else process.stdout.write(JSON.stringify(compiled));

@@ -34,21 +34,27 @@ import piecewiseOps from "../libs/piecewiseOps";
 import {createTemplates} from "./templates";
 
 /**
- * Compiles LogiMat to a math function (or multiple). Each function/variable will be on a separate line.
- * @param input {string} - is the input LogiMat code that will be compiled.
+ * Compiles Logimat to a math function (or multiple). Each function/variable will be on a separate line.
+ * @param input {string} - is the input Logimat code that will be compiled.
  * @param useTex {boolean} - is a value indicating if the output should be converted to Tex.
  * @param noFS {boolean} - is a valid indicating if untrusted filesystem operations should be blocked (for example, code telling the compiler to load an NPM module). This is not a security feature.
  * @param filePath {string} - is a path to the file currently being compiled.
  * @param piecewise {boolean} - is a value indicating if the output should use piecewise instead of pure math for logic.
  * @param strict {boolean} - is a value indicating if an error should be thrown if an undefined function/variable is used.
+ * @param noPolyfill {boolean} - should polyfills be disabled?
  * @param outputMaps {boolean} - is a value indicating if the output should be a map of simplified to unsimplified output.
  * @param simplificationMap {Record<string, string>} - is a map of simplified values to unsimplified values.
  * @param importMap {Record<string, TemplateModule>} - is a map of imports which will be used instead of require if specified.
+ * @param unsafe {boolean} - is a value indicating if unsafe features (something where there can be ambiguity in how it is handled, such as with 0^0) are allowed. Enabling this generally makes compiled output smaller/faster.
+ * @param unstable {boolean} - is a value indicating if unstable features (something which may not work in all cases but has todate, such as an unproven conjecture) are allowed. Enabling this generally makes compiled output smaller/faster.
  */
-export const Compile = async (input: string, useTex: boolean = false, noFS = false, filePath: string = null, piecewise: boolean = false, strict: boolean = false, outputMaps: boolean = false, simplificationMap: Record<string, string> = {}, importMap: Record<string, TemplateModule | string> = {}) : Promise<string | {output: string[], simplificationMap: Record<string, string>, importMap: Record<string, TemplateModule | string>}> => {
+export const Compile = async (input: string, useTex: boolean = false, noFS = false, filePath: string = null, piecewise: boolean = false, strict: boolean = false, noPolyfill = false, outputMaps: boolean = false, simplificationMap: Record<string, string> = {}, importMap: Record<string, TemplateModule | string> = {}, unsafe: boolean = false, unstable: boolean = false) : Promise<string | {output: string[], simplificationMap: Record<string, string>, importMap: Record<string, TemplateModule | string>}> => {
     const tree = GetTree(input);
 
-    const state: LogimatTemplateState = {logimat: {files: [], definitions: {}}};
+    const state: LogimatTemplateState = {logimat: {files: [], definitions: {
+        UNSAFE: unsafe,
+        UNSTABLE: unstable,
+    }}};
     if(filePath) state.logimat.files = [filePath];
 
     if(!noFS && filePath) {
@@ -89,48 +95,15 @@ export const Compile = async (input: string, useTex: boolean = false, noFS = fal
         }
     }
 
-    const templatesRef = {
-        handledTemplates: true
-    };
-    let count = 0;
-
-    let declarations: any[];
-
-    try {
-        declarations = await TraverseTemplatesArr(tree.declarations, templates, state, templatesRef, simplificationMap);
-
-        //Allow up to 50 layers of functions.
-        while(templatesRef.handledTemplates && count < 50) {
-            templatesRef.handledTemplates = false;
-            declarations = await TraverseTemplatesArr(declarations, templates, state, templatesRef, simplificationMap);
-
-            count++;
-        }
-
-        declarations.push(...GetTree(postTemplates.join("\n")).declarations);
-
-        //Reset variables.
-        templatesRef.handledTemplates = true;
-        count = 0;
-
-        //Allow up to 50 layers of functions.
-        while(templatesRef.handledTemplates && count < 50) {
-            templatesRef.handledTemplates = false;
-            declarations = await TraverseTemplatesArr(declarations, templates, state, templatesRef, simplificationMap);
-
-            count++;
-        }
-    } catch(e) {
-        //Log the file the error occurred in, if it exists.
-        if(state.logimat.files.length > 0) console.error("An error occurred in \"" + state.logimat.files[state.logimat.files.length-1] + "\":");
-        throw e;
-    }
+    const declarations = await HandleTreeTemplates(tree.declarations, state, templates, simplificationMap, postTemplates);
+    const stdLibDeclarations = await HandleTreeTemplates(GetTree(stdlib).declarations, state, templates, simplificationMap);
+    const opsDeclarations = await HandleTreeTemplates(GetTree((piecewise ? piecewiseOps : ops)).declarations, state, templates, simplificationMap);
 
     // Next, we want to handle export declarations. Exports work by creating an export with a random name, along with the contents
     // of the inline specified by the export. Next, the original inline's contents are changed to point to the new export.
-    const fileInlines = GetInlines(declarations);
-    const stdLibInlines = GetInlines(GetTree(stdlib).declarations);
-    const opsInlines = GetInlines(GetTree((piecewise ? piecewiseOps : ops)).declarations);
+    const fileInlines = GetInlines(declarations, noPolyfill);
+    const stdLibInlines = GetInlines(stdLibDeclarations, noPolyfill);
+    const opsInlines = GetInlines(opsDeclarations, noPolyfill);
 
     const exportInlines = {
         ...fileInlines,
@@ -242,10 +215,10 @@ export const Compile = async (input: string, useTex: boolean = false, noFS = fal
 
     // We need to run GetInlines again because declarations is changed.
     const inlines: Record<string, Inline> = {
-        ...GetInlines(declarations),
+        ...fileInlines,
         ...stdLibInlines,
         ...opsInlines,
-        ...GetInlines(exportDeclarations)
+        ...GetInlines(exportDeclarations, noPolyfill)
     };
 
     const stack = [];
@@ -259,6 +232,48 @@ export const Compile = async (input: string, useTex: boolean = false, noFS = fal
         if(stack.length > 0) console.error("Call stack: " + stack.slice(0, Math.min(20, stack.length)).join(" -> "));
         throw e;
     }
+}
+
+const HandleTreeTemplates = async (declarations: any[], state: LogimatTemplateState, templates: Record<string, TemplateFunction>, simplificationMap: Record<string, string>, postTemplates?: string[]) : Promise<any[]> => {
+    const templatesRef = {
+        handledTemplates: true
+    };
+    let count = 0;
+
+    let newDeclarations: any[];
+
+    try {
+        newDeclarations = await TraverseTemplatesArr(declarations, templates, state, templatesRef, simplificationMap);
+
+        //Allow up to 50 layers of functions.
+        while(templatesRef.handledTemplates && count < 50) {
+            templatesRef.handledTemplates = false;
+            newDeclarations = await TraverseTemplatesArr(newDeclarations, templates, state, templatesRef, simplificationMap);
+
+            count++;
+        }
+
+        if(postTemplates)
+            newDeclarations.push(...GetTree(postTemplates.join("\n")).declarations);
+
+        //Reset variables.
+        templatesRef.handledTemplates = true;
+        count = 0;
+
+        //Allow up to 50 layers of functions.
+        while(templatesRef.handledTemplates && count < 50) {
+            templatesRef.handledTemplates = false;
+            newDeclarations = await TraverseTemplatesArr(newDeclarations, templates, state, templatesRef, simplificationMap);
+
+            count++;
+        }
+    } catch(e) {
+        //Log the file the error occurred in, if it exists.
+        if(state.logimat.files.length > 0) console.error("An error occurred in \"" + state.logimat.files[state.logimat.files.length-1] + "\":");
+        throw e;
+    }
+
+    return newDeclarations;
 }
 
 const TraverseTemplatesArr = async (input: any[], templates: Record<string, TemplateFunction>, state: LogimatTemplateState, ref: {handledTemplates: boolean}, simplificationMap: Record<string, string>) : Promise<any[]> => {
@@ -601,11 +616,17 @@ const GetExpression = (input: string) : Expression => {
     return semantic(match).parse();
 }
 
-const GetInlines = (tree: OuterDeclaration[]) : Record<string, Inline> => {
+const GetInlines = (tree: OuterDeclaration[], noPolyfill: boolean) : Record<string, Inline> => {
     const inlines: Record<string, Inline> = {};
 
     for (const declaration of tree) {
-        if(declaration.modifier === "inline") inlines[declaration["name"]] = {function: declaration.type === "function", value: declaration};
+        if(declaration.modifier !== "inline") continue;
+
+        if(declaration.type === "function" && declaration.polyfill && noPolyfill) {
+            continue;
+        }
+
+        inlines[declaration["name"]] = {function: declaration.type === "function", value: declaration};
     }
 
     return inlines;

@@ -65,17 +65,25 @@ const simplifyRules = [
     "if_func(n1,n2,n2) -> n2",
     "if_func(n1,if_func(n1,n2,n3),n4) -> if_func(n1,n2,n4)",
     "if_func(n1==0,n2,if_func(n1,n3,n4)) -> if_func(n1,n3,n2)",
+    "if_func(n1,1,0) -> n1",
     //Point
     "point(n1,n2) + point(n3,n4) -> point(n1+n3,n2+n4)",
     "0 * point(n1,n2) -> point(0,0)",
     "1 * point(n1,n2) -> point(n1,n2)",
     "point(n1,n2) * 0 -> point(0,0)",
     "point(n1,n2) * 1 -> point(n1,n2)",
-    "point(n1,n2) / 1 -> point(n1,n2)"
+    "point(n1,n2) / 1 -> point(n1,n2)",
+    //Exponents
+    "pow(pow(n1,n2),n3) -> pow(n1,n2*n3)",
+    //General Simplification
+    "n1-+n2 -> n1-n2",
+    "n1+-n2 -> n1-n2",
+    "n1--n2 -> n1+n2",
+    "n1++n2 -> n1+n2"
 ].concat(math.simplify["rules"] as string[]);
 
 const HandleFunction = (node: FunctionNode, options: Options, builtIn: boolean = false) : string => {
-    return (builtIn ? "\\operatorname{" : "") + node.fn.toString(options) + (builtIn ? "}" : "") + "(" + node.args.map(arg => arg.toString(options)).join(",") + ")";
+    return (builtIn ? "\\operatorname{" : "") + node.fn.toString(options) + (builtIn ? "}" : "") + "\\left(" + node.args.map(arg => arg.toString(options)).join(",") + "\\right)";
 }
 
 const operatorMap = {
@@ -102,7 +110,7 @@ const handle = (node: MathNode, options: Options, tex: boolean) : string => {
     if(node.type === "OperatorNode" && node.op) {
         if(node.fn?.startsWith("unary")) {
             if(node.args[0]?.type === "OperatorNode" && node.args[0]?.op) {
-                return node.op + "(" + HandleNode(node.args[0], options, tex) + ")";
+                return node.op + Encapsulate(HandleNode(node.args[0], options, tex), tex);
             }
 
             return node.op + HandleNode(node.args[0], options, tex);
@@ -207,7 +215,9 @@ const handle = (node: MathNode, options: Options, tex: boolean) : string => {
 
         const pA1 = parseFloat(a1);
         const pA2 = parseFloat(a2);
-        const numeric = isNumeric(a1) && isNumeric(a2);
+        const a1Numeric = isNumeric(a1);
+        const a2Numeric = isNumeric(a2);
+        const numeric = a1Numeric && a2Numeric;
 
         //Handle logical operators.
         if(["==", ">", ">=", "<", "<="].includes(op)) {
@@ -255,15 +265,16 @@ const handle = (node: MathNode, options: Options, tex: boolean) : string => {
 
         //If any of the ones here are an incompatible operation, encapsulate them.
 
-        const operator = operatorMap[node.op];
-        const op1 = node.args[0].type === "OperatorNode" ? operatorMap[node.args[0].op] : null;
-        const op2 = node.args[1].type === "OperatorNode" ? operatorMap[node.args[1].op] : null;
+        const operator = node.op;
+        const op1 = node.args[0].type === "OperatorNode" ? node.args[0].op : null;
+        const op2 = node.args[1].type === "OperatorNode" ? node.args[1].op : null;
 
         //We want to group any non-single terms that have an operator that isn't equal to the current operator.
-        if(!IsSingleTerm(op1) && op1 !== operator) {
+        //Division is the one exception, where we don't need to use parentheses.
+        if(!IsSingleTerm(op1) && op1 !== operator && node.op !== "/") {
             a1 = Encapsulate(a1, tex);
         }
-        if(!IsSingleTerm(op2) && op2 !== operator) {
+        if(!IsSingleTerm(op2) && op2 !== operator && node.op !== "/") {
             a2 = Encapsulate(a2, tex);
         }
 
@@ -272,10 +283,23 @@ const handle = (node: MathNode, options: Options, tex: boolean) : string => {
                 return `\\frac{${a1}}{${a2}}`;
             case "^":
                 if((node.args[0].type === "FunctionNode" && typeof(node.args[0].fn) === "object" && node.args[0].fn["name"] === "pow") || /[-+*/]/g.test(a1)) {
-                    a1 = "(" + a1 + ")";
+                    a1 = Encapsulate(a1, tex);
                 }
 
-                return `{${a1}}^{${a2}}`;
+                return `{${a1}}^{${a2}}`
+            case "*":
+            {
+                //Explicit * is only required between two numbers or when an array is involved.
+                //If both start with a digit, and at least one actually is one, we'll consider it to be numeric.
+                //This fits the case of n*n, and also n*n^n.
+                //It ignores n^n*n^n, however, which is what we want.
+                const digitRegex = /^{*\d/;
+
+                const isDigit = (a1Numeric || a2Numeric) && digitRegex.test(a1) && digitRegex.test(a2);
+                const isArray = (node.args[0].type === "FunctionNode" && typeof(node.args[0].fn) === "object" && node.args[0].fn["name"] === "array") || (node.args[1].type === "FunctionNode" && typeof(node.args[1].fn) === "object" && node.args[1].fn["name"] === "array");
+                if(isDigit || isArray) return `${a1}\\cdot${a2}`;
+                return `${a1}${a2}`;
+            }
             default:
                 return `${a1}${op}${a2}`;
         }
@@ -359,7 +383,7 @@ const IsSingleTerm = (op: string) : boolean => {
 }
 
 const Encapsulate = (val: string, tex: boolean) : string => {
-    return tex ? `\\left(${val}\\right)` : `(${val})`;
+    return tex ? `\\left(${val}\\right)` : `\\left(${val}\\right)`;
 }
 
 const HandleNode = (node: MathNodeCommon, options: object, tex: boolean) : string => {
@@ -412,7 +436,7 @@ const simplification: Record<string, (node: FunctionNode, options: object, tex: 
         if(isNumeric(handledIndexer) && node.args[0]?.type === "FunctionNode" && typeof(node.args[0]?.fn) === "object" && node.args[0]?.fn["name"] === "array") {
             const handled = HandleNode(node.args[0].args[indexer-1], options, tex);
 
-            if(node.args[0].args[indexer-1].type === "OperatorNode") return "(" + handled + ")";
+            if(node.args[0].args[indexer-1].type === "OperatorNode") return Encapsulate(handled, tex);
             return handled;
         }
 
@@ -423,7 +447,7 @@ const simplification: Record<string, (node: FunctionNode, options: object, tex: 
         if(node.args[0]?.type === "FunctionNode" && typeof(node.args[0]?.fn) === "object" && node.args[0]?.fn["name"] === "point") {
             const handled = HandleNode(node.args[0].args[0], options, tex);
 
-            if(node.args[0].args[0].type === "OperatorNode") return "(" + handled + ")";
+            if(node.args[0].args[0].type === "OperatorNode") return Encapsulate(handled, tex);
             return handled;
         }
 
@@ -434,7 +458,7 @@ const simplification: Record<string, (node: FunctionNode, options: object, tex: 
         if(node.args[0]?.type === "FunctionNode" && typeof(node.args[0]?.fn) === "object" && node.args[0]?.fn["name"] === "point") {
             const handled = HandleNode(node.args[0].args[1], options, tex);
 
-            if(node.args[0].args[1].type === "OperatorNode") return "(" + handled + ")";
+            if(node.args[0].args[1].type === "OperatorNode") return Encapsulate(handled, tex);
             return handled;
         }
 
@@ -454,16 +478,24 @@ const simplification: Record<string, (node: FunctionNode, options: object, tex: 
 
 const functions: Record<string, (node: FunctionNode, options: object, tex: boolean) => string> = {
     sum(node, options, tex) {
-        return `({\\sum_{${HandleNode(node.args[0], options, tex)}=${HandleNode(node.args[1], options, tex)}}^{${HandleNode(node.args[2], options, tex)}}{(${HandleNode(node.args[3], options, tex)})}})`;
+        const encapsulate = !(node.args[3].type === "FunctionNode" && typeof(node.args[3].fn) === "object" && ["sum", "prod", "int", "div"].includes(node.args[3].fn["name"]));
+
+        return `\\left({\\sum_{${HandleNode(node.args[0], options, tex)}=${HandleNode(node.args[1], options, tex)}}^{${HandleNode(node.args[2], options, tex)}}{${encapsulate ? "\\left(" : ""}${HandleNode(node.args[3], options, tex)}${encapsulate ? "\\right)" : ""}}}\\right)`;
     },
     prod(node, options, tex) {
-        return `({\\prod_{${HandleNode(node.args[0], options, tex)}=${HandleNode(node.args[1], options, tex)}}^{${HandleNode(node.args[2], options, tex)}}{(${HandleNode(node.args[3], options, tex)})}})`;
+        const encapsulate = !(node.args[3].type === "FunctionNode" && typeof(node.args[3].fn) === "object" && ["sum", "prod", "int", "div"].includes(node.args[3].fn["name"]));
+
+        return `\\left({\\prod_{${HandleNode(node.args[0], options, tex)}=${HandleNode(node.args[1], options, tex)}}^{${HandleNode(node.args[2], options, tex)}}{${encapsulate ? "\\left(" : ""}${HandleNode(node.args[3], options, tex)}${encapsulate ? "\\right)" : ""}}}\\right)`;
     },
     int(node, options, tex) {
-        return `({\\int_{${HandleNode(node.args[1], options, tex)}}^{${HandleNode(node.args[2], options, tex)}}{(${HandleNode(node.args[3], options, tex)})}d${HandleNode(node.args[0], options, tex)}})`;
+        const encapsulate = !(node.args[3].type === "FunctionNode" && typeof(node.args[3].fn) === "object" && ["sum", "prod", "int", "div"].includes(node.args[3].fn["name"]));
+
+        return `\\left({\\int_{${HandleNode(node.args[1], options, tex)}}^{${HandleNode(node.args[2], options, tex)}}{${encapsulate ? "\\left(" : ""}${HandleNode(node.args[3], options, tex)}${encapsulate ? "\\right)" : ""}}d${HandleNode(node.args[0], options, tex)}}\\right)`;
     },
     div(node, options, tex) {
-        return `({{\\frac{d}{d${HandleNode(node.args[0], options, tex)}}}{(${HandleNode(node.args[1], options, tex)})}})`
+        const encapsulate = !(node.args[1].type === "FunctionNode" && typeof(node.args[1].fn) === "object" && ["sum", "prod", "int", "div"].includes(node.args[1].fn["name"]));
+
+        return `\\left({{\\frac{d}{d${HandleNode(node.args[0], options, tex)}}}{${encapsulate ? "\\left(" : ""}${HandleNode(node.args[1], options, tex)}${encapsulate ? "\\right)" : ""}}}\\right)`
     },
     sqrt(node, options, tex) {
         return `\\sqrt{${HandleNode(node.args[0], options, tex)}}`;
@@ -473,7 +505,7 @@ const functions: Record<string, (node: FunctionNode, options: object, tex: boole
         const exp = HandleNode(node.args[1], options, tex);
 
         if((node.args[0].type === "FunctionNode" && typeof(node.args[0].fn) === "object" && node.args[0].fn["name"] === "pow") || /[-+*/]/g.test(base)) {
-            base = "(" + base + ")";
+            base = Encapsulate(base, tex);
         }
 
         return `{${base}}^{${exp}}`;
@@ -488,7 +520,7 @@ const functions: Record<string, (node: FunctionNode, options: object, tex: boole
         return `\\frac{${HandleNode(node.args[0], options, tex)}}{0}`;
     },
     point(node, options, tex) {
-        return `(${node.args.map(arg => HandleNode(arg, options, tex)).join(",")})`;
+        return `\\left(${node.args.map(arg => HandleNode(arg, options, tex)).join(",")}\\right)`;
     },
     array(node, options, tex) {
         return `[${node.args.map(arg => HandleNode(arg, options, tex)).join(",")}]`;
@@ -496,33 +528,33 @@ const functions: Record<string, (node: FunctionNode, options: object, tex: boole
     point_x(node, options, tex) {
         const point = HandleNode(node.args[0], options, tex);
 
-        if(node.args[0].type === "OperatorNode") return `(${point}).x`;
+        if(node.args[0].type === "OperatorNode") return `\\left(${point}\\right).x`;
         return `${point}.x`;
     },
     point_y(node, options, tex) {
         const point = HandleNode(node.args[0], options, tex);
 
-        if(node.args[0].type === "OperatorNode") return `(${point}).y`;
+        if(node.args[0].type === "OperatorNode") return `\\left(${point}\\right).y`;
         return `${point}.y`;
     },
     array_idx(node, options, tex) {
         const array = HandleNode(node.args[0], options, tex);
         const indexer = HandleNode(node.args[1], options, tex);
 
-        if(node.args[0].type === "OperatorNode") return `(${array})[${indexer}]`;
+        if(node.args[0].type === "OperatorNode") return `\\left(${array}\\right)[${indexer}]`;
         return `${array}[${indexer}]`;
     },
     array_length(node, options, tex) {
         const array = HandleNode(node.args[0], options, tex);
 
-        if(node.args[0].type === "OperatorNode") return `(${array}).\\operatorname{length}`;
+        if(node.args[0].type === "OperatorNode") return `\\left(${array}\\right).\\operatorname{length}`;
         return `${array}.\\operatorname{length}`;
     },
     array_filter(node, options, tex) {
         const array = HandleNode(node.args[0], options, tex);
         const condition = HandleNode(node.args[1], options, tex);
 
-        if(node.args[0].type === "OperatorNode") return `(${array})[${condition}=1]`;
+        if(node.args[0].type === "OperatorNode") return `\\left(${array}\\right)[${condition}=1]`;
         return `${array}[${condition}=1]`;
     },
     array_map(node, options, tex) {

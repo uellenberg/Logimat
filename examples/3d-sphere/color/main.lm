@@ -1,0 +1,16 @@
+if!(COLORING == 0, {
+    import!("flat.lm");
+});
+
+if!(COLORING == 1, {
+    import!("gradient.lm");
+});
+
+if!(COLORING == 2, {
+    import!("mandelbrot.lm");
+});
+
+// Use a different background based on the coloring.
+export const b_g = {
+    if!(COLORING == 2, { rgb(175, 175, 175) }, { rgb(0, 0, 0) });
+};

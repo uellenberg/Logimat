@@ -1,0 +1,17 @@
+//This file handles displaying the scene, and putting together the raycasts, color handler, and renderer.
+
+//The way that splitting works is we split up out final big image into multiple smaller ones, to avoid hitting Desmos' limit. We must define the amount of splits (or number of smaller images) below, and also define the images themselves.
+
+define!(SPLIT_NUM, 1);
+
+iterate!({
+    display thickness = 0;
+    export const "c_olor${get!(SPLIT_NUM)}" = gColor(get!(SPLIT_NUM));
+
+    display fill = 1;
+    display thickness = 0;
+    display color = "c_olor${get!(SPLIT_NUM)}";
+    expression => gRender(get!(SPLIT_NUM));
+
+    define!(SPLIT_NUM, SPLIT_NUM + 1);
+}, SPLITS);

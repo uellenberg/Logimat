@@ -1,0 +1,141 @@
+define!(SPHERE_ROTATION, true);
+
+if!(SPHERE_ROTATION, {
+    export const s_phere_rot_x = 0;
+    export const s_phere_rot_y = 0;
+    export const s_phere_rot_z = 0;
+});
+
+// Determines how to convert screen coordinates to raycast angles.
+// This essentially defines how far behind the camera should all light be focused to.
+// Then, an angle is computed between this point and the screen coordinate.
+// Basically, this determines FoV.
+inline const focal_length = 1;
+
+export function r_aycast(x, y) {
+    // First, figure out the euler angle of the ray that passes through this point.
+    // This can be determined by finding the angle between (x, y, 0) and (x, y, -focal_length).
+    // Then, use that angle to compute the world space position and rotation of the ray's start and end.
+    // This can be used to intersect the ray with a sphere.
+    
+    const centered_point = [x, y, focal_length];
+    
+    const normalized_point = n_ormalize(centered_point);
+    
+    const dir_vec = c_amera_rotate(normalized_point);
+    
+    // This can be used to compute the ray start and end.
+    const ray_start = [c_amera_x, c_amera_y, c_amera_z];
+    
+    raycast_sphere(ray_start, dir_vec)
+}
+
+inline function raycast_sphere(ray_start, ray_dir) {
+    // https://gamedev.stackexchange.com/a/96487
+    
+    const sphere_pos = [3, 3, 3];
+    const sphere_radius = 1;
+    
+    const m = ray_start - sphere_pos;
+    const b = d_ot(m, ray_dir);
+    const c = d_ot(m, m) - (sphere_radius ^ 2);
+    
+    if(c > 0 && b > 0) {
+        b_g
+    } else {
+        const discr = (b^2) - c;
+        
+        if(discr < 0) {
+            b_g
+        } else {
+            const t = max(0, -b - sqrt(discr));
+            
+            // Figure out where it hit.
+            const hit_offset = t * ray_dir;
+            const hit_pos = ray_start + hit_offset;
+            
+            // Find the sphere's normal.
+            const sphere_hit = hit_pos - sphere_pos;
+            const sphere_hit_normalized = n_ormalize(sphere_hit);
+            
+            // Rotate the sphere (just for texturing).
+            const sphere_hit_rotated = if!(SPHERE_ROTATION, { s_phere_rotate(sphere_hit_normalized) }, { sphere_hit_normalized });
+            
+            // UV map the sphere.
+            // https://en.wikipedia.org/wiki/UV_mapping#Finding_UV_on_a_sphere
+            const u = 0.5 + arctan(sphere_hit_rotated[2], sphere_hit_rotated[1])/(2*pi);
+            const v = 0.5 + arcsin(sphere_hit_rotated[3])/pi;
+            
+            // The normal shouldn't be rotated, as rotation is "faked" and only rotates the texture.
+            u_v_to_color(u, v, sphere_hit_normalized)
+        }
+    }
+}
+
+export function n_ormalize(v_ec) {
+    const magnitude = sqrt(total(v_ec^2));
+    v_ec / magnitude
+}
+
+export function d_ot(a, b) {
+    (a[1] * b[1]) + (a[2] * b[2]) + (a[3] * b[3])
+}
+
+inline function build_rotation_matrix(rot_x, rot_y, rot_z) {
+    [
+        cos(rot_y) * cos(rot_z), sin(rot_x) * sin(rot_y) * cos(rot_z) - cos(rot_x) * sin(rot_z), cos(rot_x) * sin(rot_y) * cos(rot_z) + sin(rot_x) * sin(rot_z),
+        cos(rot_y) * sin(rot_z), sin(rot_x) * sin(rot_y) * sin(rot_z) + cos(rot_x) * cos(rot_z), cos(rot_x) * sin(rot_y) * sin(rot_z) - sin(rot_x) * cos(rot_z),
+        -sin(rot_y), sin(rot_x) * cos(rot_y), cos(rot_x) * cos(rot_y)
+    ]
+}
+
+// Based on https://en.wikipedia.org/wiki/Rotation_matrix#General_3D_rotations.
+// 3x3 matrix
+export const r_ot_mat = build_rotation_matrix(c_amera_rot_x, c_amera_rot_y, c_amera_rot_z);
+
+// 1-indexed
+inline function get_rot(row, col) {
+    r_ot_mat[3 * (row - 1) + col]
+}
+
+// Adds the camera's rotation to a specified vector.
+export function c_amera_rotate(v_ec) {
+    [
+        v_ec[1] * get_rot(1, 1) + v_ec[2] * get_rot(1, 2) + v_ec[3] * get_rot(1, 3),
+        v_ec[1] * get_rot(2, 1) + v_ec[2] * get_rot(2, 2) + v_ec[3] * get_rot(2, 3),
+        v_ec[1] * get_rot(3, 1) + v_ec[2] * get_rot(3, 2) + v_ec[3] * get_rot(3, 3)
+    ]
+}
+
+if!(SPHERE_ROTATION, {
+    export const s_rot_mat = build_rotation_matrix(s_phere_rot_x, s_phere_rot_y, s_phere_rot_z);
+    
+    // 1-indexed
+    inline function get_sphere_rot(row, col) {
+        s_rot_mat[3 * (row - 1) + col]
+    }
+    
+    // Adds the camera's rotation to a specified vector.
+    export function s_phere_rotate(v_ec) {
+        [
+            v_ec[1] * get_sphere_rot(1, 1) + v_ec[2] * get_sphere_rot(1, 2) + v_ec[3] * get_sphere_rot(1, 3),
+            v_ec[1] * get_sphere_rot(2, 1) + v_ec[2] * get_sphere_rot(2, 2) + v_ec[3] * get_sphere_rot(2, 3),
+            v_ec[1] * get_sphere_rot(3, 1) + v_ec[2] * get_sphere_rot(3, 2) + v_ec[3] * get_sphere_rot(3, 3)
+        ]
+    }
+});
+
+inline function gColor(num) {
+    //Loop through the image, divided by the number of splits we turn the image into (this creates a single split).
+    state = range(1, width * height/get!(SPLITS)).map(idx => {  
+        //Get the x-position, centered at (0, 0).
+        const x = conv_1d_2d_x(idx, width) - width/2;
+        //Gets the y-position, centered at (0,0) and increased by the y-position of previous splits.
+        const y = conv_1d_2d_y(idx, width) - height/2 + height*(num-1)/get!(SPLITS);
+    
+        const cX = x/r_es;
+        const cY = y/r_es;
+    
+        r_aycast(cX, cY)
+    });
+}

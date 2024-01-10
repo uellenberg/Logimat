@@ -1,26 +1,20 @@
 export function p(n) {
-    // Our code expects n=2 to give 2, but the function
-    // requires n=1 to give 2.
-    const n = n + 1;
-
     // First, we should determine an upper bound.
     // These are inclusive bounds.
-    const upper = 1.5 * n * ln(n);
+    const upper = floor(1.5 * n * ln(n));
 
     // Now, we need to calculate the number.
-    // We'll do this by finding the number that is prime
-    // and has n-1 primes below it.
+    // We'll do this by counting the number of numbers
+    // which have less than n primes below them.
+    // This is based on Willans' formula for primes.
     //
-    // The first prime is 2.
+    // The first prime is 2. We need to add 2 back as we
+    // start at it.
     sum(num = 2; upper) {
         const numPrimesBelow = sum(bNum = 2; num) {
-            isPrime1(bNum)
+            isPrime(bNum)
         };
 
-        if(numPrimesBelow == n - 1 && isPrime1(num)) {
-            num
-        } else {
-            0
-        }
-    }
+        numPrimesBelow < n
+    } + 2
 }
