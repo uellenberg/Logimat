@@ -690,13 +690,13 @@ const CompileBlock = (input: Statement[], data: CompileData, defaultOut: string,
                         vars: {
                             ...newVars,
                         }
-                    }, newVars[variable], {}, variables, variable, false);
+                    }, newVars[variable], {}, [...variables], variable, false);
                     const elseaction = statement["elseaction"] ? CompileBlock(statement["elseaction"], {
                         ...data,
                         vars: {
                             ...newVars,
                         }
-                    }, newVars[variable], {}, variables, variable, false) : newVars[variable];
+                    }, newVars[variable], {}, [...variables], variable, false) : newVars[variable];
 
                     // If they're the same, that just means the variable wasn't set.
                     if(ifaction !== newVars[variable] || elseaction !== newVars[variable]) {
