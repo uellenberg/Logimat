@@ -28,7 +28,6 @@ import {
     TemplateState
 } from "../types";
 import path from "path";
-import * as fs from "fs";
 import {HandleName, isNumeric, opMap} from "./util";
 import piecewiseOps from "../libs/piecewiseOps";
 import {createTemplates} from "./templates";
@@ -165,7 +164,8 @@ export const Compile = async (input: string, useTex: boolean = false, noFS = fal
                 args: inlineArgs,
                 block: [
                     {
-                        type: "state",
+                        type: "var",
+                        name: "state",
                         expr: {
                             type: "f",
                             args: [
@@ -477,7 +477,7 @@ const InternalCompile = (useTex: boolean, tree: OuterDeclaration[], inlines: Rec
                 out.push(...CompileDisplay(display));
 
                 const functionDeclaration = <OuterFunctionDeclaration>declaration;
-                out.push(HandleName(functionDeclaration.name) + "(" + functionDeclaration.args.map(HandleName).join(",") + ")" + "=" + SimplifyExpression(CompileBlock(functionDeclaration.block, data, "", {}), useTex, strict, names.concat(functionDeclaration.args), simplificationMap));
+                out.push(HandleName(functionDeclaration.name) + "(" + functionDeclaration.args.map(HandleName).join(",") + ")" + "=" + SimplifyExpression(CompileBlock(functionDeclaration.block, data, "", {}, "state", true), useTex, strict, names.concat(functionDeclaration.args), simplificationMap));
                 break;
             case "const":
                 out.push(...CompileDisplay(display));
@@ -487,7 +487,7 @@ const InternalCompile = (useTex: boolean, tree: OuterDeclaration[], inlines: Rec
                 break;
             case "action":
                 const actionDeclaration = <ActionDeclaration>declaration;
-                out.push((actionDeclaration.funcName ? HandleName(actionDeclaration.funcName) + (actionDeclaration.args ? "(" + actionDeclaration.args.map(HandleName).join(",") + ")" : "") + "=" : "") + HandleName(actionDeclaration.name) + "\\to " + SimplifyExpression(CompileBlock(actionDeclaration.block, data, "", {}), useTex, strict, actionDeclaration.args ? names.concat(actionDeclaration.args) : names, simplificationMap));
+                out.push((actionDeclaration.funcName ? HandleName(actionDeclaration.funcName) + (actionDeclaration.args ? "(" + actionDeclaration.args.map(HandleName).join(",") + ")" : "") + "=" : "") + HandleName(actionDeclaration.name) + "\\to " + SimplifyExpression(CompileBlock(actionDeclaration.block, data, "", {}, "state", true), useTex, strict, actionDeclaration.args ? names.concat(actionDeclaration.args) : names, simplificationMap));
                 break;
             case "actions":
                 const actionsDeclaration = <ActionsDeclaration>declaration;
@@ -504,7 +504,7 @@ const InternalCompile = (useTex: boolean, tree: OuterDeclaration[], inlines: Rec
                 out.push(...CompileDisplay(display));
 
                 const expressionDeclaration = <ExpressionDeclaration>declaration;
-                out.push(SimplifyExpression(CompileBlock(expressionDeclaration.block, data, "", {}), useTex, strict, names, simplificationMap));
+                out.push(SimplifyExpression(CompileBlock(expressionDeclaration.block, data, "", {}, "state", true), useTex, strict, names, simplificationMap));
                 break;
             case "graph":
                 out.push(...CompileDisplay(display));
@@ -607,9 +607,11 @@ const GetDeclaredNames = (tree: OuterDeclaration[]) : string[] => {
     return output;
 }
 
-const CompileBlock = (input: Statement[], data: CompileData, defaultOut: string, args: Record<string, string>) : string => {
+const CompileBlock = (input: Statement[], data: CompileData, defaultOut: string, args: Record<string, string>, curVar: string, requireOutput: boolean) : string => {
     let out = defaultOut;
     let newVars = {
+        // State should always exist.
+        state: null,
         ...data.vars,
         ...args
     };
@@ -621,19 +623,35 @@ const CompileBlock = (input: Statement[], data: CompileData, defaultOut: string,
                     ...data,
                     vars: {
                         ...newVars,
-                        state: out || data.vars["state"] || ""
                     }
                 });
 
                 break;
-            case "state":
-                out = CompileExpression(statement["expr"], {
+            case "let":
+                if(statement["name"] in newVars) {
+                    throw new Error("Cannot redeclare variable \"" + statement["name"] + "\".");
+                }
+
+                newVars[statement["name"]] = CompileExpression(statement["expr"], {
                     ...data,
                     vars: {
                         ...newVars,
-                        state: out || data.vars["state"] || ""
                     }
                 });
+                if(curVar === statement["name"]) out = newVars[statement["name"]];
+                break;
+            case "var":
+                if(!(statement["name"] in newVars)) {
+                    throw new Error("Cannot set undeclared variable \"" + statement["name"] + "\".");
+                }
+
+                newVars[statement["name"]] = CompileExpression(statement["expr"], {
+                    ...data,
+                    vars: {
+                        ...newVars,
+                    }
+                });
+                if(curVar === statement["name"]) out = newVars[statement["name"]];
                 break;
             case "if":
                 if(!statement["elseaction"] && !out) {
@@ -644,36 +662,54 @@ const CompileBlock = (input: Statement[], data: CompileData, defaultOut: string,
                     ...data,
                     vars: {
                         ...newVars,
-                        state: out
                     }
                 });
-                const ifaction = CompileBlock(statement["ifaction"], {
-                    ...data,
-                    vars: {
-                        ...newVars,
-                        state: out
-                    }
-                }, out, {});
-                const elseaction = statement["elseaction"] ? CompileBlock(statement["elseaction"], {
-                    ...data,
-                    vars: {
-                        ...newVars,
-                        state: out
-                    }
-                }, out, {}) : out;
 
-                out = CompileExpression({type: "f", args: ["if_func", [condition, ifaction, elseaction]]}, {
-                    ...data,
-                    vars: {
-                        ...newVars,
-                        state: out || data.vars["state"] || ""
+                // These blocks must be compiled for every variable.
+                // If they're different from the original variable, then we'll
+                // update the variable with the condition.
+                // Also, we need to wait to update the variables until the end, or else
+                // parts of the compilation will use values which shouldn't exist yet.
+                const updateMap = {};
+
+                for(const variable in newVars) {
+                    const ifaction = CompileBlock(statement["ifaction"], {
+                        ...data,
+                        vars: {
+                            ...newVars,
+                        }
+                    }, newVars[variable], {}, variable, false);
+                    const elseaction = statement["elseaction"] ? CompileBlock(statement["elseaction"], {
+                        ...data,
+                        vars: {
+                            ...newVars,
+                        }
+                    }, newVars[variable], {}, variable, false) : newVars[variable];
+
+                    // If they're the same, that just means the variable wasn't set.
+                    if(ifaction !== newVars[variable] || elseaction !== newVars[variable]) {
+                        updateMap[variable] = CompileExpression({
+                            type: "f",
+                            args: ["if_func", [condition, ifaction, elseaction]]
+                        }, {
+                            ...data,
+                            vars: {
+                                ...newVars,
+                            }
+                        });
                     }
-                });
+                }
+
+                for(const variable in updateMap) {
+                    newVars[variable] = updateMap[variable];
+                    if(curVar === variable) out = updateMap[variable];
+                }
+
                 break;
         }
     }
 
-    if(out === "") throw new Error("The state must be set inside of every block.");
+    if(requireOutput && (out === "" || out == null)) throw new Error("The state must be set inside of this block.");
     return out;
 }
 
@@ -718,9 +754,10 @@ const piecewiseFunctions = [
 ];
 
 const CompileExpression = (expression: Expression, data: CompileData) : string => {
+    if(expression == null) return null;
     if(typeof(expression) !== "object") return expression;
 
-    const args = expression.args.map(arg => typeof(arg) === "object" && arg.hasOwnProperty("type") && arg.hasOwnProperty("args") ? CompileExpression(<Expression>arg, data) : arg);
+    const args = expression.args.map(arg => arg != null && typeof(arg) === "object" && arg.hasOwnProperty("type") && arg.hasOwnProperty("args") ? CompileExpression(<Expression>arg, data) : arg);
 
     switch(expression.type){
         case "+":
@@ -736,7 +773,7 @@ const CompileExpression = (expression: Expression, data: CompileData) : string =
         case "n":
             return "-(" + args[0] + ")";
         case "f":
-            const fargs = (<any[]>expression.args[1]).map(arg => typeof(arg) === "object" && arg.hasOwnProperty("type") ? CompileExpression(<Expression>arg, data) : arg);
+            const fargs = (<any[]>expression.args[1]).map(arg => arg != null && typeof(arg) === "object" && arg.hasOwnProperty("type") ? CompileExpression(<Expression>arg, data) : arg);
 
             if(!data.inlines.hasOwnProperty(<string>expression.args[0])) {
                 if(piecewiseFunctions.includes(<string>expression.args[0])) return HandlePiecewise(<string>expression.args[0], fargs);
@@ -748,7 +785,7 @@ const CompileExpression = (expression: Expression, data: CompileData) : string =
             if(fargnames.length !== fargs.length) throw new Error("Inline function \"" + expression.args[0] + "\" requires " + fargnames.length + ", but only " + fargs.length + " are given.");
 
             data.stack.push(<string>expression.args[0]);
-            const result = CompileBlock((<OuterFunctionDeclaration>data.inlines[<string>expression.args[0]].value).block, data, "", Object.fromEntries(fargnames.map((v, i) => [v, fargs[i]])));
+            const result = CompileBlock((<OuterFunctionDeclaration>data.inlines[<string>expression.args[0]].value).block, data, "", Object.fromEntries(fargnames.map((v, i) => [v, fargs[i]])), "state", true);
             data.stack.pop();
 
             return "(" + result + ")";
@@ -783,7 +820,7 @@ const CompileExpression = (expression: Expression, data: CompileData) : string =
                     ...data.vars,
                     ...sumVar
                 }
-            }, "", {}) + ")";
+            }, "", {}, "state", true) + ")";
         case "prod":
             const prodName = "v_" + data.varIdx.value++;
 
@@ -799,7 +836,7 @@ const CompileExpression = (expression: Expression, data: CompileData) : string =
                     ...data.vars,
                     ...prodVar
                 }
-            }, "", {}) + ")";
+            }, "", {}, "state", true) + ")";
         case "int":
             const intName = "v_" + data.varIdx.value++;
 
@@ -815,16 +852,16 @@ const CompileExpression = (expression: Expression, data: CompileData) : string =
                     ...data.vars,
                     ...intVar
                 }
-            }, "", {}) + ")";
+            }, "", {}, "state", true) + ")";
         case "div":
             return "div(" + args[0] + "," + CompileBlock(<Statement[]>args[1], {
                 ...data,
                 vars: {
                     ...data.vars
                 }
-            }, "", {}) + ")";
+            }, "", {}, "state", true) + ")";
         case "b":
-            return CompileBlock(<Statement[]>expression.args[0], data, "", {});
+            return CompileBlock(<Statement[]>expression.args[0], data, "", {}, "state", true);
         case "a_f":
             //Map the user-chosen variable to the array for Desmos' filter syntax.
             const filterVar = {[<string>args[1]]: <string>args[0]};
@@ -838,7 +875,7 @@ const CompileExpression = (expression: Expression, data: CompileData) : string =
                             ...data.vars,
                             ...filterVar
                         }
-                    }, "", {})
+                    }, "", {}, "state", true)
                     : CompileExpression(<Expression>expression.args[2], {
                         ...data,
                         vars: {
@@ -866,7 +903,7 @@ const CompileExpression = (expression: Expression, data: CompileData) : string =
                             ...data.vars,
                             ...mapVar
                         }
-                    }, "", {})
+                    }, "", {}, "state", true)
                 : CompileExpression(<Expression>expression.args[2], {
                         ...data,
                         vars: {
