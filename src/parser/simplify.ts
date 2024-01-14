@@ -483,7 +483,7 @@ const functions: Record<string, (node: FunctionNode, options: object, tex: boole
         return `\\left(${node.args.map(arg => HandleNode(arg, options, tex)).join(",")}\\right)`;
     },
     array(node, options, tex) {
-        return `[${node.args.map(arg => HandleNode(arg, options, tex)).join(",")}]`;
+        return `\\left[${node.args.map(arg => HandleNode(arg, options, tex)).join(",")}\\right]`;
     },
     point_x(node, options, tex) {
         const point = HandleNode(node.args[0], options, tex);
@@ -501,7 +501,7 @@ const functions: Record<string, (node: FunctionNode, options: object, tex: boole
         const array = HandleNode(node.args[0], options, tex);
         const indexer = HandleNode(node.args[1], options, tex);
 
-        if(node.args[0].type === "OperatorNode") return `\\left(${array}\\right)[${indexer}]`;
+        if(node.args[0].type === "OperatorNode") return `\\left(${array}\\right)\\left[${indexer}\\right]`;
         return `${array}[${indexer}]`;
     },
     array_length(node, options, tex) {
@@ -514,7 +514,7 @@ const functions: Record<string, (node: FunctionNode, options: object, tex: boole
         const array = HandleNode(node.args[0], options, tex);
         const condition = HandleNode(node.args[1], options, tex);
 
-        if(node.args[0].type === "OperatorNode") return `\\left(${array}\\right)[${condition}=1]`;
+        if(node.args[0].type === "OperatorNode") return `\\left(${array}\\right)\\left[${condition}=1\\right]`;
         return `${array}[${condition}=1]`;
     },
     array_map(node, options, tex) {
@@ -522,13 +522,13 @@ const functions: Record<string, (node: FunctionNode, options: object, tex: boole
         const func = HandleNode(node.args[1], options, tex);
         const varName = HandleNode(node.args[2], options, tex);
 
-        return `[${func}\\operatorname{for}${varName}=${array}]`;
+        return `\\left[${func}\\operatorname{for}${varName}=${array}\\right]`;
     },
     range(node, options, tex) {
         const from = HandleNode(node.args[0], options, tex);
         const to = HandleNode(node.args[1], options, tex);
 
-        return `[${from}...${to}]`;
+        return `\\left[${from}...${to}\\right]`;
     },
     equal(node, options, tex) {
         return `\\left\\{${HandleNode(node.args[0], options, tex)}=${HandleNode(node.args[1], options, tex)},0\\right\\}`;
