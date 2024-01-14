@@ -363,11 +363,14 @@ const HandleTemplate = async (templateDeclaration: Template, templates: Record<s
                     const compiled = CompileExpression(handled as Expression, {
                         inlines: {},
                         varIdx: {value: 0},
+                        // Start addrIdx at 1 because 0 represents state.
+                        addrIdx: {value: 1},
                         names: definedNames,
                         stack: [],
                         state,
                         templates,
-                        vars: Object.fromEntries(Object.entries(state.logimat.definitions).filter(([key, value]) => typeof(value) === "number")) as Record<string, string>
+                        vars: Object.fromEntries(Object.entries(state.logimat.definitions).filter(([key, value]) => typeof(value) === "number")) as Record<string, string>,
+                        variableMap: {"state": {idx: 0, variable: true}}
                     });
 
                     const simplified = SimplifyExpression(compiled, false, !arg["nonStrict"], definedNames, simplificationMap);
@@ -437,7 +440,8 @@ const InternalCompile = (useTex: boolean, tree: OuterDeclaration[], inlines: Rec
     const outerNames = GetDeclaredNames(tree);
     const display: Record<string, string> = {};
 
-    let data: CompileData = {inlines, templates, state, stack, names: [], vars: {}, varIdx: {value: varIdx}};
+    // Start addrIdx at 1 because 0 represents state.
+    let data: CompileData = {inlines, templates, state, stack, names: [], vars: {0 /* state */: null}, variableMap: {"state": {idx: 0, variable: true}}, varIdx: {value: varIdx}, addrIdx: {value: 1}};
 
     for (const declaration of tree) {
         if (declaration.modifier === "inline") continue;
@@ -450,8 +454,10 @@ const InternalCompile = (useTex: boolean, tree: OuterDeclaration[], inlines: Rec
             state,
             stack,
             names,
-            vars: {},
-            varIdx: data.varIdx
+            vars: {0 /* state */: null},
+            variableMap: {"state": {idx: 0, variable: true}},
+            varIdx: data.varIdx,
+            addrIdx: data.addrIdx,
         };
 
         switch(declaration.type) {
@@ -477,7 +483,7 @@ const InternalCompile = (useTex: boolean, tree: OuterDeclaration[], inlines: Rec
                 out.push(...CompileDisplay(display));
 
                 const functionDeclaration = <OuterFunctionDeclaration>declaration;
-                out.push(HandleName(functionDeclaration.name) + "(" + functionDeclaration.args.map(HandleName).join(",") + ")" + "=" + SimplifyExpression(CompileBlock(functionDeclaration.block, data, "", {}, [], "state", true), useTex, strict, names.concat(functionDeclaration.args), simplificationMap));
+                out.push(HandleName(functionDeclaration.name) + "(" + functionDeclaration.args.map(HandleName).join(",") + ")" + "=" + SimplifyExpression(CompileBlock(functionDeclaration.block, data, "", 0 /* state */, true), useTex, strict, names.concat(functionDeclaration.args), simplificationMap));
                 break;
             case "const":
                 out.push(...CompileDisplay(display));
@@ -487,7 +493,7 @@ const InternalCompile = (useTex: boolean, tree: OuterDeclaration[], inlines: Rec
                 break;
             case "action":
                 const actionDeclaration = <ActionDeclaration>declaration;
-                out.push((actionDeclaration.funcName ? HandleName(actionDeclaration.funcName) + (actionDeclaration.args ? "(" + actionDeclaration.args.map(HandleName).join(",") + ")" : "") + "=" : "") + HandleName(actionDeclaration.name) + "\\to " + SimplifyExpression(CompileBlock(actionDeclaration.block, data, "", {}, [], "state", true), useTex, strict, actionDeclaration.args ? names.concat(actionDeclaration.args) : names, simplificationMap));
+                out.push((actionDeclaration.funcName ? HandleName(actionDeclaration.funcName) + (actionDeclaration.args ? "(" + actionDeclaration.args.map(HandleName).join(",") + ")" : "") + "=" : "") + HandleName(actionDeclaration.name) + "\\to " + SimplifyExpression(CompileBlock(actionDeclaration.block, data, "", 0 /* state */, true), useTex, strict, actionDeclaration.args ? names.concat(actionDeclaration.args) : names, simplificationMap));
                 break;
             case "actions":
                 const actionsDeclaration = <ActionsDeclaration>declaration;
@@ -504,7 +510,7 @@ const InternalCompile = (useTex: boolean, tree: OuterDeclaration[], inlines: Rec
                 out.push(...CompileDisplay(display));
 
                 const expressionDeclaration = <ExpressionDeclaration>declaration;
-                out.push(SimplifyExpression(CompileBlock(expressionDeclaration.block, data, "", {}, [], "state", true), useTex, strict, names, simplificationMap));
+                out.push(SimplifyExpression(CompileBlock(expressionDeclaration.block, data, "", 0 /* state */, true), useTex, strict, names, simplificationMap));
                 break;
             case "graph":
                 out.push(...CompileDisplay(display));
@@ -607,63 +613,71 @@ const GetDeclaredNames = (tree: OuterDeclaration[]) : string[] => {
     return output;
 }
 
-const CompileBlock = (input: Statement[], data: CompileData, defaultOut: string, args: Record<string, string>, variables: string[], curVar: string, requireOutput: boolean) : string => {
+const CompileBlock = (input: Statement[], data: CompileData, defaultOut: string, curVar: number, requireOutput: boolean) : string => {
     let out = defaultOut;
     let newVars = {
-        // State should always exist.
-        state: null,
-        ...data.vars,
-        ...args
+        // State (0) should always exist.
+        0: null,
+        ...data.vars
     };
+    let variableMap = {...data.variableMap};
 
     // State should always exist.
-    if(!variables.includes("state")) variables.push("state");
+    if(!("state" in variableMap)) variableMap["state"] = {idx: 0, variable: true};
 
     for (const statement of input) {
         switch(statement.type) {
             case "const":
-                // Check all variables to prevent shadowing.
-                if(statement["name"] in newVars) {
-                    throw new Error("Cannot redeclare variable \"" + statement["name"] + "\".");
-                }
+                const newConstIdx = data.addrIdx.value++;
 
-                newVars[statement["name"]] = CompileExpression(statement["expr"], {
+                newVars[newConstIdx] = CompileExpression(statement["expr"], {
                     ...data,
                     vars: {
                         ...newVars,
+                    },
+                    variableMap: {
+                        ...variableMap
                     }
                 });
+
+                variableMap[statement["name"]] = {idx: newConstIdx, variable: false};
 
                 break;
             case "let":
-                // Check all variables to prevent shadowing.
-                if(statement["name"] in newVars) {
-                    throw new Error("Cannot redeclare variable \"" + statement["name"] + "\".");
-                }
+                const newVarIdx = data.addrIdx.value++;
 
-                variables.push(statement["name"]);
-
-                newVars[statement["name"]] = CompileExpression(statement["expr"], {
+                newVars[newVarIdx] = CompileExpression(statement["expr"], {
                     ...data,
                     vars: {
                         ...newVars,
+                    },
+                    variableMap: {
+                        ...variableMap
                     }
                 });
-                if(curVar === statement["name"]) out = newVars[statement["name"]];
+
+                variableMap[statement["name"]] = {idx: newVarIdx, variable: true};
+
                 break;
             case "var":
                 // Check only actual variables because we can't set constants.
-                if(!variables.includes(statement["name"])) {
-                    throw new Error("Cannot set undeclared (or constant) variable \"" + statement["name"] + "\".");
+                if(!(statement["name"] in variableMap)) {
+                    throw new Error("Cannot set undeclared variable \"" + statement["name"] + "\".");
+                }
+                if(!variableMap[statement["name"]].variable) {
+                    throw new Error("Cannot set constant \"" + statement["name"] + "\".");
                 }
 
-                newVars[statement["name"]] = CompileExpression(statement["expr"], {
+                newVars[variableMap[statement["name"]].idx] = CompileExpression(statement["expr"], {
                     ...data,
                     vars: {
                         ...newVars,
+                    },
+                    variableMap: {
+                        ...variableMap
                     }
                 });
-                if(curVar === statement["name"]) out = newVars[statement["name"]];
+                if(curVar === variableMap[statement["name"]].idx) out = newVars[variableMap[statement["name"]].idx];
                 break;
             case "if":
                 if(!statement["elseaction"] && !out) {
@@ -674,6 +688,9 @@ const CompileBlock = (input: Statement[], data: CompileData, defaultOut: string,
                     ...data,
                     vars: {
                         ...newVars,
+                    },
+                    variableMap: {
+                        ...variableMap
                     }
                 });
 
@@ -682,39 +699,53 @@ const CompileBlock = (input: Statement[], data: CompileData, defaultOut: string,
                 // update the variable with the condition.
                 // Also, we need to wait to update the variables until the end, or else
                 // parts of the compilation will use values which shouldn't exist yet.
-                const updateMap = {};
+                const updateMap = [];
 
-                for(const variable of variables) {
+                for(const variableName in variableMap) {
+                    const variable = variableMap[variableName];
+
+                    // There's no reason to compile for constants.
+                    if(!variable.variable) continue;
+
                     const ifaction = CompileBlock(statement["ifaction"], {
                         ...data,
                         vars: {
                             ...newVars,
+                        },
+                        variableMap: {
+                            ...variableMap
                         }
-                    }, newVars[variable], {}, [...variables], variable, false);
+                    }, newVars[variable.idx], variable.idx, false);
                     const elseaction = statement["elseaction"] ? CompileBlock(statement["elseaction"], {
                         ...data,
                         vars: {
                             ...newVars,
+                        },
+                        variableMap: {
+                            ...variableMap
                         }
-                    }, newVars[variable], {}, [...variables], variable, false) : newVars[variable];
+                    }, newVars[variable.idx], variable.idx, false) : newVars[variable.idx];
 
                     // If they're the same, that just means the variable wasn't set.
-                    if(ifaction !== newVars[variable] || elseaction !== newVars[variable]) {
-                        updateMap[variable] = CompileExpression({
+                    if(ifaction !== newVars[variable.idx] || elseaction !== newVars[variable.idx]) {
+                        updateMap.push([variable.idx, CompileExpression({
                             type: "f",
                             args: ["if_func", [condition, ifaction, elseaction]]
                         }, {
                             ...data,
                             vars: {
                                 ...newVars,
+                            },
+                            variableMap: {
+                                ...variableMap
                             }
-                        });
+                        })]);
                     }
                 }
 
-                for(const variable in updateMap) {
-                    newVars[variable] = updateMap[variable];
-                    if(curVar === variable) out = updateMap[variable];
+                for(const [variableIdx, expr] of updateMap) {
+                    newVars[variableIdx] = expr;
+                    if(curVar === variableIdx) out = expr;
                 }
 
                 break;
@@ -797,14 +828,25 @@ const CompileExpression = (expression: Expression, data: CompileData) : string =
             if(fargnames.length !== fargs.length) throw new Error("Inline function \"" + expression.args[0] + "\" requires " + fargnames.length + ", but only " + fargs.length + " are given.");
 
             data.stack.push(<string>expression.args[0]);
-            const result = CompileBlock((<OuterFunctionDeclaration>data.inlines[<string>expression.args[0]].value).block, data, "", Object.fromEntries(fargnames.map((v, i) => [v, fargs[i]])), [], "state", true);
+
+            const newData = {...data, vars: {...data.vars}, variableMap: {...data.variableMap}};
+            for(let i = 0; i < fargs.length; i++) {
+                const name = fargnames[i];
+                const data = fargs[i];
+
+                const argIdx = newData.addrIdx.value++;
+                newData.vars[argIdx] = data;
+                newData.variableMap[name] = {idx: argIdx, variable: false};
+            }
+
+            const result = CompileBlock((<OuterFunctionDeclaration>data.inlines[<string>expression.args[0]].value).block, newData, "", 0 /* state */, true);
             data.stack.pop();
 
             return "(" + result + ")";
         case "v":
             const name = <string>expression.args[0];
 
-            if(data.vars.hasOwnProperty(name)) return data.vars[name];
+            if(name in data.variableMap) return data.vars[data.variableMap[name].idx];
             if(data.inlines.hasOwnProperty(name)) return CompileExpression(data.inlines[name].value["expr"], data);
 
             switch(name) {
@@ -821,7 +863,9 @@ const CompileExpression = (expression: Expression, data: CompileData) : string =
             const sumName = "v_" + data.varIdx.value++;
 
             //Map the user-chosen variable to generated name.
-            const sumVar = {[<string>args[0]]: sumName};
+            const sumVarIdx = data.addrIdx.value++;
+            const sumVar = {[sumVarIdx]: sumName};
+            const sumVarData = {[<string>args[0]]: {idx: sumVarIdx, variable: false}};
 
             //Make the variable name used here a declared variable, in order to make it work in strict mode.
             data.names.push(sumName);
@@ -831,13 +875,19 @@ const CompileExpression = (expression: Expression, data: CompileData) : string =
                 vars: {
                     ...data.vars,
                     ...sumVar
+                },
+                variableMap: {
+                    ...data.variableMap,
+                    ...sumVarData
                 }
-            }, "", {}, [], "state", true) + ")";
+            }, "", 0 /* state */, true) + ")";
         case "prod":
             const prodName = "v_" + data.varIdx.value++;
 
             //Map the user-chosen variable to generated name.
-            const prodVar = {[<string>args[0]]: prodName};
+            const prodVarIdx = data.addrIdx.value++;
+            const prodVar = {[prodVarIdx]: prodName};
+            const prodVarData = {[<string>args[0]]: {idx: prodVarIdx, variable: false}};
 
             //Make the variable name used here a declared variable, in order to make it work in strict mode.
             data.names.push(prodName);
@@ -847,13 +897,19 @@ const CompileExpression = (expression: Expression, data: CompileData) : string =
                 vars: {
                     ...data.vars,
                     ...prodVar
+                },
+                variableMap: {
+                    ...data.variableMap,
+                    ...prodVarData
                 }
-            }, "", {}, [], "state", true) + ")";
+            }, "", 0 /* state */, true) + ")";
         case "int":
             const intName = "v_" + data.varIdx.value++;
 
             //Map the user-chosen variable to generated name.
-            const intVar = {[<string>args[0]]: intName};
+            const intVarIdx = data.addrIdx.value++;
+            const intVar = {[intVarIdx]: intName};
+            const intVarData = {[<string>args[0]]: {idx: intVarIdx, variable: false}};
 
             //Make the variable name used here a declared variable, in order to make it work in strict mode.
             data.names.push(intName);
@@ -863,20 +919,29 @@ const CompileExpression = (expression: Expression, data: CompileData) : string =
                 vars: {
                     ...data.vars,
                     ...intVar
+                },
+                variableMap: {
+                    ...data.variableMap,
+                    ...intVarData
                 }
-            }, "", {}, [], "state", true) + ")";
+            }, "", 0 /* state */, true) + ")";
         case "div":
             return "div(" + args[0] + "," + CompileBlock(<Statement[]>args[1], {
                 ...data,
                 vars: {
                     ...data.vars
+                },
+                variableMap: {
+                    ...data.variableMap
                 }
-            }, "", {}, [], "state", true) + ")";
+            }, "", 0 /* state */, true) + ")";
         case "b":
-            return CompileBlock(<Statement[]>expression.args[0], data, "", {}, [], "state", true);
+            return CompileBlock(<Statement[]>expression.args[0], data, "", 0 /* state */, true);
         case "a_f":
             //Map the user-chosen variable to the array for Desmos' filter syntax.
-            const filterVar = {[<string>args[1]]: <string>args[0]};
+            const filterVarIdx = data.addrIdx.value++;
+            const filterVar = {[filterVarIdx]: <string>args[0]};
+            const filterVarData = {[<string>args[1]]: {idx: filterVarIdx, variable: false}};
 
             //If it's an array (list of statements), then compile it as a block, otherwise compile the original as an expression (with the .
             const filterFunc =
@@ -886,13 +951,21 @@ const CompileExpression = (expression: Expression, data: CompileData) : string =
                         vars: {
                             ...data.vars,
                             ...filterVar
+                        },
+                        variableMap: {
+                            ...data.variableMap,
+                            ...filterVarData,
                         }
-                    }, "", {}, [], "state", true)
+                    }, "", 0 /* state */, true)
                     : CompileExpression(<Expression>expression.args[2], {
                         ...data,
                         vars: {
                             ...data.vars,
                             ...filterVar
+                        },
+                        variableMap: {
+                            ...data.variableMap,
+                            ...filterVarData,
                         }
                     });
 
@@ -901,7 +974,9 @@ const CompileExpression = (expression: Expression, data: CompileData) : string =
             const mapName = "v_" + data.varIdx.value++;
 
             //Map the user-chosen variable to generated name.
-            const mapVar = {[<string>args[1]]: mapName};
+            const mapVarIdx = data.addrIdx.value++;
+            const mapVar = {[mapVarIdx]: mapName};
+            const mapVarData = {[<string>args[1]]: {idx: mapVarIdx, variable: false}};
 
             //Make the variable name used for mapping a declared variable, in order to make it work in strict mode.
             data.names.push(mapName);
@@ -914,13 +989,21 @@ const CompileExpression = (expression: Expression, data: CompileData) : string =
                         vars: {
                             ...data.vars,
                             ...mapVar
+                        },
+                        variableMap: {
+                            ...data.variableMap,
+                            ...mapVarData,
                         }
-                    }, "", {}, [], "state", true)
+                    }, "", 0 /* state */, true)
                 : CompileExpression(<Expression>expression.args[2], {
                         ...data,
                         vars: {
                             ...data.vars,
                             ...mapVar
+                        },
+                        variableMap: {
+                            ...data.variableMap,
+                            ...mapVarData,
                         }
                     });
 
@@ -939,8 +1022,10 @@ interface CompileData {
     inlines: Record<string, Inline>;
     templates: Record<string, TemplateFunction>;
     state: TemplateState;
-    vars: Record<string, string>;
+    vars: Record<number, string>;
+    variableMap: Record<string, {idx: number, variable: boolean}>;
     stack: string[];
     names: string[];
     varIdx: {value: number};
+    addrIdx: {value: number};
 }
