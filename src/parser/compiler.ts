@@ -360,6 +360,23 @@ const HandleTemplate = async (templateDeclaration: Template, templates: Record<s
                         continue;
                     }
 
+                    // We should have access to all variables, plus the built-in state.
+                    // Because we're making the IDs up, state will be ID 0, and everything
+                    // else will be their position in the map + 1.
+                    const newVars: Record<number, string> = {0 /* state */: null};
+                    const newVariableMap: Record<string, {idx: number, variable: boolean}> = {"state": {idx: 0, variable: true}};
+
+                    let idx = 1;
+                    for(const [key, value] of Object.entries(state.logimat.definitions)) {
+                        if(typeof(value) !== "number") continue;
+
+                        newVars[idx] = value.toString();
+                        // Err on the side of caution: these shouldn't be modifiable.
+                        newVariableMap[key] = {idx, variable: false};
+
+                        idx++;
+                    }
+
                     const compiled = CompileExpression(handled as Expression, {
                         inlines: {},
                         varIdx: {value: 0},
@@ -369,8 +386,8 @@ const HandleTemplate = async (templateDeclaration: Template, templates: Record<s
                         stack: [],
                         state,
                         templates,
-                        vars: Object.fromEntries(Object.entries(state.logimat.definitions).filter(([key, value]) => typeof(value) === "number")) as Record<string, string>,
-                        variableMap: {"state": {idx: 0, variable: true}}
+                        vars: newVars,
+                        variableMap: newVariableMap
                     });
 
                     const simplified = SimplifyExpression(compiled, false, !arg["nonStrict"], definedNames, simplificationMap);
