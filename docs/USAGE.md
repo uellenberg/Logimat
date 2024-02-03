@@ -42,7 +42,7 @@ is perfectly valid.
 
 Because Logimat compiles to math, there are a few restrictions that it has. Namely, it has no ability for early returns.
 In order to return a value, you must set the state. The state is a variable that can be read and written to, as opposed
-to all other variables, which are constants. At the end of a block (something inside {}), the state must be set, or else
+to constants, which can only be written to. At the end of a block (something inside {}), the state must be set, or else
 a compile error will be thrown. Below is an example of setting the state:
 
 ```ts
@@ -180,6 +180,28 @@ export const a_const = 1;
 
 inline const an_inline_const = 2;
 ```
+
+#### let
+
+Variables can be created using the let keyword.
+Unlike constants, variables can be modified.
+It is extremely important to keep in mind that variables are only a convenience provided by the compiler,
+and do not allow actual mutability.
+Variables from inside of a sum/product/derivative/integral cannot be written from inside of it.
+For this reason, and because they can easily create duplicated code, variables are not recommended.
+They are, nonetheless, a useful feature that can simplify certain scenarios.
+Below is an example of a variable inside a function:
+
+```ts
+export function a(x) {
+    let val = 1;
+    if(x == 0) {
+        val = 2;
+    }
+
+    val
+}
+````
 
 ### Inner Declarations
 
