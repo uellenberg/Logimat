@@ -6,7 +6,7 @@ inline function factorQuadratic(a, b, c, selector) {
     // In that case, we can simply return (ax+b)(x+0).
     if(c == 0) {
         const gcd1 = gcdNeg(a, b);
-        outputSwitch(selector, 1, a/gcd1, 1, -b/gcd1, 0)
+        outputSwitch(selector, gcd1, a/gcd1, 1, -b/gcd1, 0)
     } else {
         // Next, we'll find an actual GCD between them, store it for later, then divide everything by it.
         const gcd1 = gcdNeg1(a, b, c);
