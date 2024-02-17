@@ -20,7 +20,7 @@ out [here](https://github.com/uellenberg/Graphgame.git)!
 
 You can also use [Graphgame Studio](https://graphgame.js.org) to get started with Logimat (and Graphgame) in your browser.
 
-Also, take a look at [TopHop](https://github.com/uellenberg/TopHop.git), a [Desmos game](https://www.desmos.com/calculator/lqr66vwfgf) made using Logimat and Graphgame
+Also, take a look at [TopHop](https://github.com/uellenberg/TopHop.git), a [Desmos game](https://www.desmos.com/art#17;iqhtp7solc) made using Logimat and Graphgame
 (which you can modify with Graphgame Studio).
 
 ## Logical Math
