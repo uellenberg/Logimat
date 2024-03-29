@@ -22,10 +22,11 @@ Logimat {
     ExportOuterConstDeclaration = export #space const #space TemplateExportIdentifier "=" Expression ";"
     InlineOuterConstDeclaration = inline #space const #space TemplateIdentifier "=" Expression ";"
 
-    FunctionDeclaration = ExportFunctionDeclaration | InlineFunctionDeclaration | InlinePolyfillFunctionDeclaration
+    FunctionDeclaration = ExportFunctionDeclaration | InlineFunctionDeclaration | InlinePolyfillFunctionDeclaration | StackFunctionDeclaration
     ExportFunctionDeclaration = export #space function #space TemplateExportIdentifier "(" ExportFunctionArgs ")" FunctionBody
     InlineFunctionDeclaration = inline #space function #space TemplateIdentifier "(" FunctionArgs ")" FunctionBody
     InlinePolyfillFunctionDeclaration = inline #space polyfill #space function #space TemplateIdentifier "(" FunctionArgs ")" FunctionBody
+    StackFunctionDeclaration = stack #space function #space TemplateExportIdentifier "(" ExportFunctionArgs ")" FunctionBody
     
     ExportDeclaration =  export #space TemplateIdentifier ";"
 
@@ -105,18 +106,22 @@ Logimat {
     InnerDeclaration = InnerDefineTemplate
                      | InnerTemplate
                      | ConstDeclaration
+                     | StackvarDeclaration
                      | LetDeclaration
                      | LetDeclarationEmpty
                      | SetVar
+                     | SetVarArray
                      | IfStatement
 
     ConstDeclaration = const #space TemplateIdentifier "=" Expression ";"
+    StackvarDeclaration = const #space TemplateIdentifier ";"
     LetDeclaration = let #space TemplateIdentifier "=" Expression ";"
     LetDeclarationEmpty = let #space TemplateIdentifier ";"
 
     SetStateImplicit = Expression
     
     SetVar = identifier "=" Expression ";"
+    SetVarArray = (identifier | stack) "[" Expression "]" "=" Expression ";"
 
     StateBlock = Block -- block
 
@@ -138,6 +143,7 @@ Logimat {
                       | Derivative
                       | TemplateIdentifierName "(" ListOf<Expression, ","> ")"   -- func
                       | TemplateIdentifier  -- var
+                      | stack -- stack
                       | literal
                       | Block  -- block
                       | Array  -- array
@@ -209,6 +215,9 @@ Logimat {
     let = "let" ~identifierPart
     function = "function" ~identifierPart
     polyfill = "polyfill" ~identifierPart
+    stack = "stack" ~identifierPart
+    stackvar = "stackvar" ~identifierPart
+    stacknum = "stacknum" ~identifierPart
     action = "action" ~identifierPart
     actions = "actions" ~identifierPart
     expression = "expression" ~identifierPart
@@ -231,6 +240,10 @@ Logimat {
              | const
              | let
              | function
+             | polyfill
+             | stack
+             | stackvar
+             | stacknum
              | action
              | actions
              | expression
@@ -347,6 +360,9 @@ semantic.addOperation("parse", {
     },
     InlinePolyfillFunctionDeclaration(_1, _2, _3, _4, _5, _6, name, _7, args, _8, block){
         return {type: "function", modifier: "inline", polyfill: true, name: name.parse(), args: args.parse(), block: block.parse()};
+    },
+    StackFunctionDeclaration(_3, _4, _5, _6, name, _7, args, _8, block){
+        return {type: "function", modifier: "stack", name: name.parse(), args: args.parse(), block: block.parse()};
     },
     ExportDeclaration(_1, _2, name, _3){
         return {type: "export", modifier: "export", name: name.parse()};
@@ -484,6 +500,9 @@ semantic.addOperation("parse", {
     PrimaryExpression_var(e){
         return {type: "v", args: [e.parse()]};
     },
+    PrimaryExpression_stack(_1){
+        return {type: "v", args: ["state"]};
+    },
     PrimaryExpression_point(e){
         return {type: "f", args: ["point", e.parse()]};
     },
@@ -597,6 +616,9 @@ semantic.addOperation("parse", {
     ConstDeclaration(_, _2, id, _3, expr, _4){
         return {type: "const", name: id.parse(), expr: expr.parse()};
     },
+    StackvarDeclaration(_, _2, id, _4){
+        return {type: "stackvar", name: id.parse()};
+    },
     LetDeclaration(_, _2, id, _3, expr, _4){
         return {type: "let", name: id.parse(), expr: expr.parse()};
     },
@@ -608,6 +630,21 @@ semantic.addOperation("parse", {
     },
     SetVar(id, _2, expr, _3){
         return {type: "var", name: id.parse(), expr: expr.parse()};
+    },
+    SetVarArray(id, _2, expr_idx, _4, _5, expr_to, _7){
+        // array[idx] = a;
+        // desugars to array = range(0, array.length).filter(v => v != 0).map(v => v == expr_idx ? expr_to : array[v]);
+        let identifier = id.parse();
+
+        // Special handling for stack.
+        if(identifier === "stack") {
+            identifier = "state";
+        }
+
+        let idx = expr_idx.parse();
+        let to = expr_to.parse();
+        // state = a_rrset(state, idx, to);
+        return {type: "var", name: identifier, expr: {type: "f", args: ["a_rrset", [{type: "v", args: [identifier]}, idx, to]]}};
     },
     StateBlock_block(block){
         return block.parse();
@@ -753,11 +790,15 @@ export interface Expression {
     type: "f" | "^" | "*" | "/" | "+" | "-" | "n" | "a_m" | "a_f" | "b" | "v" | "sum" | "prod" | "int" | "div";
     args: (string | object)[];
 }
-export type Statement = ConstDeclaration | LetDeclaration | Template | SetVar | IfStatement;
+export type Statement = ConstDeclaration | StackvarDeclaration | LetDeclaration | Template | SetVar | IfStatement;
 export interface ConstDeclaration {
     type: "const";
     name: string;
     expr: Expression;
+}
+export interface StackvarDeclaration {
+    type: "stack";
+    name: string;
 }
 export interface LetDeclaration {
     type: "let";
@@ -776,4 +817,4 @@ export interface IfStatement {
     elseaction: Statement[];
 }
 
-export type Modifier = "export" | "inline";
+export type Modifier = "export" | "inline" | "stack";
