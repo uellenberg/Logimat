@@ -783,6 +783,27 @@ export const CompileBlock = (input: Statement[], data: CompileData, defaultOut: 
                 }, compilerOutput);
                 if(curVar === variableMap[statement["name"]].idx) out = newVars[variableMap[statement["name"]].idx];
                 break;
+            case "stackvar":
+                if(!data.stackContext) {
+                    throw new Error("Stackvars can only be ran from inside of a stack function!");
+                }
+
+                const stackOffset = data.stackOffset++;
+                const newStackvarIdx = data.addrIdx.value++;
+
+                newVars[newStackvarIdx] = CompileExpression(GetExpression("stack[2] + " + stackOffset), {
+                    ...data,
+                    vars: {
+                        ...newVars,
+                    },
+                    variableMap: {
+                        ...variableMap
+                    }
+                }, compilerOutput);
+
+                variableMap[statement.name] = {idx: newStackvarIdx, variable: false};
+
+                break;
             case "if":
                 if(!statement["elseaction"] && !out) {
                     throw new Error("The state must be set before an else-less if can be used.");
@@ -855,7 +876,7 @@ export const CompileBlock = (input: Statement[], data: CompileData, defaultOut: 
                 break;
             case "function":
                 if(!data.stackContext) {
-                    throw new Error("Functions can only be ran from inside of a state function!");
+                    throw new Error("Functions can only be ran from inside of a stack function!");
                 }
                 if(!data.stackFunctions.includes(statement.name)) {
                     throw new Error("Only stack functions can be ran!");
@@ -934,7 +955,7 @@ export const CompileBlock = (input: Statement[], data: CompileData, defaultOut: 
                 break;
             case "return": {
                 if(!data.stackContext) {
-                    throw new Error("Returns can only be happen inside of a state function!");
+                    throw new Error("Returns can only be happen inside of a stack function!");
                 }
 
                 let {stackNum} = createExecutionPoint(data);

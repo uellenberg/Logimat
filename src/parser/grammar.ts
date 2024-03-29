@@ -815,7 +815,7 @@ export interface ConstDeclaration {
     expr: Expression;
 }
 export interface StackvarDeclaration {
-    type: "stack";
+    type: "stackvar";
     name: string;
 }
 export interface LetDeclaration {
