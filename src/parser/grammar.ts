@@ -112,6 +112,7 @@ Logimat {
                      | SetVar
                      | SetVarArray
                      | IfStatement
+                     | FunctionCall
 
     ConstDeclaration = const #space TemplateIdentifier "=" Expression ";"
     StackvarDeclaration = const #space TemplateIdentifier ";"
@@ -126,7 +127,9 @@ Logimat {
     StateBlock = Block -- block
 
     IfStatement = if "(" Expression ")" StateBlock (else (StateBlock | IfStatement))?
-    
+
+    FunctionCall = TemplateIdentifierName "(" ListOf<Expression, ","> ")" ";"
+
     Ternary = Expression "?" Expression ":" Expression
 
     Sum = sum "(" TemplateIdentifier "=" Expression ";" Expression ")" StateBlock
@@ -144,6 +147,7 @@ Logimat {
                       | TemplateIdentifierName "(" ListOf<Expression, ","> ")"   -- func
                       | TemplateIdentifier  -- var
                       | stack -- stack
+                      | stacknum -- stacknum
                       | literal
                       | Block  -- block
                       | Array  -- array
@@ -503,6 +507,9 @@ semantic.addOperation("parse", {
     PrimaryExpression_stack(_1){
         return {type: "v", args: ["state"]};
     },
+    PrimaryExpression_stacknum(_1){
+        return {type: "v", args: ["stacknum"]};
+    },
     PrimaryExpression_point(e){
         return {type: "f", args: ["point", e.parse()]};
     },
@@ -657,6 +664,9 @@ semantic.addOperation("parse", {
 
         return {type: "if", condition: condition.parse(), ifaction: ifaction.parse(), elseaction: elseAction};
     },
+    FunctionCall(name, _2, args, _3, _4) {
+        return {type: "function", name: name.parse(), args: args.asIteration().parse()};
+    },
     Ternary(condition, _1, tRes, _2, fRes){
         return {type: "b", args: [[{type: "if", condition: condition.parse(), ifaction: [{type: "var", name: "state", expr: tRes.parse()}], elseaction: [{type: "var", name: "state", expr: fRes.parse()}]}]]};
     },
@@ -790,7 +800,7 @@ export interface Expression {
     type: "f" | "^" | "*" | "/" | "+" | "-" | "n" | "a_m" | "a_f" | "b" | "v" | "sum" | "prod" | "int" | "div";
     args: (string | object)[];
 }
-export type Statement = ConstDeclaration | StackvarDeclaration | LetDeclaration | Template | SetVar | IfStatement;
+export type Statement = ConstDeclaration | StackvarDeclaration | LetDeclaration | Template | SetVar | IfStatement | FunctionCall;
 export interface ConstDeclaration {
     type: "const";
     name: string;
@@ -815,6 +825,12 @@ export interface IfStatement {
     condition: Expression;
     ifaction: Statement[];
     elseaction: Statement[];
+}
+
+export interface FunctionCall {
+    type: "function";
+    name: string;
+    args: Expression[];
 }
 
 export type Modifier = "export" | "inline" | "stack";

@@ -426,8 +426,14 @@ const HandleTemplate = async (templateDeclaration: Template, templates: Record<s
                         parentStackPrefix: "",
                         stackIdx: {value: 0},
                         globalStackNumber: {value: 0},
-                        ignoreStack: false,
-                    });
+                        stackContext: false,
+                        stackFunctions: [],
+                        stackOffset: 0,
+                        callFunctionsEmitted: [],
+                        strict: false,
+                        useTex: false,
+                        simplificationMap: {},
+                    }, []);
 
                     const simplified = SimplifyExpression(compiled, false, !arg["nonStrict"], definedNames, simplificationMap);
 
@@ -513,14 +519,23 @@ const InternalCompile = (useTex: boolean, tree: OuterDeclaration[], inlines: Rec
         parentStackPrefix: "",
         stackIdx: {value: 0},
         globalStackNumber: {value: 0},
-        ignoreStack: false,
+        stackContext: false,
+        stackFunctions: tree.filter(val => val.type === "function" && val.modifier === "stack").map(val => val["name"]),
+        stackOffset: 0,
+        callFunctionsEmitted: [],
+        strict,
+        useTex,
+        simplificationMap,
     };
 
     // Figure out the stack numbers for all stack function entry-points.
     for (const declaration of tree) {
         if (declaration.type !== "function" || declaration.modifier !== "stack") continue;
-        data.stackStateMap[declaration.name + "_0"] = data.globalStackNumber.value;
-        data.globalStackNumber.value++;
+
+        let stackNum = data.globalStackNumber.value++;
+        data.stackStateMap[declaration.name + "_0"] = stackNum;
+        data.stackFunctionMap[stackNum] = declaration.name + "_0";
+        data.stackNextStateMap[declaration.name + "_0"] = declaration.name + "_1";
     }
 
     for (const declaration of tree) {
@@ -528,24 +543,7 @@ const InternalCompile = (useTex: boolean, tree: OuterDeclaration[], inlines: Rec
 
         const names = Object.assign([], outerNames);
 
-        data = {
-            inlines,
-            templates,
-            state,
-            stack,
-            names,
-            vars: {0 /* state */: null},
-            variableMap: {"state": {idx: 0, variable: true}},
-            varIdx: data.varIdx,
-            addrIdx: data.addrIdx,
-            stackStateMap: data.stackStateMap,
-            stackFunctionMap: data.stackFunctionMap,
-            stackNextStateMap: data.stackNextStateMap,
-            parentStackPrefix: "",
-            stackIdx: {value: 0},
-            globalStackNumber: data.globalStackNumber,
-            ignoreStack: false,
-        };
+        data = cleanData(data, names);
 
         switch(declaration.type) {
             case "display":
@@ -553,16 +551,16 @@ const InternalCompile = (useTex: boolean, tree: OuterDeclaration[], inlines: Rec
                 if(typeof(declaration.value) === "string") val = declaration.value;
                 else if(declaration.value.type === "tstring") val = declaration.value.args.map(arg => {
                     if(typeof(arg) === "string") return arg;
-                    else return "${" + SimplifyExpression(CompileExpression(arg, data), useTex, strict, names, simplificationMap) + "}";
+                    else return "${" + SimplifyExpression(CompileExpression(arg, data, out), useTex, strict, names, simplificationMap) + "}";
                 }).join("");
                 else if(declaration.value.type === "aargs") val = HandleName(declaration.value.name) + "(" + declaration.value.args.map(arg => {
                     if(typeof(arg) === "string") {
                         if(arg === "index") return "\\operatorname{index}";
                         return arg;
                     }
-                    else return SimplifyExpression(CompileExpression(arg, data), useTex, strict, names, simplificationMap);
+                    else return SimplifyExpression(CompileExpression(arg, data, out), useTex, strict, names, simplificationMap);
                 }).join(",") + ")";
-                else val = SimplifyExpression(CompileExpression(declaration.value, data), useTex, strict, names, simplificationMap);
+                else val = SimplifyExpression(CompileExpression(declaration.value, data, out), useTex, strict, names, simplificationMap);
 
                 display[declaration.displayType] = val;
                 break;
@@ -574,6 +572,10 @@ const InternalCompile = (useTex: boolean, tree: OuterDeclaration[], inlines: Rec
                     CompileDisplay(display);
 
                     data.parentStackPrefix = declaration.name;
+                    data.stackContext = true;
+                    // The +2 is needed to account for the returnStackNum, and to
+                    // move it one past the end of the stack.
+                    data.stackOffset = declaration.args.length + 2;
 
                     // Add virtual variables for all the arguments.
                     // The stack looks like [stackNum, stackFramePtr, ..., returnStackNum, returnPtr, arg1, ...],
@@ -581,7 +583,7 @@ const InternalCompile = (useTex: boolean, tree: OuterDeclaration[], inlines: Rec
                     for(let i = 0; i < functionDeclaration.args.length; i++) {
                         const argName = functionDeclaration.args[i];
 
-                        let varIdx = data.varIdx.value++;
+                        let varIdx = data.addrIdx.value++;
                         data.variableMap[argName] = {idx: varIdx, variable: false};
                         data.vars[varIdx] = "array_idx(s_tack, 2) + " + (i + 2);
                     }
@@ -604,12 +606,12 @@ const InternalCompile = (useTex: boolean, tree: OuterDeclaration[], inlines: Rec
                             globalStackNumber: data.globalStackNumber,
                         })
                     };
-                    tempData.ignoreStack = true;
-                    let stackNumVar = tempData.varIdx.value++;
+
+                    let stackNumVar = tempData.addrIdx.value++;
                     tempData.vars[stackNumVar] = "-1";
                     tempData.variableMap["stacknum"] = {idx: stackNumVar, variable: false};
 
-                    CompileBlock(functionDeclaration.block, tempData, "", 0 /* state */, true);
+                    CompileBlock(functionDeclaration.block, tempData, "", 0 /* state */, true, out);
 
                     // Now, we need to add the final execution step.
                     // This is explained below, but it's essentially the code
@@ -625,49 +627,73 @@ const InternalCompile = (useTex: boolean, tree: OuterDeclaration[], inlines: Rec
                     // Now, we need to bring the relevant fields over.
                     data.stackStateMap = tempData.stackStateMap;
                     data.globalStackNumber = tempData.globalStackNumber;
+                    data.stackNextStateMap = tempData.stackNextStateMap;
+                    data.stackFunctionMap = tempData.stackFunctionMap;
+                    data.callFunctionsEmitted = tempData.callFunctionsEmitted;
+                    data.stackFunctionMap = tempData.stackFunctionMap;
 
                     // Now, the function needs to be compiled for each different breakpoint
                     // that exists.
                     // This will create different versions to handle each part of the execution.
                     // There will also be a built-in return function that gets called for the last
                     // one, and which will be assigned to finalStackNum.
-                    stackNumVar = data.varIdx.value++;
+                    stackNumVar = data.addrIdx.value++;
                     data.variableMap["stacknum"] = {idx: stackNumVar, variable: false};
+
+                    const firstStackNum = data.stackStateMap[declaration.name + "_0"];
 
                     // We need to map each state to its next state as a default value.
                     // This will ignore our final one, as it doesn't have a next state to map to.
                     const numToName: Record<number, string> = Object.fromEntries(Object.entries(data.stackStateMap).map(val => val.reverse()));
-                    let nextStateSelector = "state = a_dv(s_tack, ";
-                    for(let i = 0; i < newVersions - 1; i++) {
-                        const stackNum = initialStateNum + i;
+                    let nextStateSelector = "const s_tack1 = a_dv(s_tack, ";
+                    for(let i = 0; i < newVersions; i++) {
+                        // i == 0 is a special case for the first breakpoint.
+                        const stackNum = i === 0 ? firstStackNum : (initialStateNum + (i - 1));
 
                         if(i === 0) {
-                            nextStateSelector += "if(s_tack[1] == " + stackNum + ")";
-                        } else if(i === newVersions - 1) {
-                            nextStateSelector = "else";
+                            nextStateSelector += "if(stacknum == " + stackNum + ")";
                         } else {
-                            nextStateSelector += "else if(s_tack[1] == " + stackNum + ")";
+                            nextStateSelector += "else if(stacknum == " + stackNum + ")";
                         }
 
                         nextStateSelector += "{" + data.stackStateMap[data.stackNextStateMap[numToName[stackNum]]] + "}";
                     }
-                    nextStateSelector += ");";
-
-                    // No need for a default state if we're doing nothing but returning.
-                    // If newVersions === 1, then only the built-in one is present, so
-                    // we don't need to advance to it.
-                    if(newVersions === 1) {
-                        nextStateSelector = "state = s_tack;";
-                    }
+                    // This last run runs for return, which doesn't make use of the
+                    // current stack num, so it won't matter anyway.
+                    nextStateSelector += "else { 0 });";
+                    // This is broken out so that it can be reset to at the end of each breakpoint.
+                    nextStateSelector += "state = s_tack1;";
 
                     const newStateSelectorParsed = GetStatementsTree(nextStateSelector);
                     const functionStatements = [...newStateSelectorParsed, ...functionDeclaration.block];
 
-                    for(let i = 0; i < newVersions; i++) {
-                        const name = functionDeclaration.name + "_stack" + (i + 1);
-                        const stackNum = initialStateNum + i;
+                    for(let i = 0; i <= newVersions; i++) {
+                        // We need to use cloned data to avoid
+                        // the state from getting messed up with multiple
+                        // iterations.
+                        const clonedData = {
+                            ...data,
+                            ...structuredClone({
+                                vars: data.vars,
+                                variableMap: data.variableMap,
+                                varIdx: data.varIdx,
+                                addrIdx: data.addrIdx,
+                                stackStateMap: data.stackStateMap,
+                                stackFunctionMap: data.stackFunctionMap,
+                                stackNextStateMap: data.stackNextStateMap,
+                                stackIdx: data.stackIdx,
+                                globalStackNumber: data.globalStackNumber,
+                                callFunctionEmitted: data.callFunctionsEmitted,
+                            })
+                        };
 
-                        if(i === newVersions - 1) {
+                        // 0 is a special case for the first execution point.
+                        const name = functionDeclaration.name + "_" + i;
+                        const stackNum = i === 0 ? firstStackNum : initialStateNum + (i - 1);
+
+                        clonedData.vars[stackNumVar] = stackNum.toString();
+
+                        if(i === newVersions) {
                             // state = r_et(state);
                             const returnCode: Statement[] = [
                                 ...functionStatements,
@@ -685,30 +711,34 @@ const InternalCompile = (useTex: boolean, tree: OuterDeclaration[], inlines: Rec
                                     }
                                 }
                             ];
-                            out.push(HandleName(name) + "(s_{tack})=" + SimplifyExpression(CompileBlock(returnCode, data, "", 0 /* state */, true), useTex, strict, names.concat("s_tack", "a_dv", "r_et"), simplificationMap));
+                            out.push(HandleName(name) + "(s_{tack})=" + SimplifyExpression(CompileBlock(returnCode, clonedData, "", 0 /* state */, true, out), useTex, strict, names.concat("s_tack", "a_dv", "r_et").concat(data.callFunctionsEmitted.map(call => "c_all" + call)), simplificationMap));
                         } else {
-                            data.vars[stackNumVar] = stackNum.toString();
-                            out.push(HandleName(name) + "(s_{tack})" + "=" + SimplifyExpression(CompileBlock(functionStatements, data, "", 0 /* state */, true), useTex, strict, names.concat("s_tack", "a_dv", "r_et"), simplificationMap));
-
-                            data.stackFunctionMap[stackNum] = name;
+                            out.push(HandleName(name) + "(s_{tack})" + "=" + SimplifyExpression(CompileBlock(functionStatements, clonedData, "", 0 /* state */, true, out), useTex, strict, names.concat("s_tack", "a_dv", "r_et").concat(data.callFunctionsEmitted.map(call => "c_all" + call)), simplificationMap));
                         }
+
+                        data.stackStateMap = clonedData.stackStateMap;
+                        data.globalStackNumber = clonedData.globalStackNumber;
+                        data.stackNextStateMap = clonedData.stackNextStateMap;
+                        data.stackFunctionMap = clonedData.stackFunctionMap;
+                        data.callFunctionsEmitted = clonedData.callFunctionEmitted;
+                        data.stackFunctionMap[stackNum] = name;
                     }
 
                     break;
                 }
 
                 out.push(...CompileDisplay(display));
-                out.push(HandleName(functionDeclaration.name) + "(" + functionDeclaration.args.map(HandleName).join(",") + ")" + "=" + SimplifyExpression(CompileBlock(functionDeclaration.block, data, "", 0 /* state */, true), useTex, strict, names.concat(functionDeclaration.args), simplificationMap));
+                out.push(HandleName(functionDeclaration.name) + "(" + functionDeclaration.args.map(HandleName).join(",") + ")" + "=" + SimplifyExpression(CompileBlock(functionDeclaration.block, data, "", 0 /* state */, true, out), useTex, strict, names.concat(functionDeclaration.args), simplificationMap));
                 break;
             case "const":
                 out.push(...CompileDisplay(display));
 
                 const constDeclaration = <OuterConstDeclaration>declaration;
-                out.push(HandleName(constDeclaration.name) + "=" + SimplifyExpression(CompileExpression(constDeclaration.expr, data), useTex, strict, names, simplificationMap));
+                out.push(HandleName(constDeclaration.name) + "=" + SimplifyExpression(CompileExpression(constDeclaration.expr, data, out), useTex, strict, names, simplificationMap));
                 break;
             case "action":
                 const actionDeclaration = <ActionDeclaration>declaration;
-                out.push((actionDeclaration.funcName ? HandleName(actionDeclaration.funcName) + (actionDeclaration.args ? "(" + actionDeclaration.args.map(HandleName).join(",") + ")" : "") + "=" : "") + HandleName(actionDeclaration.name) + "\\to " + SimplifyExpression(CompileBlock(actionDeclaration.block, data, "", 0 /* state */, true), useTex, strict, actionDeclaration.args ? names.concat(actionDeclaration.args) : names, simplificationMap));
+                out.push((actionDeclaration.funcName ? HandleName(actionDeclaration.funcName) + (actionDeclaration.args ? "(" + actionDeclaration.args.map(HandleName).join(",") + ")" : "") + "=" : "") + HandleName(actionDeclaration.name) + "\\to " + SimplifyExpression(CompileBlock(actionDeclaration.block, data, "", 0 /* state */, true, out), useTex, strict, actionDeclaration.args ? names.concat(actionDeclaration.args) : names, simplificationMap));
                 break;
             case "actions":
                 const actionsDeclaration = <ActionsDeclaration>declaration;
@@ -725,7 +755,7 @@ const InternalCompile = (useTex: boolean, tree: OuterDeclaration[], inlines: Rec
                 out.push(...CompileDisplay(display));
 
                 const expressionDeclaration = <ExpressionDeclaration>declaration;
-                out.push(SimplifyExpression(CompileBlock(expressionDeclaration.block, data, "", 0 /* state */, true), useTex, strict, names, simplificationMap));
+                out.push(SimplifyExpression(CompileBlock(expressionDeclaration.block, data, "", 0 /* state */, true, out), useTex, strict, names, simplificationMap));
                 break;
             case "graph":
                 out.push(...CompileDisplay(display));
@@ -734,21 +764,26 @@ const InternalCompile = (useTex: boolean, tree: OuterDeclaration[], inlines: Rec
                 names.push("x", "y");
 
                 const graphDeclaration = <GraphDeclaration>declaration;
-                out.push(SimplifyExpression(CompileExpression(graphDeclaration.p1, data), useTex, strict, names, simplificationMap) + opMap[graphDeclaration.op] + SimplifyExpression(CompileExpression(graphDeclaration.p2, data), useTex, strict, names, simplificationMap));
+                out.push(SimplifyExpression(CompileExpression(graphDeclaration.p1, data, out), useTex, strict, names, simplificationMap) + opMap[graphDeclaration.op] + SimplifyExpression(CompileExpression(graphDeclaration.p2, data, out), useTex, strict, names, simplificationMap));
                 break;
             case "point":
                 out.push(...CompileDisplay(display));
 
                 const pointDeclaration = <PointDeclaration>declaration;
-                out.push(SimplifyExpression(CompileExpression(pointDeclaration.point, data), useTex, strict, names, simplificationMap));
+                out.push(SimplifyExpression(CompileExpression(pointDeclaration.point, data, out), useTex, strict, names, simplificationMap));
                 break;
             case "polygon":
                 out.push(...CompileDisplay(display));
 
                 const polygonDeclaration = <PolygonDeclaration>declaration;
-                out.push("\\operatorname{polygon}" + (useTex ? "\\left(" : "(") + polygonDeclaration.points.map(point => SimplifyExpression(CompileExpression(point, data), useTex, strict, names, simplificationMap)).join(",") + (useTex ? "\\right)" : ")"));
+                out.push("\\operatorname{polygon}" + (useTex ? "\\left(" : "(") + polygonDeclaration.points.map(point => SimplifyExpression(CompileExpression(point, data, out), useTex, strict, names, simplificationMap)).join(",") + (useTex ? "\\right)" : ")"));
                 break;
         }
+    }
+
+    // If there were stack functions used, create the method to run them.
+    if(data.stackFunctions.length !== 0) {
+        out.push(GetStackSelector(data));
     }
 
     return {output: out, simplificationMap};
@@ -828,7 +863,7 @@ const GetDeclaredNames = (tree: OuterDeclaration[]) : string[] => {
     return output;
 }
 
-const CompileBlock = (input: Statement[], data: CompileData, defaultOut: string, curVar: number, requireOutput: boolean) : string => {
+const CompileBlock = (input: Statement[], data: CompileData, defaultOut: string, curVar: number, requireOutput: boolean, compilerOutput: string[]) : string => {
     let out = defaultOut;
     let newVars = {
         // State (0) should always exist.
@@ -853,7 +888,7 @@ const CompileBlock = (input: Statement[], data: CompileData, defaultOut: string,
                     variableMap: {
                         ...variableMap
                     }
-                });
+                }, compilerOutput);
 
                 variableMap[statement["name"]] = {idx: newConstIdx, variable: false};
 
@@ -869,7 +904,7 @@ const CompileBlock = (input: Statement[], data: CompileData, defaultOut: string,
                     variableMap: {
                         ...variableMap
                     }
-                });
+                }, compilerOutput);
 
                 variableMap[statement["name"]] = {idx: newVarIdx, variable: true};
 
@@ -891,7 +926,7 @@ const CompileBlock = (input: Statement[], data: CompileData, defaultOut: string,
                     variableMap: {
                         ...variableMap
                     }
-                });
+                }, compilerOutput);
                 if(curVar === variableMap[statement["name"]].idx) out = newVars[variableMap[statement["name"]].idx];
                 break;
             case "if":
@@ -907,7 +942,7 @@ const CompileBlock = (input: Statement[], data: CompileData, defaultOut: string,
                     variableMap: {
                         ...variableMap
                     }
-                });
+                }, compilerOutput);
 
                 // These blocks must be compiled for every variable.
                 // If they're different from the original variable, then we'll
@@ -930,7 +965,7 @@ const CompileBlock = (input: Statement[], data: CompileData, defaultOut: string,
                         variableMap: {
                             ...variableMap
                         }
-                    }, newVars[variable.idx], variable.idx, false);
+                    }, newVars[variable.idx], variable.idx, false, compilerOutput);
                     const elseaction = statement["elseaction"] ? CompileBlock(statement["elseaction"], {
                         ...data,
                         vars: {
@@ -939,7 +974,7 @@ const CompileBlock = (input: Statement[], data: CompileData, defaultOut: string,
                         variableMap: {
                             ...variableMap
                         }
-                    }, newVars[variable.idx], variable.idx, false) : newVars[variable.idx];
+                    }, newVars[variable.idx], variable.idx, false, compilerOutput) : newVars[variable.idx];
 
                     // If they're the same, that just means the variable wasn't set.
                     if(ifaction !== newVars[variable.idx] || elseaction !== newVars[variable.idx]) {
@@ -954,7 +989,7 @@ const CompileBlock = (input: Statement[], data: CompileData, defaultOut: string,
                             variableMap: {
                                 ...variableMap
                             }
-                        })]);
+                        }, compilerOutput)]);
                     }
                 }
 
@@ -962,6 +997,117 @@ const CompileBlock = (input: Statement[], data: CompileData, defaultOut: string,
                     newVars[variableIdx] = expr;
                     if(curVar === variableIdx) out = expr;
                 }
+
+                break;
+            case "function":
+                if(!data.stackContext) {
+                    throw new Error("Functions can only be ran from inside of a state function!");
+                }
+                if(!data.stackFunctions.includes(statement.name)) {
+                    throw new Error("Only stack functions can be ran!");
+                }
+
+                // This needs to be split into its own subfunction.
+                const stackIdx = data.stackIdx.value++;
+                const stackName = data.parentStackPrefix + "_" + stackIdx;
+
+                // We need this to have the list of next steps, and so that
+                // the function returns to the step after this.
+                const nextStepName = data.parentStackPrefix + "_" + (stackIdx + 1);
+                data.stackNextStateMap[stackName] = nextStepName;
+                const nextStepNum = data.stackStateMap[nextStepName];
+
+                let stackNum: number;
+                if(stackName in data.stackStateMap) {
+                    stackNum = data.stackStateMap[stackName];
+                } else {
+                    stackNum = data.globalStackNumber.value++;
+                    data.stackStateMap[stackName] = stackNum;
+                }
+
+                // Use the call function if it already exists,
+                // otherwise generate if.
+                if(!data.callFunctionsEmitted.includes(statement.args.length)) {
+                    // We need to generate a piece of code that does the following:
+                    // - Puts a returnNum onto the stack.
+                    // - Puts a returnStackPointer onto the stack.
+                    // - Puts all of its arguments onto the stack.
+                    // - Adjusts the stack
+                    let callCode = `let newStack = s_tack;
+                    newStack[newStack[2] + ${data.stackOffset}] = b_ack;
+                    newStack[newStack[2] + ${data.stackOffset} + 1] = newStack[2];`;
+
+                    for(let i = 0; i < statement.args.length; i++) {
+                        callCode += `newStack[newStack[2] + ${data.stackOffset} + ${i} + 2] = a_rg${i};`
+                    }
+
+                    callCode += `newStack[2] = newStack[2] + 2 + ${statement.args.length};`;
+                    callCode += `newStack[1] = n_um;`;
+                    callCode += "newStack";
+
+                    // Compile as a stand-alone block.
+                    const newData = cleanData(data, []);
+                    const compiled = CompileBlock(GetStatementsTree(callCode), newData, "", 0 /* state */, true, compilerOutput);
+                    compilerOutput.push(HandleName("c_all" + statement.args.length) + "(s_{tack},n_{um},b_{ack}" + (statement.args.length === 0 ? "" : ",") + statement.args.map((_, idx) => HandleName("a_rg" + idx)).join(",") + ")=" + SimplifyExpression(compiled, newData.useTex, newData.strict, newData.names.concat("s_tack", "n_um", "b_ack", "a_rrset", ...statement.args.map((_, idx) => "a_rg" + idx)), newData.simplificationMap));
+
+                    data.callFunctionsEmitted.push(statement.args.length);
+                }
+
+                // There's no reason for us to compile anything if this isn't requested.
+                // The code above is required to run, however.
+                if(Number(newVars[variableMap["stacknum"].idx]) !== stackNum) {
+                    // In this case, reset the state back to its original version
+                    // as all updates to it have already been made by the last
+                    // execution point.
+                    newVars[variableMap["state"].idx] = CompileExpression({
+                        type: "v",
+                        // This is the unmodified stack.
+                        args: ["s_tack1"],
+                    }, {
+                        ...data,
+                        vars: {
+                            ...newVars,
+                        },
+                        variableMap: {
+                            ...variableMap
+                        }
+                    }, compilerOutput);
+                    if(curVar === variableMap["state"].idx) out = newVars[variableMap["state"].idx];
+
+                    break;
+                }
+
+                // The stack num has already been generated here, so we can retrieve it.
+                const callStackNum = data.stackStateMap[statement.name + "_0"];
+
+                let runCode = `state = if(stacknum == ${stackNum}) { c_all${statement.args.length}(state,${callStackNum},${nextStepNum}`;
+                if(statement.args.length !== 0) runCode += ",";
+                for(let i = 0; i < statement.args.length; i++) {
+                    runCode += `${CompileExpression(statement.args[i], {
+                        ...data,
+                        vars: {
+                            ...newVars,
+                        },
+                        variableMap: {
+                            ...variableMap
+                        }
+                    }, compilerOutput)}`
+                    if(i !== statement.args.length - 1) {
+                        runCode += ",";
+                    }
+                }
+                runCode += ") } else { state };";
+
+                newVars[variableMap["state"].idx] = CompileBlock(GetStatementsTree(runCode), {
+                    ...data,
+                    vars: {
+                        ...newVars,
+                    },
+                    variableMap: {
+                        ...variableMap
+                    }
+                }, newVars[0], 0 /* state */, true, compilerOutput);
+                if(curVar === variableMap["state"].idx) out = newVars[variableMap["state"].idx];
 
                 break;
         }
@@ -1011,11 +1157,11 @@ const piecewiseFunctions = [
     "gte"
 ];
 
-const CompileExpression = (expression: Expression, data: CompileData) : string => {
+const CompileExpression = (expression: Expression, data: CompileData, compilerOutput: string[]) : string => {
     if(expression == null) return null;
     if(typeof(expression) !== "object") return expression;
 
-    const args = expression.args.map(arg => arg != null && typeof(arg) === "object" && arg.hasOwnProperty("type") && arg.hasOwnProperty("args") ? CompileExpression(<Expression>arg, data) : arg);
+    const args = expression.args.map(arg => arg != null && typeof(arg) === "object" && arg.hasOwnProperty("type") && arg.hasOwnProperty("args") ? CompileExpression(<Expression>arg, data, compilerOutput) : arg);
 
     switch(expression.type){
         case "+":
@@ -1031,7 +1177,7 @@ const CompileExpression = (expression: Expression, data: CompileData) : string =
         case "n":
             return "-(" + args[0] + ")";
         case "f":
-            const fargs = (<any[]>expression.args[1]).map(arg => arg != null && typeof(arg) === "object" && arg.hasOwnProperty("type") ? CompileExpression(<Expression>arg, data) : arg);
+            const fargs = (<any[]>expression.args[1]).map(arg => arg != null && typeof(arg) === "object" && arg.hasOwnProperty("type") ? CompileExpression(<Expression>arg, data, compilerOutput) : arg);
 
             if(!data.inlines.hasOwnProperty(<string>expression.args[0])) {
                 if(piecewiseFunctions.includes(<string>expression.args[0])) return HandlePiecewise(<string>expression.args[0], fargs);
@@ -1054,7 +1200,7 @@ const CompileExpression = (expression: Expression, data: CompileData) : string =
                 newData.variableMap[name] = {idx: argIdx, variable: false};
             }
 
-            const result = CompileBlock((<OuterFunctionDeclaration>data.inlines[<string>expression.args[0]].value).block, newData, "", 0 /* state */, true);
+            const result = CompileBlock((<OuterFunctionDeclaration>data.inlines[<string>expression.args[0]].value).block, newData, "", 0 /* state */, true, compilerOutput);
             data.stack.pop();
 
             return "(" + result + ")";
@@ -1062,7 +1208,7 @@ const CompileExpression = (expression: Expression, data: CompileData) : string =
             const name = <string>expression.args[0];
 
             if(name in data.variableMap) return data.vars[data.variableMap[name].idx];
-            if(data.inlines.hasOwnProperty(name)) return CompileExpression(data.inlines[name].value["expr"], data);
+            if(data.inlines.hasOwnProperty(name)) return CompileExpression(data.inlines[name].value["expr"], data, compilerOutput);
 
             switch(name) {
                 case "pi":
@@ -1095,7 +1241,7 @@ const CompileExpression = (expression: Expression, data: CompileData) : string =
                     ...data.variableMap,
                     ...sumVarData
                 }
-            }, "", 0 /* state */, true) + ")";
+            }, "", 0 /* state */, true, compilerOutput) + ")";
         case "prod":
             const prodName = "v_" + data.varIdx.value++;
 
@@ -1117,7 +1263,7 @@ const CompileExpression = (expression: Expression, data: CompileData) : string =
                     ...data.variableMap,
                     ...prodVarData
                 }
-            }, "", 0 /* state */, true) + ")";
+            }, "", 0 /* state */, true, compilerOutput) + ")";
         case "int":
             const intName = "v_" + data.varIdx.value++;
 
@@ -1139,7 +1285,7 @@ const CompileExpression = (expression: Expression, data: CompileData) : string =
                     ...data.variableMap,
                     ...intVarData
                 }
-            }, "", 0 /* state */, true) + ")";
+            }, "", 0 /* state */, true, compilerOutput) + ")";
         case "div":
             return "div(" + args[0] + "," + CompileBlock(<Statement[]>args[1], {
                 ...data,
@@ -1149,9 +1295,9 @@ const CompileExpression = (expression: Expression, data: CompileData) : string =
                 variableMap: {
                     ...data.variableMap
                 }
-            }, "", 0 /* state */, true) + ")";
+            }, "", 0 /* state */, true, compilerOutput) + ")";
         case "b":
-            return CompileBlock(<Statement[]>expression.args[0], data, "", 0 /* state */, true);
+            return CompileBlock(<Statement[]>expression.args[0], data, "", 0 /* state */, true, compilerOutput);
         case "a_f":
             //Map the user-chosen variable to the array for Desmos' filter syntax.
             const filterVarIdx = data.addrIdx.value++;
@@ -1171,7 +1317,7 @@ const CompileExpression = (expression: Expression, data: CompileData) : string =
                             ...data.variableMap,
                             ...filterVarData,
                         }
-                    }, "", 0 /* state */, true)
+                    }, "", 0 /* state */, true, compilerOutput)
                     : CompileExpression(<Expression>expression.args[2], {
                         ...data,
                         vars: {
@@ -1182,7 +1328,7 @@ const CompileExpression = (expression: Expression, data: CompileData) : string =
                             ...data.variableMap,
                             ...filterVarData,
                         }
-                    });
+                    }, compilerOutput);
 
             return "array_filter(" + args[0] + "," + filterFunc + ")";
         case "a_m":
@@ -1209,7 +1355,7 @@ const CompileExpression = (expression: Expression, data: CompileData) : string =
                             ...data.variableMap,
                             ...mapVarData,
                         }
-                    }, "", 0 /* state */, true)
+                    }, "", 0 /* state */, true, compilerOutput)
                 : CompileExpression(<Expression>expression.args[2], {
                         ...data,
                         vars: {
@@ -1220,7 +1366,7 @@ const CompileExpression = (expression: Expression, data: CompileData) : string =
                             ...data.variableMap,
                             ...mapVarData,
                         }
-                    });
+                    }, compilerOutput);
 
             return "array_map(" + args[0] + "," + mapFunc + "," + mapName + ")";
     }
@@ -1228,9 +1374,57 @@ const CompileExpression = (expression: Expression, data: CompileData) : string =
     return "";
 }
 
-const GetStackSelector = () : OuterFunctionDeclaration => {
-    // TODO: Implement
-    return null;
+/**
+ * Resets fields of a `CompileData` so that it can be used
+ * on a different declaration.
+ */
+const cleanData = (data: CompileData, names: string[]) : CompileData => {
+    return {
+        inlines: data.inlines,
+        templates: data.templates,
+        state: data.state,
+        stack: data.stack,
+        names,
+        vars: {0 /* state */: null},
+        variableMap: {"state": {idx: 0, variable: true}},
+        varIdx: data.varIdx,
+        addrIdx: data.addrIdx,
+        stackStateMap: data.stackStateMap,
+        stackFunctionMap: data.stackFunctionMap,
+        stackNextStateMap: data.stackNextStateMap,
+        parentStackPrefix: "",
+        stackIdx: {value: 0},
+        globalStackNumber: data.globalStackNumber,
+        stackContext: false,
+        stackFunctions: data.stackFunctions,
+        stackOffset: 0,
+        callFunctionsEmitted: data.callFunctionsEmitted,
+        useTex: data.useTex,
+        strict: data.strict,
+        simplificationMap: data.simplificationMap,
+    };
+}
+
+const GetStackSelector = (data: CompileData) : string => {
+    let code = "";
+
+    const entries = Object.entries(data.stackFunctionMap);
+    for(let i = 0; i < entries.length; i++) {
+        const [stackNum, functionName] = entries[i];
+        const cond = "s_tack[1] == " + stackNum;
+        const body = `{ ${functionName}(s_tack) }`;
+
+        if(i === 0) {
+            code += `if(${cond}) ${body}`;
+        } else if(i === entries.length - 1) {
+            code += `else ${body}`;
+        } else {
+            code += `else if(${cond}) ${body}`;
+        }
+    }
+
+    const compiled = CompileBlock(GetStatementsTree(code), data, "", 0 /* state */, true, []);
+    return "r_{un}(s_{tack})=" + SimplifyExpression(compiled, data.useTex, data.strict, data.names.concat("s_tack", ...Object.keys(data.stackStateMap)), data.simplificationMap);
 }
 
 interface Inline {
@@ -1246,7 +1440,14 @@ interface CompileData {
     variableMap: Record<string, {idx: number, variable: boolean}>;
     stack: string[];
     names: string[];
+    /**
+     * Holds the next index for generated variables (such as those produced in an array map).
+     */
     varIdx: {value: number};
+    /**
+     * Holds the next index/address for a variable. This is the key for vars, and the idx field in
+     * variableMap.
+     */
     addrIdx: {value: number};
     /**
      * Maps from stack names to numbers.
@@ -1277,5 +1478,23 @@ interface CompileData {
      */
     stackIdx: {value: number};
     globalStackNumber: {value: number};
-    ignoreStack: boolean;
+    stackContext: boolean;
+    stackFunctions: string[];
+    /**
+     * The offset needed to get to the end of the stack.
+     * Stack frame pointer + stack offset is the number
+     * immediately following the end of the stack.
+     * In other words, this is the position where a items
+     * can be pushed onto the stack.
+     */
+    stackOffset: number;
+    /**
+     * The list of call functions that have been emitted.
+     * The items in this array are the number of arguments
+     * for each emitted call function.
+     */
+    callFunctionsEmitted: number[];
+    useTex: boolean;
+    strict: boolean;
+    simplificationMap: Record<string, string>;
 }
