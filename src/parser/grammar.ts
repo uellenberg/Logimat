@@ -113,6 +113,7 @@ Logimat {
                      | SetVarArray
                      | IfStatement
                      | FunctionCall
+                     | Return
 
     ConstDeclaration = const #space TemplateIdentifier "=" Expression ";"
     StackvarDeclaration = const #space TemplateIdentifier ";"
@@ -129,6 +130,8 @@ Logimat {
     IfStatement = if "(" Expression ")" StateBlock (else (StateBlock | IfStatement))?
 
     FunctionCall = TemplateIdentifierName "(" ListOf<Expression, ","> ")" ";"
+    
+    Return = return ";"
 
     Ternary = Expression "?" Expression ":" Expression
 
@@ -238,6 +241,7 @@ Logimat {
     boolean = ("true" | "false") ~identifierPart
     null = "null" ~identifierPart
     display = "display" ~identifierPart
+    return = "return" ~identifierPart
 
     keywords = export
              | inline
@@ -264,6 +268,7 @@ Logimat {
              | boolean
              | null
              | display
+             | return
 
     reservedWord = keywords
 
@@ -667,6 +672,9 @@ semantic.addOperation("parse", {
     FunctionCall(name, _2, args, _3, _4) {
         return {type: "function", name: name.parse(), args: args.asIteration().parse()};
     },
+    Return(_1, _2) {
+        return {type: "return"};
+    },
     Ternary(condition, _1, tRes, _2, fRes){
         return {type: "b", args: [[{type: "if", condition: condition.parse(), ifaction: [{type: "var", name: "state", expr: tRes.parse()}], elseaction: [{type: "var", name: "state", expr: fRes.parse()}]}]]};
     },
@@ -800,7 +808,7 @@ export interface Expression {
     type: "f" | "^" | "*" | "/" | "+" | "-" | "n" | "a_m" | "a_f" | "b" | "v" | "sum" | "prod" | "int" | "div";
     args: (string | object)[];
 }
-export type Statement = ConstDeclaration | StackvarDeclaration | LetDeclaration | Template | SetVar | IfStatement | FunctionCall;
+export type Statement = ConstDeclaration | StackvarDeclaration | LetDeclaration | Template | SetVar | IfStatement | FunctionCall | Return;
 export interface ConstDeclaration {
     type: "const";
     name: string;
@@ -831,6 +839,10 @@ export interface FunctionCall {
     type: "function";
     name: string;
     args: Expression[];
+}
+
+export interface Return {
+    type: "return";
 }
 
 export type Modifier = "export" | "inline" | "stack";

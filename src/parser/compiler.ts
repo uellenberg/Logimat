@@ -433,6 +433,8 @@ const HandleTemplate = async (templateDeclaration: Template, templates: Record<s
                         strict: false,
                         useTex: false,
                         simplificationMap: {},
+                        preCompile: false,
+                        shouldExit: {value: false},
                     }, []);
 
                     const simplified = SimplifyExpression(compiled, false, !arg["nonStrict"], definedNames, simplificationMap);
@@ -526,6 +528,8 @@ const InternalCompile = (useTex: boolean, tree: OuterDeclaration[], inlines: Rec
         strict,
         useTex,
         simplificationMap,
+        preCompile: false,
+        shouldExit: {value: false},
     };
 
     // Figure out the stack numbers for all stack function entry-points.
@@ -604,12 +608,14 @@ const InternalCompile = (useTex: boolean, tree: OuterDeclaration[], inlines: Rec
                             stackNextStateMap: data.stackNextStateMap,
                             stackIdx: data.stackIdx,
                             globalStackNumber: data.globalStackNumber,
+                            shouldExit: data.shouldExit,
                         })
                     };
 
                     let stackNumVar = tempData.addrIdx.value++;
                     tempData.vars[stackNumVar] = "-1";
                     tempData.variableMap["stacknum"] = {idx: stackNumVar, variable: false};
+                    tempData.preCompile = true;
 
                     CompileBlock(functionDeclaration.block, tempData, "", 0 /* state */, true, out);
 
@@ -684,6 +690,7 @@ const InternalCompile = (useTex: boolean, tree: OuterDeclaration[], inlines: Rec
                                 stackIdx: data.stackIdx,
                                 globalStackNumber: data.globalStackNumber,
                                 callFunctionEmitted: data.callFunctionsEmitted,
+                                shouldExit: data.shouldExit,
                             })
                         };
 
@@ -1080,7 +1087,7 @@ const CompileBlock = (input: Statement[], data: CompileData, defaultOut: string,
                 // The stack num has already been generated here, so we can retrieve it.
                 const callStackNum = data.stackStateMap[statement.name + "_0"];
 
-                let runCode = `state = if(stacknum == ${stackNum}) { c_all${statement.args.length}(state,${callStackNum},${nextStepNum}`;
+                let runCode = `state = c_all${statement.args.length}(state,${callStackNum},${nextStepNum}`;
                 if(statement.args.length !== 0) runCode += ",";
                 for(let i = 0; i < statement.args.length; i++) {
                     runCode += `${CompileExpression(statement.args[i], {
@@ -1096,7 +1103,7 @@ const CompileBlock = (input: Statement[], data: CompileData, defaultOut: string,
                         runCode += ",";
                     }
                 }
-                runCode += ") } else { state };";
+                runCode += ");";
 
                 newVars[variableMap["state"].idx] = CompileBlock(GetStatementsTree(runCode), {
                     ...data,
@@ -1109,7 +1116,86 @@ const CompileBlock = (input: Statement[], data: CompileData, defaultOut: string,
                 }, newVars[0], 0 /* state */, true, compilerOutput);
                 if(curVar === variableMap["state"].idx) out = newVars[variableMap["state"].idx];
 
+                // We're stopping for now.
+                // Another subfunction can handle the rest.
+                // This isn't useful on pre-compiles though, as
+                // we want to hit all execution points.
+                if(!data.preCompile) {
+                    data.shouldExit.value = true;
+                }
+
                 break;
+            case "return": {
+                if(!data.stackContext) {
+                    throw new Error("Returns can only be happen inside of a state function!");
+                }
+
+                // This needs to be split into its own subfunction.
+                const stackIdx = data.stackIdx.value++;
+                const stackName = data.parentStackPrefix + "_" + stackIdx;
+
+                // We need this to have the list of next steps.
+                data.stackNextStateMap[stackName] = data.parentStackPrefix + "_" + (stackIdx + 1);
+
+                let stackNum: number;
+                if(stackName in data.stackStateMap) {
+                    stackNum = data.stackStateMap[stackName];
+                } else {
+                    stackNum = data.globalStackNumber.value++;
+                    data.stackStateMap[stackName] = stackNum;
+                }
+
+                // There's no reason for us to compile anything if this isn't requested.
+                // The code above is required to run, however.
+                if(Number(newVars[variableMap["stacknum"].idx]) !== stackNum) {
+                    // In this case, reset the state back to its original version
+                    // as all updates to it have already been made by the last
+                    // execution point.
+                    newVars[variableMap["state"].idx] = CompileExpression({
+                        type: "v",
+                        // This is the unmodified stack.
+                        args: ["s_tack1"],
+                    }, {
+                        ...data,
+                        vars: {
+                            ...newVars,
+                        },
+                        variableMap: {
+                            ...variableMap
+                        }
+                    }, compilerOutput);
+                    if(curVar === variableMap["state"].idx) out = newVars[variableMap["state"].idx];
+
+                    break;
+                }
+
+                let runCode = `state = r_et(state);`;
+
+                newVars[variableMap["state"].idx] = CompileBlock(GetStatementsTree(runCode), {
+                    ...data,
+                    vars: {
+                        ...newVars,
+                    },
+                    variableMap: {
+                        ...variableMap
+                    }
+                }, newVars[0], 0 /* state */, true, compilerOutput);
+                if(curVar === variableMap["state"].idx) out = newVars[variableMap["state"].idx];
+
+                // We're stopping for now.
+                // Another subfunction can handle the rest.
+                // This isn't useful on pre-compiles though, as
+                // we want to hit all execution points.
+                if(!data.preCompile) {
+                    data.shouldExit.value = true;
+                }
+
+                break;
+            }
+        }
+
+        if(data.shouldExit.value) {
+            break;
         }
     }
 
@@ -1402,6 +1488,8 @@ const cleanData = (data: CompileData, names: string[]) : CompileData => {
         useTex: data.useTex,
         strict: data.strict,
         simplificationMap: data.simplificationMap,
+        preCompile: data.preCompile,
+        shouldExit: {value: false},
     };
 }
 
@@ -1416,12 +1504,12 @@ const GetStackSelector = (data: CompileData) : string => {
 
         if(i === 0) {
             code += `if(${cond}) ${body}`;
-        } else if(i === entries.length - 1) {
-            code += `else ${body}`;
         } else {
             code += `else if(${cond}) ${body}`;
         }
     }
+
+    code += "else { s_tack }";
 
     const compiled = CompileBlock(GetStatementsTree(code), data, "", 0 /* state */, true, []);
     return "r_{un}(s_{tack})=" + SimplifyExpression(compiled, data.useTex, data.strict, data.names.concat("s_tack", ...Object.keys(data.stackStateMap)), data.simplificationMap);
@@ -1497,4 +1585,12 @@ interface CompileData {
     useTex: boolean;
     strict: boolean;
     simplificationMap: Record<string, string>;
+    /**
+     * Is this a compile step before the actual compile (in other words, is the output ignored)?
+     */
+    preCompile: boolean;
+    /**
+     * If true, stops the compile process early.
+     */
+    shouldExit: {value: boolean};
 }
