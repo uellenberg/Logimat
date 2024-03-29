@@ -617,7 +617,12 @@ const InternalCompile = (useTex: boolean, tree: OuterDeclaration[], inlines: Rec
                     tempData.variableMap["stacknum"] = {idx: stackNumVar, variable: false};
                     tempData.preCompile = true;
 
-                    CompileBlock(functionDeclaration.block, tempData, "", 0 /* state */, true, out);
+                    CompileBlock([
+                        // This is here to prevent if statements from complaining
+                        // about there not being a state set.
+                        {type: "var", name: "state", expr: {type: "v", args: ["s_tate"]}},
+                        ...functionDeclaration.block,
+                    ], tempData, "", 0 /* state */, true, out);
 
                     // Now, we need to add the final execution step.
                     // This is explained below, but it's essentially the code
