@@ -1007,6 +1007,123 @@ export const CompileBlock = (input: Statement[], data: CompileData, defaultOut: 
 
                 break;
             }
+            case "while": {
+                if(!data.stackContext) {
+                    throw new Error("While loops can only be used inside of a stack function!");
+                }
+
+                // Create an execution point for all the code before the while loop.
+                // If the state is set before the while loop, then without this, it
+                // will be as though it's done inside it.
+                let {stackNum: prevStackNum} = createExecutionPoint(data);
+
+                // If we're in actual compilation mode and we're currently doing the previous
+                // execution point, then this while shouldn't be compiled at all.
+                if(!data.preCompile && Number(newVars[variableMap["stacknum"].idx]) === prevStackNum) {
+                    data.shouldExit.value = true;
+                    break;
+                }
+
+                let {stackNum, stackName} = createExecutionPoint(data);
+
+                // state = s_tack1;
+                // if(condition) {
+                //     ... code
+                //     state = adv(state, this execution point);
+                // }
+                //
+                // If the condition is ever false, then we will by default
+                // advance to the next point.
+                let runCode: Statement[] = [
+                    // Because we've created an execution point for prior code
+                    // to live in, we shouldn't use the current state.
+                    // Instead, we should revert back to the original stack.
+                    {
+                        type: "var",
+                        name: "state",
+                        expr: {
+                            type: "v",
+                            args: ["s_tack1"],
+                        }
+                    },
+                    {
+                        type: "if",
+                        condition: statement.condition,
+                        ifaction: [
+                            ...statement.body,
+                            {
+                                type: "var",
+                                name: "state",
+                                expr: {
+                                    type: "f",
+                                    args: [
+                                        "a_dv",
+                                        [
+                                            {
+                                                type: "v",
+                                                args: ["state"]
+                                            },
+                                            stackNum.toString(),
+                                        ]
+                                    ]
+                                }
+                            }
+                        ],
+                        elseaction: null,
+                    }
+                ];
+
+                let result = CompileBlock(runCode, {
+                    ...data,
+                    vars: {
+                        ...newVars,
+                    },
+                    variableMap: {
+                        ...variableMap
+                    },
+                    // This is needed to make nested loops function.
+                    parentStackPrefix: stackName,
+                }, newVars[0], 0 /* state */, true, compilerOutput);
+
+                // If compilation isn't requested, then we shouldn't use the data
+                // from above.
+                // It still needs to run so that we can generate all the data for
+                // nested loops and other execution points though.
+                if(Number(newVars[variableMap["stacknum"].idx]) !== stackNum) {
+                    // In this case, reset the state back to its original version
+                    // as all updates to it have already been made by the last
+                    // execution point.
+                    newVars[variableMap["state"].idx] = CompileExpression({
+                        type: "v",
+                        // This is the unmodified stack.
+                        args: ["s_tack1"],
+                    }, {
+                        ...data,
+                        vars: {
+                            ...newVars,
+                        },
+                        variableMap: {
+                            ...variableMap
+                        }
+                    }, compilerOutput);
+                    if(curVar === variableMap["state"].idx) out = newVars[variableMap["state"].idx];
+
+                    break;
+                }
+
+                newVars[variableMap["state"].idx] = result;
+                if(curVar === variableMap["state"].idx) out = newVars[variableMap["state"].idx];
+
+                // We're stopping for now.
+                // Another subfunction can handle the rest.
+                // This isn't useful on pre-compiles though, as
+                // we want to hit all execution points.
+                if(!data.preCompile) {
+                    data.shouldExit.value = true;
+                }
+
+                break;
+            }
         }
 
         if(data.shouldExit.value) {

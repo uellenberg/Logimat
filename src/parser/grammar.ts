@@ -114,9 +114,10 @@ Logimat {
                      | IfStatement
                      | FunctionCall
                      | Return
+                     | WhileLoop
 
     ConstDeclaration = const #space TemplateIdentifier "=" Expression ";"
-    StackvarDeclaration = const #space TemplateIdentifier ";"
+    StackvarDeclaration = stackvar #space TemplateIdentifier ";"
     LetDeclaration = let #space TemplateIdentifier "=" Expression ";"
     LetDeclarationEmpty = let #space TemplateIdentifier ";"
 
@@ -130,8 +131,10 @@ Logimat {
     IfStatement = if "(" Expression ")" StateBlock (else (StateBlock | IfStatement))?
 
     FunctionCall = TemplateIdentifierName "(" ListOf<Expression, ","> ")" ";"
-    
+
     Return = return ";"
+
+    WhileLoop = while "(" Expression ")" StateBlock
 
     Ternary = Expression "?" Expression ":" Expression
 
@@ -242,6 +245,7 @@ Logimat {
     null = "null" ~identifierPart
     display = "display" ~identifierPart
     return = "return" ~identifierPart
+    while = "while" ~identifierPart
 
     keywords = export
              | inline
@@ -269,6 +273,7 @@ Logimat {
              | null
              | display
              | return
+             | while
 
     reservedWord = keywords
 
@@ -675,6 +680,9 @@ semantic.addOperation("parse", {
     Return(_1, _2) {
         return {type: "return"};
     },
+    WhileLoop(_, _2, condition, _3, body){
+        return {type: "while", condition: condition.parse(), body: body.parse()};
+    },
     Ternary(condition, _1, tRes, _2, fRes){
         return {type: "b", args: [[{type: "if", condition: condition.parse(), ifaction: [{type: "var", name: "state", expr: tRes.parse()}], elseaction: [{type: "var", name: "state", expr: fRes.parse()}]}]]};
     },
@@ -808,7 +816,7 @@ export interface Expression {
     type: "f" | "^" | "*" | "/" | "+" | "-" | "n" | "a_m" | "a_f" | "b" | "v" | "sum" | "prod" | "int" | "div";
     args: (string | object)[];
 }
-export type Statement = ConstDeclaration | StackvarDeclaration | LetDeclaration | Template | SetVar | IfStatement | FunctionCall | Return;
+export type Statement = ConstDeclaration | StackvarDeclaration | LetDeclaration | Template | SetVar | IfStatement | FunctionCall | Return | WhileLoop;
 export interface ConstDeclaration {
     type: "const";
     name: string;
@@ -843,6 +851,12 @@ export interface FunctionCall {
 
 export interface Return {
     type: "return";
+}
+
+export interface WhileLoop {
+    type: "while";
+    condition: Expression;
+    body: Statement[];
 }
 
 export type Modifier = "export" | "inline" | "stack";

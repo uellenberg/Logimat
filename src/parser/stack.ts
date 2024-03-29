@@ -50,7 +50,7 @@ export const GetStackSelector = (data: CompileData): string => {
     code += "else { s_tack }";
 
     const compiled = CompileBlock(GetStatementsTree(code), data, "", 0 /* state */, true, []);
-    return "r_{un}(s_{tack})=" + SimplifyExpression(compiled, data.useTex, data.strict, data.names.concat("s_tack", ...Object.keys(data.stackStateMap)), data.simplificationMap);
+    return "r_{un}(s_{tack})=" + SimplifyExpression(compiled, data.useTex, data.strict, data.names.concat("s_tack", ...Object.values(data.stackFunctionMap)), data.simplificationMap);
 }
 
 export function createExecutionPoint(data: CompileData) {
@@ -71,7 +71,7 @@ export function createExecutionPoint(data: CompileData) {
         stackNum = data.globalStackNumber.value++;
         data.stackStateMap[stackName] = stackNum;
     }
-    return {nextStepNum, stackNum};
+    return {nextStepNum, stackNum, stackName};
 }
 
 export function CompileStackFunction(data: CompileData, declaration: OuterFunctionDeclaration, out: string[], useTex: boolean, strict: boolean, names: string[], simplificationMap: Record<string, string>) {
