@@ -59,7 +59,17 @@ inline function lenBase(a, base){
     if(val < base^-1) {
         0
     } else {
-        floor(log_base(val)) + 1
+        // This gives an approximate range. Due to floating point
+        // imprecision, it's either this, or the one below.
+        // We need to manually check it.
+        const range = floor(log_base(val)) + 1;
+
+        // Subtract 1 because the exponent is one less than the length.
+        if(a >= base^(range - 1)) {
+            range
+        } else {
+            range - 1
+        }
     }
 }
 
@@ -70,7 +80,13 @@ inline function safeLenBase(a, base){
     if(val < base^-1) {
         0
     } else {
-        floor(safeLogBase(val, base)) + 1
+        const range = floor(safeLogBase(val, base)) + 1;
+
+        if(a >= base^(range - 1)) {
+            range
+        } else {
+            range - 1
+        }
     }
 }
 
