@@ -26,7 +26,7 @@ Logimat {
     ExportFunctionDeclaration = export #space function #space TemplateExportIdentifier "(" ExportFunctionArgs ")" FunctionBody
     InlineFunctionDeclaration = inline #space function #space TemplateIdentifier "(" FunctionArgs ")" FunctionBody
     InlinePolyfillFunctionDeclaration = inline #space polyfill #space function #space TemplateIdentifier "(" FunctionArgs ")" FunctionBody
-    StackFunctionDeclaration = stack #space function #space TemplateExportIdentifier "(" ExportFunctionArgs ")" FunctionBody
+    StackFunctionDeclaration = stack #space function #space TemplateExportIdentifier "(" FunctionArgs ")" FunctionBody
     
     ExportDeclaration =  export #space TemplateIdentifier ";"
 
@@ -111,6 +111,7 @@ Logimat {
                      | LetDeclarationEmpty
                      | SetVar
                      | SetVarArray
+                     | SetVarDeref
                      | IfStatement
                      | FunctionCall
                      | Return
@@ -125,6 +126,7 @@ Logimat {
     
     SetVar = identifier "=" Expression ";"
     SetVarArray = (identifier | stack) "[" Expression "]" "=" Expression ";"
+    SetVarDeref = "*" identifier "=" Expression ";"
 
     StateBlock = Block -- block
 
@@ -154,6 +156,7 @@ Logimat {
                       | TemplateIdentifier  -- var
                       | stack -- stack
                       | stacknum -- stacknum
+                      | "&" TemplateIdentifier  -- ref
                       | literal
                       | Block  -- block
                       | Array  -- array
@@ -170,6 +173,7 @@ Logimat {
     UnaryExpression = "+" UnaryExpression -- plus
                     | "-" UnaryExpression -- neg
                     | "!" UnaryExpression -- not
+                    | "*" UnaryExpression -- deref
                     | MemberExpression
     
     ExponentialExpression = ExponentialExpression "^" UnaryExpression -- exp
@@ -520,6 +524,9 @@ semantic.addOperation("parse", {
     PrimaryExpression_stacknum(_1){
         return {type: "v", args: ["stacknum"]};
     },
+    PrimaryExpression_ref(_1, e){
+        return {type: "v", args: ["&" + e.parse()]};
+    },
     PrimaryExpression_point(e){
         return {type: "f", args: ["point", e.parse()]};
     },
@@ -552,6 +559,9 @@ semantic.addOperation("parse", {
     },
     UnaryExpression_not(_, e){
         return {type: "f", args: ["not", [e.parse()]]};
+    },
+    UnaryExpression_deref(_, e){
+        return {type: "f", args: ["array_idx", [{type: "v", args: ["state"]}, e.parse()]]};
     },
     ExponentialExpression_exp(e, _, e2){
         return {type: "^", args: [e.parse(), e2.parse()]};
@@ -662,6 +672,14 @@ semantic.addOperation("parse", {
         let to = expr_to.parse();
         // state = a_rrset(state, idx, to);
         return {type: "var", name: identifier, expr: {type: "f", args: ["a_rrset", [{type: "v", args: [identifier]}, idx, to]]}};
+    },
+    SetVarDeref(_1, id, _3, value, _5){
+        // Desugars to state[id] = value;
+        let identifier = id.parse();
+        let expr = value.parse();
+
+        // state = a_rrset(state, idx, to);
+        return {type: "var", name: "state", expr: {type: "f", args: ["a_rrset", [{type: "v", args: ["state"]}, {type: "v", args: [identifier]}, expr]]}};
     },
     StateBlock_block(block){
         return block.parse();

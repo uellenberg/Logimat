@@ -79,17 +79,17 @@ export function CompileStackFunction(data: CompileData, declaration: OuterFuncti
     data.stackContext = true;
     // The +2 is needed to account for the returnStackNum, and to
     // move it one past the end of the stack.
-    data.stackOffset = declaration.args.length + 2;
+    data.stackOffset = 2;
+
+    const variableCode: Statement[] = [];
 
     // Add virtual variables for all the arguments.
-    // The stack looks like [stackNum, stackFramePtr, ..., returnStackNum, returnPtr, arg1, ...],
-    // so we need to access the first argument like stack[1] + 2.
+    // The data is already here, and stackvar doesn't do anything
+    // on its own, so this just creates bindings to the values in the stack.
     for (let i = 0; i < declaration.args.length; i++) {
         const argName = declaration.args[i];
 
-        let varIdx = data.addrIdx.value++;
-        data.variableMap[argName] = {idx: varIdx, variable: false};
-        data.vars[varIdx] = "array_idx(s_tack, 2) + " + (i + 2);
+        variableCode.push({type: "stackvar", name: argName});
     }
 
     // First, we need one compile pass to create the stack numbers
@@ -118,9 +118,10 @@ export function CompileStackFunction(data: CompileData, declaration: OuterFuncti
     tempData.preCompile = true;
 
     CompileBlock([
+        ...variableCode,
         // This is here to prevent if statements from complaining
         // about there not being a state set.
-        {type: "var", name: "state", expr: {type: "v", args: ["s_tate"]}},
+        {type: "var", name: "state", expr: {type: "v", args: ["s_tack"]}},
         ...declaration.block,
     ], tempData, "", 0 /* state */, true, out);
 
@@ -193,7 +194,7 @@ export function CompileStackFunction(data: CompileData, declaration: OuterFuncti
     nextStateSelector += "state = s_tack1;";
 
     const newStateSelectorParsed = GetStatementsTree(nextStateSelector);
-    const functionStatements = [...newStateSelectorParsed, ...declaration.block];
+    const functionStatements = [...variableCode, ...newStateSelectorParsed, ...declaration.block];
 
     for (let i = 0; i <= newVersions; i++) {
         // We need to use cloned data to avoid

@@ -772,7 +772,37 @@ export const CompileBlock = (input: Statement[], data: CompileData, defaultOut: 
                     throw new Error("Cannot set constant \"" + statement["name"] + "\".");
                 }
 
-                newVars[variableMap[statement["name"]].idx] = CompileExpression(statement["expr"], {
+                const variable = variableMap[statement["name"]];
+
+                // If it's a stack variable, then we want to actually do the following:
+                // state = a_rrset(state, &variable, value);
+                if(variable.stack) {
+                    const stateVariable = variableMap["state"];
+                    newVars[stateVariable.idx] = CompileExpression({
+                        type: "f",
+                        args: [
+                            "a_rrset",
+                            [
+                                {type: "v", args: ["state"]},
+                                {type: "v", args: ["&" + statement["name"]]},
+                                statement["expr"]
+                            ]
+                        ]
+                    }, {
+                        ...data,
+                        vars: {
+                            ...newVars,
+                        },
+                        variableMap: {
+                            ...variableMap
+                        }
+                    }, compilerOutput);
+                    if(curVar === stateVariable.idx) out = newVars[stateVariable.idx];
+
+                    break;
+                }
+
+                newVars[variable.idx] = CompileExpression(statement["expr"], {
                     ...data,
                     vars: {
                         ...newVars,
@@ -781,27 +811,54 @@ export const CompileBlock = (input: Statement[], data: CompileData, defaultOut: 
                         ...variableMap
                     }
                 }, compilerOutput);
-                if(curVar === variableMap[statement["name"]].idx) out = newVars[variableMap[statement["name"]].idx];
+                if(curVar === variable.idx) out = newVars[variable.idx];
                 break;
             case "stackvar":
                 if(!data.stackContext) {
                     throw new Error("Stackvars can only be ran from inside of a stack function!");
                 }
 
+                // Each stackvar has a main variable (of the name that it's given),
+                // which retrieves the value itself, and a reference variable, prefixed
+                // by an &, which will instead return the pointer.
+                // Setting the main variable will desugar to stack[&variable] = data;
+
                 const stackOffset = data.stackOffset++;
-                const newStackvarIdx = data.addrIdx.value++;
 
-                newVars[newStackvarIdx] = CompileExpression(GetExpression("stack[2] + " + stackOffset), {
-                    ...data,
-                    vars: {
-                        ...newVars,
-                    },
-                    variableMap: {
-                        ...variableMap
-                    }
-                }, compilerOutput);
+                // Create the main variable.
+                // Setting stack to true enables the special handling mentioned above.
+                {
+                    const newStackvarIdx = data.addrIdx.value++;
 
-                variableMap[statement.name] = {idx: newStackvarIdx, variable: false};
+                    newVars[newStackvarIdx] = CompileExpression(GetExpression("s_tack[s_tack[2] + " + stackOffset + "]"), {
+                        ...data,
+                        vars: {
+                            ...newVars,
+                        },
+                        variableMap: {
+                            ...variableMap
+                        }
+                    }, compilerOutput);
+
+                    variableMap[statement.name] = {idx: newStackvarIdx, variable: true, stack: true};
+                }
+
+                // Create the reference variable.
+                {
+                    const newStackvarIdx = data.addrIdx.value++;
+
+                    newVars[newStackvarIdx] = CompileExpression(GetExpression("s_tack[2] + " + stackOffset), {
+                        ...data,
+                        vars: {
+                            ...newVars,
+                        },
+                        variableMap: {
+                            ...variableMap
+                        }
+                    }, compilerOutput);
+
+                    variableMap["&" + statement.name] = {idx: newStackvarIdx, variable: false};
+                }
 
                 break;
             case "if":
@@ -1435,7 +1492,7 @@ export interface CompileData {
     templates: Record<string, TemplateFunction>;
     state: TemplateState;
     vars: Record<number, string>;
-    variableMap: Record<string, {idx: number, variable: boolean}>;
+    variableMap: Record<string, {idx: number, variable: boolean, stack?: boolean}>;
     stack: string[];
     names: string[];
     /**
