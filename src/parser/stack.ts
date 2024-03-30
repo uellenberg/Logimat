@@ -25,7 +25,7 @@ export function generateCallFunction(data: CompileData, args: number, compilerOu
         // Compile as a stand-alone block.
         const newData = cleanData(data, []);
         const compiled = CompileBlock(GetStatementsTree(callCode), newData, "", 0 /* state */, true, compilerOutput);
-        compilerOutput.push(HandleName("c_all" + args) + "(s_{tack},n_{um},b_{ack},o_{ff}" + (args === 0 ? "" : ",") + Array(args).fill(0).map((_, idx) => HandleName("a_rg" + idx)).join(",") + ")=" + SimplifyExpression(compiled, newData.useTex, newData.strict, newData.names.concat("s_tack", "n_um", "b_ack", "o_ff", "a_rrset", ...Array(args).fill(0).map((_, idx) => "a_rg" + idx)), newData.simplificationMap));
+        compilerOutput.push(HandleName("c_all" + args) + "(s_{tack},n_{um},b_{ack},o_{ff}" + (args === 0 ? "" : ",") + Array(args).fill(0).map((_, idx) => HandleName("a_rg" + idx)).join(",") + ")=" + SimplifyExpression(compiled, newData.useTex, newData.strict, newData.names.concat("s_tack", "n_um", "b_ack", "o_ff", "a_rrset", ...Array(args).fill(0).map((_, idx) => "a_rg" + idx)), newData.simplificationMap, true));
 
         data.callFunctionsEmitted.push(args);
     }
@@ -50,7 +50,7 @@ export const GetStackSelector = (data: CompileData): string => {
     code += "else { s_tack }";
 
     const compiled = CompileBlock(GetStatementsTree(code), data, "", 0 /* state */, true, []);
-    return "r_{un}(s_{tack})=" + SimplifyExpression(compiled, data.useTex, data.strict, data.names.concat("s_tack", ...Object.values(data.stackFunctionMap)), data.simplificationMap);
+    return "r_{un}(s_{tack})=" + SimplifyExpression(compiled, data.useTex, data.strict, data.names.concat("s_tack", ...Object.values(data.stackFunctionMap)), data.simplificationMap, true);
 }
 
 export function createExecutionPoint(data: CompileData) {
@@ -241,9 +241,9 @@ export function CompileStackFunction(data: CompileData, declaration: OuterFuncti
                     }
                 }
             ];
-            out.push(HandleName(name) + "(s_{tack})=" + SimplifyExpression(CompileBlock(returnCode, clonedData, "", 0 /* state */, true, out), useTex, strict, names.concat("s_tack", "a_dv", "r_et").concat(data.callFunctionsEmitted.map(call => "c_all" + call)), simplificationMap));
+            out.push(HandleName(name) + "(s_{tack})=" + SimplifyExpression(CompileBlock(returnCode, clonedData, "", 0 /* state */, true, out), useTex, strict, names.concat("s_tack", "a_dv", "r_et").concat(data.callFunctionsEmitted.map(call => "c_all" + call)), simplificationMap, true));
         } else {
-            out.push(HandleName(name) + "(s_{tack})" + "=" + SimplifyExpression(CompileBlock(functionStatements, clonedData, "", 0 /* state */, true, out), useTex, strict, names.concat("s_tack", "a_dv", "r_et").concat(data.callFunctionsEmitted.map(call => "c_all" + call)), simplificationMap));
+            out.push(HandleName(name) + "(s_{tack})" + "=" + SimplifyExpression(CompileBlock(functionStatements, clonedData, "", 0 /* state */, true, out), useTex, strict, names.concat("s_tack", "a_dv", "r_et").concat(data.callFunctionsEmitted.map(call => "c_all" + call)), simplificationMap, true));
         }
 
         data.stackStateMap = clonedData.stackStateMap;

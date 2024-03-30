@@ -11,13 +11,13 @@ for(const name of ["range"]) {
     if(math["expression"]["mathWithTransform"].hasOwnProperty(name)) delete math["expression"]["mathWithTransform"][name];
 }
 
-export const SimplifyExpression = (input: string, useTex: boolean, strict: boolean, names: string[], map: Record<string, string>) : string => {
+export const SimplifyExpression = (input: string, useTex: boolean, strict: boolean, names: string[], map: Record<string, string>, stack?: boolean) : string => {
     if(map.hasOwnProperty(input)) return map[input];
 
     const newNames = names.concat(builtinNames);
 
     try {
-        const res = math.simplify(input, simplifyRules, {}, {exactFractions: false});
+        const res = math.simplify(input, simplifyRules(names, stack), {}, {exactFractions: false});
         //They say they return a string but they can sometimes return numbers.
         const text = useTex ? res.toTex(getTexOptions(strict, newNames)) : res.toString(getStringOptions(strict, newNames));
         map[input] = text;
@@ -29,7 +29,7 @@ export const SimplifyExpression = (input: string, useTex: boolean, strict: boole
     }
 }
 
-const simplifyRules = [
+const simplifyRules = (names: string[], stack: boolean) => [
     //Or
     "n | 1 -> 1",
     "1 | n -> 1",
@@ -57,7 +57,21 @@ const simplifyRules = [
     "n1-+n2 -> n1-n2",
     "n1+-n2 -> n1-n2",
     "n1--n2 -> n1+n2",
-    "n1++n2 -> n1+n2"
+    "n1++n2 -> n1+n2",
+    // Stack functions.
+    ...(stack ? [
+        "a_rrset(a_dv(n1,n2),n3,n4) -> a_dv(a_rrset(n1,n3,n4),n2)",
+        ...names.filter(name => /^c_all[0-9]+$/.test(name)).map(name =>
+            `${name}(a_dv(n1,n2),n3,n4,n5,n6) -> ${name}(n1,n3,n4,n5,n6)`
+        ),
+        "r_et(a_dv(n1,n2)) -> r_et(n1)",
+        // This forces any accesses to stack[0] to return the original
+        // num.
+        // Programs should never do this, but if for some reason they do,
+        // it is desirable behavior.
+        "array_idx(a_dv(n1,n2),n3) -> array_idx(n1,n3)",
+        "array_idx(a_rrset(n1,n2,n3),n2) -> n3",
+    ]: []),
 ].concat(math.simplify["rules"] as string[]);
 
 const HandleFunction = (node: FunctionNode, options: Options, builtIn: boolean = false) : string => {
