@@ -21,13 +21,13 @@ export function createTemplates(noFS: boolean, state: LogimatTemplateState, impo
                 const val = importMap[realPath];
                 if (typeof (val) !== "string") throw new Error("Expected \"" + realPath + "\" to be a string but got \"" + typeof (val) + "\" instead.");
 
-                return "setFile!(\"" + realPath + "\");" + val + "setFile!();";
+                return "setFile!(\"" + realPath + "\");\n" + val + "\nsetFile!();";
             }
 
             const val = await readFile(realPath);
             importMap[realPath] = val;
 
-            return "setFile!(\"" + realPath + "\");" + val + "setFile!();";
+            return "setFile!(\"" + realPath + "\");\n" + val + "\nsetFile!();";
         },
         setfile: (args, state1: LogimatTemplateState, context) => {
             //If we have an argument, push it, otherwise remove the current path.
