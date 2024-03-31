@@ -156,6 +156,7 @@ Logimat {
                       | Prod
                       | Integral
                       | Derivative
+                      | stackid "(" TemplateIdentifier ")" -- stackid
                       | TemplateIdentifierName "(" ListOf<Expression, ","> ")"   -- func
                       | TemplateIdentifier  -- var
                       | stack -- stack
@@ -255,6 +256,7 @@ Logimat {
     return = "return" ~identifierPart
     while = "while" ~identifierPart
     folder = "folder" ~identifierPart
+    stackid = "stackid" ~identifierPart
 
     keywords = export
              | inline
@@ -284,6 +286,7 @@ Logimat {
              | return
              | while
              | folder
+             | stackid
 
     reservedWord = keywords
 
@@ -537,7 +540,10 @@ semantic.addOperation("parse", {
         return {type: "f", args: ["log_base", [e1.parse(), e2.parse()]]};
     },
     PrimaryExpression_func(n, _, l, _2){
-        return {type: "f", args: [n.parse(), l.asIteration().parse()]}
+        return {type: "f", args: [n.parse(), l.asIteration().parse()]};
+    },
+    PrimaryExpression_stackid(_1, _2, name, _4){
+        return {type: "sid", args: [name.parse()]};
     },
     PrimaryExpression_var(e){
         return {type: "v", args: [e.parse()]};
@@ -860,7 +866,7 @@ export interface ParsedActionArgs {
     args: (string | Expression)[];
 }
 export interface Expression {
-    type: "f" | "^" | "*" | "/" | "+" | "-" | "n" | "a_m" | "a_f" | "b" | "v" | "sum" | "prod" | "int" | "div";
+    type: "f" | "sid" | "^" | "*" | "/" | "+" | "-" | "n" | "a_m" | "a_f" | "b" | "v" | "sum" | "prod" | "int" | "div";
     args: (string | object)[];
 }
 export type Statement = ConstDeclaration | StackvarDeclaration | LetDeclaration | Template | SetVar | IfStatement | FunctionCall | Return | WhileLoop;

@@ -1324,6 +1324,14 @@ const CompileExpression = (expression: Expression, data: CompileData, compilerOu
             }
 
             return name;
+        case "sid":
+            const stackName = <string>expression.args[0];
+
+            if(!((stackName + "_0") in data.stackStateMap)) {
+                throw new Error("The stack function \"" + stackName + "\" does not exist!");
+            }
+
+            return data.stackStateMap[stackName + "_0"].toString();
         case "sum":
             const sumName = "v_" + data.varIdx.value++;
 
