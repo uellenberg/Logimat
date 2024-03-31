@@ -288,7 +288,7 @@ Logimat {
     templateString = "\\"" (templateStringTemplate | stringCharacter)* "\\""
     templateStringTemplate = ~("\\"" | "\\\\" | lineTerminator) "\${" applySyntactic<Expression> "}"
 
-    exportIdentifier (a single character identifier) = ~reservedWord "a".."z" ("_" ("a".."z" | "0".."9" | "_")+)?
+    exportIdentifier (a single character identifier) = ~reservedWord ("a".."z" | "A".."Z") ("_" ("a".."z" | "A".."Z" | "0".."9" | "_")+)?
 
     identifier (an identifier) = ~reservedWord identifierName
     identifierName (an identifier) = letter identifierPart*
