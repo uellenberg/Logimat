@@ -1,7 +1,7 @@
 import {HandleName} from "./util";
 import {SimplifyExpression} from "./simplify";
-import {cleanData, CompileBlock, CompileData, GetStatementsTree} from "./compiler";
-import {OuterFunctionDeclaration, Statement} from "./grammar";
+import {cleanData, CompileBlock, CompileData, getNumToName, GetStatementsTree} from "./compiler";
+import {OuterFunctionDeclaration, StackFunctionDeclaration, Statement} from "./grammar";
 
 export function generateCallFunction(data: CompileData, args: number, compilerOutput: string[]) {
     if (!data.callFunctionsEmitted.includes(args)) {
@@ -50,18 +50,18 @@ export const GetStackSelector = (data: CompileData): string => {
     code += "else { s_tack }";
 
     const compiled = CompileBlock(GetStatementsTree(code), data, "", 0 /* state */, true, []);
-    return "r_{un}(s_{tack})=" + SimplifyExpression(compiled, data.useTex, data.strict, data.names.concat("s_tack", ...Object.values(data.stackFunctionMap)), data.simplificationMap, true);
+    return "r_{unstack}(s_{tack})=" + SimplifyExpression(compiled, data.useTex, data.strict, data.names.concat("s_tack", ...Object.values(data.stackFunctionMap)), data.simplificationMap, true);
 }
 
-export function createExecutionPoint(data: CompileData) {
+export function createExecutionPoint(data: CompileData, nextStateName?: string, noNextState?: boolean) {
     // This needs to be split into its own subfunction.
     const stackIdx = data.stackIdx.value++;
     const stackName = data.parentStackPrefix + "_" + stackIdx;
 
     // We need this to have the list of next steps, and so that
     // the function returns to the step after this.
-    const nextStepName = data.parentStackPrefix + "_" + (stackIdx + 1);
-    data.stackNextStateMap[stackName] = nextStepName;
+    const nextStepName = nextStateName ?? (data.parentStackPrefix + "_" + (stackIdx + 1));
+    if(!noNextState) data.stackNextStateMap[stackName] = nextStepName;
     const nextStepNum = data.stackStateMap[nextStepName];
 
     let stackNum: number;
@@ -74,7 +74,7 @@ export function createExecutionPoint(data: CompileData) {
     return {nextStepNum, stackNum, stackName};
 }
 
-export function CompileStackFunction(data: CompileData, declaration: OuterFunctionDeclaration, out: string[], useTex: boolean, strict: boolean, names: string[], simplificationMap: Record<string, string>) {
+export function CompileStackFunction(data: CompileData, declaration: StackFunctionDeclaration, out: string[], useTex: boolean, strict: boolean, names: string[], simplificationMap: Record<string, string>) {
     data.parentStackPrefix = declaration.name;
     data.stackContext = true;
     // The +2 is needed to account for the returnStackNum, and to
@@ -91,6 +91,8 @@ export function CompileStackFunction(data: CompileData, declaration: OuterFuncti
 
         variableCode.push({type: "stackvar", name: argName});
     }
+
+    variableCode.push({type: "let", name: "stack", expr: {type: "v", args: ["s_tack"]}});
 
     // First, we need one compile pass to create the stack numbers
     // for each break point.
@@ -161,7 +163,7 @@ export function CompileStackFunction(data: CompileData, declaration: OuterFuncti
 
     // We need to map each state to its next state as a default value.
     // This will ignore our final one, as it doesn't have a next state to map to.
-    const numToName: Record<number, string> = Object.fromEntries(Object.entries(data.stackStateMap).map(val => val.reverse()));
+    const numToName = getNumToName(data);
     let nextStateSelector = "const s_tack1 = ";
 
     // If the function only has a single version (the entrypoint),
@@ -192,6 +194,7 @@ export function CompileStackFunction(data: CompileData, declaration: OuterFuncti
 
     // This is broken out so that it can be reset to at the end of each breakpoint.
     nextStateSelector += "state = s_tack1;";
+    nextStateSelector += "stack = s_tack1;";
 
     const newStateSelectorParsed = GetStatementsTree(nextStateSelector);
     const functionStatements = [...variableCode, ...newStateSelectorParsed, ...declaration.block];
@@ -229,21 +232,21 @@ export function CompileStackFunction(data: CompileData, declaration: OuterFuncti
                 ...functionStatements,
                 {
                     type: "var",
-                    name: "state",
+                    name: "stack",
                     expr: {
                         type: "f",
                         args: [
                             "r_et",
                             [
-                                {type: "v", args: ["state"]}
+                                {type: "v", args: ["stack"]}
                             ]
                         ]
                     }
                 }
             ];
-            out.push(HandleName(name) + "(s_{tack})=" + SimplifyExpression(CompileBlock(returnCode, clonedData, "", 0 /* state */, true, out), useTex, strict, names.concat("s_tack", "a_dv", "r_et").concat(data.callFunctionsEmitted.map(call => "c_all" + call)), simplificationMap, true));
+            out.push(HandleName(name) + "(s_{tack})=" + SimplifyExpression(CompileBlock(returnCode, clonedData, "", 2 /* stack */, true, out), useTex, strict, names.concat("s_tack", "a_dv", "r_et").concat(data.callFunctionsEmitted.map(call => "c_all" + call)), simplificationMap, true));
         } else {
-            out.push(HandleName(name) + "(s_{tack})" + "=" + SimplifyExpression(CompileBlock(functionStatements, clonedData, "", 0 /* state */, true, out), useTex, strict, names.concat("s_tack", "a_dv", "r_et").concat(data.callFunctionsEmitted.map(call => "c_all" + call)), simplificationMap, true));
+            out.push(HandleName(name) + "(s_{tack})=" + SimplifyExpression(CompileBlock(functionStatements, clonedData, "", 2 /* stack */, true, out), useTex, strict, names.concat("s_tack", "a_dv", "r_et").concat(data.callFunctionsEmitted.map(call => "c_all" + call)), simplificationMap, true));
         }
 
         data.stackStateMap = clonedData.stackStateMap;

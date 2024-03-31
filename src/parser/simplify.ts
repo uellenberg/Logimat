@@ -65,6 +65,8 @@ const simplifyRules = (names: string[], stack: boolean) => [
             `${name}(a_dv(n1,n2),n3,n4,n5,n6) -> ${name}(n1,n3,n4,n5,n6)`
         ),
         "r_et(a_dv(n1,n2)) -> r_et(n1)",
+        // TODO: Figure out why this rule breaks things.
+        //"a_dv(a_dv(n1,n2),n3) -> a_dv(n1,n3)",
         // This forces any accesses to stack[0] to return the original
         // num.
         // Programs should never do this, but if for some reason they do,

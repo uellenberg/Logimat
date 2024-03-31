@@ -26,8 +26,8 @@ Logimat {
     ExportFunctionDeclaration = export #space function #space TemplateExportIdentifier "(" ExportFunctionArgs ")" FunctionBody
     InlineFunctionDeclaration = inline #space function #space TemplateIdentifier "(" FunctionArgs ")" FunctionBody
     InlinePolyfillFunctionDeclaration = inline #space polyfill #space function #space TemplateIdentifier "(" FunctionArgs ")" FunctionBody
-    StackFunctionDeclaration = stack #space function #space TemplateExportIdentifier "(" FunctionArgs ")" FunctionBody
-    
+    StackFunctionDeclaration = stackfunction #space TemplateExportIdentifier "(" FunctionArgs ")" FunctionBody
+
     ExportDeclaration =  export #space TemplateIdentifier ";"
 
     ActionDeclaration = UnnamedActionDeclaration | NamedActionDeclaration
@@ -119,7 +119,10 @@ Logimat {
                      | IfStatement
                      | FunctionCall
                      | Return
+                     | Loop
                      | WhileLoop
+                     | Break
+                     | Continue
 
     ConstDeclaration = const #space TemplateIdentifier "=" Expression ";"
     StackvarDeclaration = stackvar #space TemplateIdentifier ";"
@@ -129,7 +132,7 @@ Logimat {
     SetStateImplicit = Expression
     
     SetVar = identifier "=" Expression ";"
-    SetVarArray = (identifier | stack) "[" Expression "]" "=" Expression ";"
+    SetVarArray = identifier "[" Expression "]" "=" Expression ";"
     SetVarDeref = "*" identifier "=" Expression ";"
 
     StateBlock = Block -- block
@@ -140,7 +143,10 @@ Logimat {
 
     Return = return ";"
 
+    Loop = loop StateBlock
     WhileLoop = while "(" Expression ")" StateBlock
+    Break = break ";"
+    Continue = continue ";"
 
     Ternary = Expression "?" Expression ":" Expression
 
@@ -159,7 +165,6 @@ Logimat {
                       | stackid "(" TemplateIdentifier ")" -- stackid
                       | TemplateIdentifierName "(" ListOf<Expression, ","> ")"   -- func
                       | TemplateIdentifier  -- var
-                      | stack -- stack
                       | stacknum -- stacknum
                       | "&" TemplateIdentifier  -- ref
                       | literal
@@ -234,7 +239,7 @@ Logimat {
     let = "let" ~identifierPart
     function = "function" ~identifierPart
     polyfill = "polyfill" ~identifierPart
-    stack = "stack" ~identifierPart
+    stackfunction = "stackfunction" ~identifierPart
     stackvar = "stackvar" ~identifierPart
     stacknum = "stacknum" ~identifierPart
     action = "action" ~identifierPart
@@ -255,8 +260,11 @@ Logimat {
     display = "display" ~identifierPart
     return = "return" ~identifierPart
     while = "while" ~identifierPart
+    break = "break" ~identifierPart
+    continue = "continue" ~identifierPart
     folder = "folder" ~identifierPart
     stackid = "stackid" ~identifierPart
+    loop = "loop" ~identifierPart
 
     keywords = export
              | inline
@@ -264,7 +272,7 @@ Logimat {
              | let
              | function
              | polyfill
-             | stack
+             | stackfunction
              | stackvar
              | stacknum
              | action
@@ -285,8 +293,11 @@ Logimat {
              | display
              | return
              | while
+             | break
+             | continue
              | folder
              | stackid
+             | loop
 
     reservedWord = keywords
 
@@ -389,8 +400,8 @@ semantic.addOperation("parse", {
     InlinePolyfillFunctionDeclaration(_1, _2, _3, _4, _5, _6, name, _7, args, _8, block){
         return {type: "function", modifier: "inline", polyfill: true, name: name.parse(), args: args.parse(), block: block.parse()};
     },
-    StackFunctionDeclaration(_3, _4, _5, _6, name, _7, args, _8, block){
-        return {type: "function", modifier: "stack", name: name.parse(), args: args.parse(), block: block.parse()};
+    StackFunctionDeclaration(_5, _6, name, _7, args, _8, block){
+        return {type: "stackfunction", modifier: "export", name: name.parse(), args: args.parse(), block: block.parse()};
     },
     ExportDeclaration(_1, _2, name, _3){
         return {type: "export", modifier: "export", name: name.parse()};
@@ -548,9 +559,6 @@ semantic.addOperation("parse", {
     PrimaryExpression_var(e){
         return {type: "v", args: [e.parse()]};
     },
-    PrimaryExpression_stack(_1){
-        return {type: "v", args: ["state"]};
-    },
     PrimaryExpression_stacknum(_1){
         return {type: "v", args: ["stacknum"]};
     },
@@ -591,7 +599,7 @@ semantic.addOperation("parse", {
         return {type: "f", args: ["not", [e.parse()]]};
     },
     UnaryExpression_deref(_, e){
-        return {type: "f", args: ["array_idx", [{type: "v", args: ["state"]}, e.parse()]]};
+        return {type: "f", args: ["array_idx", [{type: "v", args: ["stack"]}, e.parse()]]};
     },
     ExponentialExpression_exp(e, _, e2){
         return {type: "^", args: [e.parse(), e2.parse()]};
@@ -693,23 +701,18 @@ semantic.addOperation("parse", {
         // desugars to array = range(0, array.length).filter(v => v != 0).map(v => v == expr_idx ? expr_to : array[v]);
         let identifier = id.parse();
 
-        // Special handling for stack.
-        if(identifier === "stack") {
-            identifier = "state";
-        }
-
         let idx = expr_idx.parse();
         let to = expr_to.parse();
         // state = a_rrset(state, idx, to);
         return {type: "var", name: identifier, expr: {type: "f", args: ["a_rrset", [{type: "v", args: [identifier]}, idx, to]]}};
     },
     SetVarDeref(_1, id, _3, value, _5){
-        // Desugars to state[id] = value;
+        // Desugars to stack[id] = value;
         let identifier = id.parse();
         let expr = value.parse();
 
-        // state = a_rrset(state, idx, to);
-        return {type: "var", name: "state", expr: {type: "f", args: ["a_rrset", [{type: "v", args: ["state"]}, {type: "v", args: [identifier]}, expr]]}};
+        // stack = a_rrset(stack, idx, to);
+        return {type: "var", name: "stack", expr: {type: "f", args: ["a_rrset", [{type: "v", args: ["stack"]}, {type: "v", args: [identifier]}, expr]]}};
     },
     StateBlock_block(block){
         return block.parse();
@@ -728,8 +731,18 @@ semantic.addOperation("parse", {
     Return(_1, _2) {
         return {type: "return"};
     },
+    Loop(_, body){
+        return {type: "loop", body: body.parse()};
+    },
     WhileLoop(_, _2, condition, _3, body){
+        // TODO: Implement as syntax sugar on top of loop.
         return {type: "while", condition: condition.parse(), body: body.parse()};
+    },
+    Break(_, _2){
+        return {type: "break"};
+    },
+    Continue(_, _2){
+        return {type: "continue"};
     },
     Ternary(condition, _1, tRes, _2, fRes){
         return {type: "b", args: [[{type: "if", condition: condition.parse(), ifaction: [{type: "var", name: "state", expr: tRes.parse()}], elseaction: [{type: "var", name: "state", expr: fRes.parse()}]}]]};
@@ -768,7 +781,7 @@ export interface Import {
     importType: string;
     path: string;
 }
-export type OuterDeclaration = Template | OuterConstDeclaration | OuterFunctionDeclaration | ExportDeclaration | ActionDeclaration | ActionsDeclaration | ExpressionDeclaration | GraphDeclaration | PointDeclaration | PolygonDeclaration | DisplayDeclaration | FolderDeclaration;
+export type OuterDeclaration = Template | OuterConstDeclaration | OuterFunctionDeclaration | ExportDeclaration | ActionDeclaration | ActionsDeclaration | ExpressionDeclaration | GraphDeclaration | PointDeclaration | PolygonDeclaration | DisplayDeclaration | FolderDeclaration | StackFunctionDeclaration;
 
 export type InternalTemplateArg = string | number | boolean | TemplateBlock | TemplateDeclareValue | TemplateExpression;
 export interface TemplateDeclareValue {
@@ -799,6 +812,13 @@ export interface OuterFunctionDeclaration {
     type: "function";
     modifier: Modifier;
     polyfill?: true;
+    name: string;
+    args: string[];
+    block: Statement[];
+}
+export interface StackFunctionDeclaration {
+    type: "stackfunction";
+    modifier: "export";
     name: string;
     args: string[];
     block: Statement[];
@@ -869,7 +889,7 @@ export interface Expression {
     type: "f" | "sid" | "^" | "*" | "/" | "+" | "-" | "n" | "a_m" | "a_f" | "b" | "v" | "sum" | "prod" | "int" | "div";
     args: (string | object)[];
 }
-export type Statement = ConstDeclaration | StackvarDeclaration | LetDeclaration | Template | SetVar | IfStatement | FunctionCall | Return | WhileLoop;
+export type Statement = ConstDeclaration | StackvarDeclaration | LetDeclaration | Template | SetVar | IfStatement | FunctionCall | Return | Break | Continue | ContinueLast | Loop;
 export interface ConstDeclaration {
     type: "const";
     name: string;
@@ -906,10 +926,21 @@ export interface Return {
     type: "return";
 }
 
-export interface WhileLoop {
-    type: "while";
-    condition: Expression;
+export interface Loop {
+    type: "loop";
     body: Statement[];
 }
 
-export type Modifier = "export" | "inline" | "stack";
+export interface Break {
+    type: "break";
+}
+
+export interface Continue {
+    type: "continue";
+}
+
+export interface ContinueLast {
+    type: "continue_last";
+}
+
+export type Modifier = "export" | "inline";
