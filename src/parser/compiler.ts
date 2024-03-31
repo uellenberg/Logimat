@@ -757,6 +757,36 @@ export const CompileBlock = (input: Statement[], data: CompileData, defaultOut: 
     // State should always exist.
     if(!("state" in variableMap)) variableMap["state"] = {idx: 0, variable: true};
 
+    // If we're in a stack function, we need to re-map if
+    // statements to make them easier to handle.
+    // We'll change:
+    // if (condition) {
+    //     ... code
+    // } else {
+    //     ... code
+    // }
+    //
+    // Into:
+    // if (condition) {
+    //     ... code
+    // }
+    //
+    // if(!condition) {
+    //     ... code
+    // }
+
+    if(data.stackContext) {
+        input = input.flatMap(statement => {
+            if(statement.type !== "if") return [statement];
+
+            if(statement.elseaction == null) return [statement];
+
+            const elseaction = statement.elseaction;
+
+            return [statement, {type: "if", condition: {type: "f", args: ["not", [statement.condition]]}, ifaction: elseaction, onlyOnStack: true}] as Statement[];
+        });
+    }
+
     for (const statement of input) {
         switch(statement.type) {
             case "const":
@@ -858,7 +888,9 @@ export const CompileBlock = (input: Statement[], data: CompileData, defaultOut: 
                 {
                     const newStackvarIdx = data.addrIdx.value++;
 
-                    newVars[newStackvarIdx] = CompileExpression(GetExpression("s_tack[s_tack[2] + " + stackOffset + "]"), {
+                    // This is the default value, although
+                    // special handling is given in CompileExpression.
+                    newVars[newStackvarIdx] = CompileExpression(GetExpression("stack[s_tack[2] + " + stackOffset + "]"), {
                         ...data,
                         vars: {
                             ...newVars,
@@ -923,6 +955,7 @@ export const CompileBlock = (input: Statement[], data: CompileData, defaultOut: 
                 for(const variableName in variableMap) {
                     // Special handling down below.
                     if(data.stackContext && variableName === "stack") continue;
+                    if(data.stackContext && statement.onlyOnStack) break;
 
                     const variable = variableMap[variableName];
 
@@ -967,15 +1000,18 @@ export const CompileBlock = (input: Statement[], data: CompileData, defaultOut: 
                     // The special handling below will save the
                     // value of this.
                     data.stackIdx.value = oldStackIdx;
+                    // If a stack function ran here, it may have instructed us to
+                    // exit early.
+                    // Like stackIDx, this will be handled below.
+                    data.shouldExit.value = false;
                 }
 
                 // Special handling for stack.
                 if(data.stackContext) {
-                    // If the stack was reset (we can tell if the return is empty),
-                    // then go back to the stack provided by the "stack" variable.
-                    // If one or the other got reset, then we'll just use the one
-                    // that wasn't reset - no condition involved.
-                    // If they both do, then we'll just reset the stack.
+                    // As per above, we'll transform if statements modifying stack
+                    // to have no elses.
+                    // That means that if there is an else here, we won't handle it,
+                    // because it has been transformed to an if.
 
                     const ifaction = CompileBlock(statement["ifaction"], {
                         ...data,
@@ -987,39 +1023,23 @@ export const CompileBlock = (input: Statement[], data: CompileData, defaultOut: 
                         }
                     }, newVars[variableMap["stack"].idx], variableMap["stack"].idx, false, compilerOutput);
 
-                    /// Normally this isn't allowed, but because stack functions
-                    // guarantee that there is always a state set, we can do this.
-                    // If we've been asked to stop compiling, then the else will be
-                    // handled by the next execution point.
-                    const elseaction = statement["elseaction"] && !data.shouldExit.value ? CompileBlock(statement["elseaction"], {
-                        ...data,
-                        vars: {
-                            ...newVars,
-                        },
-                        variableMap: {
-                            ...variableMap
-                        }
-                    }, newVars[variableMap["stack"].idx], variableMap["stack"].idx, false, compilerOutput) : newVars[variableMap["stack"].idx];
+                    const elseaction = newVars[variableMap["stack"].idx];
 
                     let expression: Expression;
                     let compiled: string;
                     let shouldUse: boolean;
 
-                    if(!ifaction && !elseaction) {
+                    // This means that te stack has been reset,
+                    // so we should carry the reset upwards.
+                    if(!ifaction) {
                         expression = {type: "v", args: ["s_tack1"]};
                         shouldUse = true;
-                    } else if(ifaction && !elseaction) {
-                        compiled = ifaction;
-                        shouldUse = newVars[variableMap["stack"].idx] !== ifaction;
-                    } else if(elseaction && !ifaction) {
-                        compiled = elseaction;
-                        shouldUse = newVars[variableMap["stack"].idx] !== elseaction;
                     } else {
                         expression = {
                             type: "f",
                             args: ["if_func", [condition, ifaction, elseaction]]
                         };
-                        shouldUse = newVars[variableMap["stack"].idx] !== ifaction || newVars[variableMap["stack"].idx] !== elseaction;
+                        shouldUse = newVars[variableMap["stack"].idx] !== ifaction;
                     }
 
                     if(expression) {
@@ -1051,6 +1071,11 @@ export const CompileBlock = (input: Statement[], data: CompileData, defaultOut: 
                 }
                 if(!data.stackFunctions.includes(statement.name)) {
                     throw new Error("Only stack functions can be ran!");
+                }
+
+                // Don't handle stack-functions in non-stack environments.
+                if(curVar !== variableMap["stack"].idx) {
+                    break;
                 }
 
                 let {nextStepNum, stackNum} = createExecutionPoint(data);
@@ -1129,6 +1154,11 @@ export const CompileBlock = (input: Statement[], data: CompileData, defaultOut: 
                     throw new Error("Returns can only be happen inside of a stack function!");
                 }
 
+                // Don't handle stack-functions in non-stack environments.
+                if(curVar !== variableMap["stack"].idx) {
+                    break;
+                }
+
                 let {stackNum} = createExecutionPoint(data);
 
                 // There's no reason for us to compile anything if this isn't requested.
@@ -1191,6 +1221,11 @@ export const CompileBlock = (input: Statement[], data: CompileData, defaultOut: 
             case "loop": {
                 if(!data.stackContext) {
                     throw new Error("Loops can only be used inside of a stack function!");
+                }
+
+                // Don't handle stack-functions in non-stack environments.
+                if(curVar !== variableMap["stack"].idx) {
+                    break;
                 }
 
                 // Create an execution point for all the code before the while loop.
@@ -1310,6 +1345,11 @@ export const CompileBlock = (input: Statement[], data: CompileData, defaultOut: 
                     throw new Error("Breaks can only be happen inside of a loop!");
                 }
 
+                // Don't handle stack-functions in non-stack environments.
+                if(curVar !== variableMap["stack"].idx) {
+                    break;
+                }
+
                 // The only things that create new parent states
                 // are loops, so all we have to do here is
                 // find the state after the parent state, and
@@ -1390,6 +1430,11 @@ export const CompileBlock = (input: Statement[], data: CompileData, defaultOut: 
                     throw new Error("Continues can only be happen inside of a loop!");
                 }
 
+                // Don't handle stack-functions in non-stack environments.
+                if(curVar !== variableMap["stack"].idx) {
+                    break;
+                }
+
                 let {stackNum} = createExecutionPoint(data);
 
                 // There's no reason for us to compile anything if this isn't requested.
@@ -1454,6 +1499,11 @@ export const CompileBlock = (input: Statement[], data: CompileData, defaultOut: 
             }
             case "continue_last":
             {
+                // Don't handle stack-functions in non-stack environments.
+                if(curVar !== variableMap["stack"].idx) {
+                    break;
+                }
+
                 let {stackNum, stackName} = createExecutionPoint(data, null, true);
                 // This is intended to run at the end of a loop,
                 // and can only be invoked by the compiler.
@@ -1631,7 +1681,17 @@ const CompileExpression = (expression: Expression, data: CompileData, compilerOu
         case "v":
             const name = <string>expression.args[0];
 
-            if(name in data.variableMap) return data.vars[data.variableMap[name].idx];
+            if(name in data.variableMap) {
+                const variable = data.variableMap[name];
+                if(variable.stack) {
+                    // This is a "virtual" variable.
+                    // It's sugar for:
+                    // stack[&variable].
+                    return CompileExpression({type: "f", args: ["array_idx", [{type: "v", args: ["stack"]}, {type: "v", args: ["&" + name]}]]}, data, compilerOutput);
+                }
+
+                return data.vars[variable.idx];
+            }
             if(data.inlines.hasOwnProperty(name)) return CompileExpression(data.inlines[name].value["expr"], data, compilerOutput);
 
             switch(name) {

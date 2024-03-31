@@ -735,8 +735,23 @@ semantic.addOperation("parse", {
         return {type: "loop", body: body.parse()};
     },
     WhileLoop(_, _2, condition, _3, body){
-        // TODO: Implement as syntax sugar on top of loop.
-        return {type: "while", condition: condition.parse(), body: body.parse()};
+        // While loop desugars to:
+        // loop {
+        //     if(condition) {
+        //         code
+        //     } else {
+        //         break;
+        //     }
+        // }
+        return {
+            type: "loop",
+            body: [{
+                type: "if",
+                condition: condition.parse(),
+                ifaction: body.parse(),
+                elseaction: [{type: "break"}],
+            }]
+        };
     },
     Break(_, _2){
         return {type: "break"};
@@ -914,6 +929,7 @@ export interface IfStatement {
     condition: Expression;
     ifaction: Statement[];
     elseaction: Statement[];
+    onlyOnStack?: boolean;
 }
 
 export interface FunctionCall {

@@ -125,7 +125,7 @@ export function CompileStackFunction(data: CompileData, declaration: StackFuncti
         // about there not being a state set.
         {type: "var", name: "state", expr: {type: "v", args: ["s_tack"]}},
         ...declaration.block,
-    ], tempData, "", 0 /* state */, true, out);
+    ], tempData, "", 2 /* stack */, true, out);
 
     // Now, we need to add the final execution step.
     // This is explained below, but it's essentially the code
@@ -161,43 +161,7 @@ export function CompileStackFunction(data: CompileData, declaration: StackFuncti
 
     const firstStackNum = data.stackStateMap[declaration.name + "_0"];
 
-    // We need to map each state to its next state as a default value.
-    // This will ignore our final one, as it doesn't have a next state to map to.
     const numToName = getNumToName(data);
-    let nextStateSelector = "const s_tack1 = ";
-
-    // If the function only has a single version (the entrypoint),
-    // then there's no reason to advance the state.
-    // newVersions being 0 means that there were no new versions after
-    // the entrypoint.
-    if(newVersions !== 0) {
-        nextStateSelector += "a_dv(s_tack, ";
-
-        for (let i = 0; i < newVersions; i++) {
-            // i == 0 is a special case for the first breakpoint.
-            const stackNum = i === 0 ? firstStackNum : (initialStateNum + (i - 1));
-
-            if (i === 0) {
-                nextStateSelector += "if(stacknum == " + stackNum + ")";
-            } else {
-                nextStateSelector += "else if(stacknum == " + stackNum + ")";
-            }
-
-            nextStateSelector += "{" + data.stackStateMap[data.stackNextStateMap[numToName[stackNum]]] + "}";
-        }
-        // This last run runs for return, which doesn't make use of the
-        // current stack num, so it won't matter anyway.
-        nextStateSelector += "else { 0 });";
-    } else {
-        nextStateSelector += "s_tack;";
-    }
-
-    // This is broken out so that it can be reset to at the end of each breakpoint.
-    nextStateSelector += "state = s_tack1;";
-    nextStateSelector += "stack = s_tack1;";
-
-    const newStateSelectorParsed = GetStatementsTree(nextStateSelector);
-    const functionStatements = [...variableCode, ...newStateSelectorParsed, ...declaration.block];
 
     for (let i = 0; i <= newVersions; i++) {
         // We need to use cloned data to avoid
@@ -225,6 +189,27 @@ export function CompileStackFunction(data: CompileData, declaration: StackFuncti
         const stackNum = i === 0 ? firstStackNum : initialStateNum + (i - 1);
 
         clonedData.vars[stackNumVar] = stackNum.toString();
+
+        // We need to map each state to its next state as a default value.
+        // This will ignore our final one, as it doesn't have a next state to map to.
+        let nextStateSelector = "const s_tack1 = ";
+
+        // If the function only has a single version (the entrypoint),
+        // then there's no reason to advance the state.
+        // newVersions being 0 means that there were no new versions after
+        // the entrypoint.
+        if(newVersions !== 0 && i !== newVersions) {
+            nextStateSelector += "a_dv(s_tack, " + data.stackStateMap[data.stackNextStateMap[numToName[stackNum]]] + ");";
+        } else {
+            nextStateSelector += "s_tack;";
+        }
+
+        // This is broken out so that it can be reset to at the end of each breakpoint.
+        nextStateSelector += "state = s_tack1;";
+        nextStateSelector += "stack = s_tack1;";
+
+        const newStateSelectorParsed = GetStatementsTree(nextStateSelector);
+        const functionStatements = [...variableCode, ...newStateSelectorParsed, ...declaration.block];
 
         if (i === newVersions) {
             // state = r_et(state);

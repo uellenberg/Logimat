@@ -44,6 +44,12 @@ const simplifyRules = (names: string[], stack: boolean) => [
     "if_func(0,n1,n2) -> n2",
     "if_func(1,n1,n2) -> n1",
     "if_func(n1,1,0) -> n1",
+    "if_func(if_func(n1,0,1) == 0,n2,n3) -> if_func(n1,n2,n3)",
+    "if_func(if_func(n1,0,1),n2,n3) -> if_func(n1,n3,n2)",
+    "if_func(if_func(n1,0,1) == 1,n2,n3) -> if_func(n1,n3,n2)",
+    "if_func(if_func(n1,1,0),n2,n3) -> if_func(n1,n2,n3)",
+    "if_func(n1,if_func(n1,n2,n3),n4) -> if_func(n1,n2,n4)",
+    "if_func(n1,n2,if_func(n1,n3,n4)) -> if_func(n1,n2,n4)",
     //Point
     "point(n1,n2) + point(n3,n4) -> point(n1+n3,n2+n4)",
     "0 * point(n1,n2) -> point(0,0)",
@@ -65,14 +71,14 @@ const simplifyRules = (names: string[], stack: boolean) => [
             `${name}(a_dv(n1,n2),n3,n4,n5,n6) -> ${name}(n1,n3,n4,n5,n6)`
         ),
         "r_et(a_dv(n1,n2)) -> r_et(n1)",
-        // TODO: Figure out why this rule breaks things.
-        //"a_dv(a_dv(n1,n2),n3) -> a_dv(n1,n3)",
         // This forces any accesses to stack[0] to return the original
         // num.
         // Programs should never do this, but if for some reason they do,
         // it is desirable behavior.
         "array_idx(a_dv(n1,n2),n3) -> array_idx(n1,n3)",
         "array_idx(a_rrset(n1,n2,n3),n2) -> n3",
+        "if_func(n1,a_dv(if_func(n1,n2,n3),n4),n5) -> if_func(n1,a_dv(n2,n4),n5)",
+        "if_func(n1,a_dv(if_func(n1 == 0,n2,n3),n4),n5) -> if_func(n1,a_dv(n3,n4),n5)"
     ]: []),
 ].concat(math.simplify["rules"] as string[]);
 
@@ -382,7 +388,8 @@ const getStringOptions = (strict: boolean, names: string[]) : Options => {
         strict,
         names,
         encaseLogicalOperators: true,
-        secondaryBinary: false
+        secondaryBinary: false,
+        advDisabled: false,
     };
 }
 
@@ -394,7 +401,8 @@ const getTexOptions = (strict: boolean, names: string[]) : Options => {
         strict,
         names,
         encaseLogicalOperators: true,
-        secondaryBinary: false
+        secondaryBinary: false,
+        advDisabled: false,
     };
 }
 
@@ -404,9 +412,10 @@ interface Options {
     names: string[];
     encaseLogicalOperators: boolean;
     secondaryBinary: boolean;
+    advDisabled: boolean;
 }
 
-const simplification: Record<string, (node: FunctionNode, options: object, tex: boolean) => string | null> = {
+const simplification: Record<string, (node: FunctionNode, options: Options, tex: boolean) => string | null> = {
     array_idx(node, options, tex) {
         const handledIndexer = HandleNode(node.args[1], options, tex);
         const indexer = parseInt(handledIndexer);
@@ -455,7 +464,7 @@ const simplification: Record<string, (node: FunctionNode, options: object, tex: 
     }
 };
 
-const functions: Record<string, (node: FunctionNode, options: object, tex: boolean) => string> = {
+const functions: Record<string, (node: FunctionNode, options: Options, tex: boolean) => string> = {
     sum(node, options, tex) {
         const encapsulate = !(node.args[3].type === "FunctionNode" && typeof(node.args[3].fn) === "object" && ["sum", "prod", "int", "div"].includes(node.args[3].fn["name"]));
 
@@ -583,10 +592,33 @@ const functions: Record<string, (node: FunctionNode, options: object, tex: boole
         const value = HandleNode(node.args[1], options, tex);
 
         return `\\log_{${base}}(${value})`;
-    }
+    },
+    a_dv(node, options, tex) {
+        if(options.advDisabled) {
+            return HandleNode(node.args[0], options, tex);
+        }
+
+        options.advDisabled = true;
+        const result = "a_{dv}\\left(" + HandleNode(node.args[0], options, tex) + "," + HandleNode(node.args[1], options, tex) + "\\right)";
+        options.advDisabled = false;
+
+        return result;
+    },
+    r_et(node, options, tex) {
+        if(options.advDisabled) {
+            return HandleNode(node.args[0], options, tex);
+        }
+
+        options.advDisabled = true;
+        const result = "r_{et}\\left(" + HandleNode(node.args[0], options, tex) + "\\right)";
+        options.advDisabled = false;
+
+        return result;
+    },
+    // TODO: Implement the above for call.
 };
 
-const texFunctions: Record<string, (node: FunctionNode, options: object) => string> = {
+const texFunctions: Record<string, (node: FunctionNode, options: Options) => string> = {
     sum(node, options) {
         return `{\\sum_{${node.args[0].toTex(options)}=${node.args[1].toTex(options)}}^{${node.args[2].toTex(options)}}{\\left(${node.args[3].toTex(options)}\\right)}}`;
     },
