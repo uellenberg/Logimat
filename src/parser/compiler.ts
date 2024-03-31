@@ -213,38 +213,6 @@ export const Compile = async (input: string, useTex: boolean = false, noFS = fal
         }
     }
 
-    // If we use stack, we need to add export declarations for the
-    // stack_adv, stack_ret, and array_set functions.
-    if(declarations.some(val => val.type === "function" && val.modifier === "stack")) {
-        const functions = [
-            ["a_dv", "stack_adv", ["s_tack", "n_um"]],
-            ["r_et", "stack_ret", ["s_tack"]],
-            ["a_rrset", "array_set", ["a_rr", "i_dx", "n_ewvalue"]],
-        ];
-
-        for(const [newFn, oldFn, args] of functions) {
-            declarations.push({
-                type: "function",
-                modifier: "export",
-                name: newFn,
-                args: args,
-                block: [
-                    {
-                        type: "var",
-                        name: "state",
-                        expr: {
-                            type: "f",
-                            args: [
-                                oldFn,
-                                args,
-                            ]
-                        }
-                    }
-                ]
-            });
-        }
-    }
-
     // We need to run GetInlines again because declarations is changed.
     const inlines: Record<string, Inline> = {
         ...fileInlines,
@@ -436,6 +404,7 @@ const HandleTemplate = async (templateDeclaration: Template, templates: Record<s
                         simplificationMap: {},
                         preCompile: false,
                         shouldExit: {value: false},
+                        enableFunctions: {},
                     }, []);
 
                     const simplified = SimplifyExpression(compiled, false, !arg["nonStrict"], definedNames, simplificationMap);
@@ -531,6 +500,7 @@ const InternalCompile = (useTex: boolean, tree: OuterDeclaration[], inlines: Rec
         simplificationMap,
         preCompile: false,
         shouldExit: {value: false},
+        enableFunctions: {"a_rrset": false, "a_dv": false, "r_et": false},
     };
 
     // Figure out the stack numbers for all stack function entry-points.
@@ -547,7 +517,6 @@ const InternalCompile = (useTex: boolean, tree: OuterDeclaration[], inlines: Rec
         if (declaration.modifier === "inline") continue;
 
         const names = Object.assign([], outerNames);
-
         data = cleanData(data, names);
 
         switch(declaration.type) {
@@ -635,8 +604,39 @@ const InternalCompile = (useTex: boolean, tree: OuterDeclaration[], inlines: Rec
         }
     }
 
+    // If we used any functions that need to be enabled, output them.
+    const functions = [
+        ["a_dv", "stack_adv", ["s_tack", "n_um"]],
+        ["r_et", "stack_ret", ["s_tack"]],
+        ["a_rrset", "array_set", ["a_rr", "i_dx", "n_ewvalue"]],
+    ].filter(([functionName]) => data.enableFunctions[functionName as string]) as [string, string, string[]][];
+
+    for(const [newFn, oldFn, args] of functions) {
+        const names = Object.assign([], outerNames);
+        data = cleanData(data, names);
+
+        const code: Statement[] = [
+            {
+                type: "var",
+                name: "state",
+                expr: {
+                    type: "f",
+                    args: [
+                        oldFn,
+                        args,
+                    ]
+                }
+            }
+        ];
+
+        out.push(HandleName(newFn) + "(" + args.map(HandleName).join(",") + ")" + "=" + SimplifyExpression(CompileBlock(code, data, "", 0 /* state */, true, out), useTex, strict, names.concat(args), simplificationMap));
+    }
+
     // If there were stack functions used, create the method to run them.
     if(data.stackFunctions.length !== 0) {
+        const names = Object.assign([], outerNames);
+        data = cleanData(data, names);
+
         out.push(GetStackSelector(data));
     }
 
@@ -1254,6 +1254,13 @@ const CompileExpression = (expression: Expression, data: CompileData, compilerOu
         case "f":
             const fargs = (<any[]>expression.args[1]).map(arg => arg != null && typeof(arg) === "object" && arg.hasOwnProperty("type") ? CompileExpression(<Expression>arg, data, compilerOutput) : arg);
 
+            // If this is a function that can be enabled, then enable it
+            // because we're using it.
+            if(data.enableFunctions.hasOwnProperty(<string>expression.args[0])) {
+                data.enableFunctions[<string>expression.args[0]] = true;
+                if(!data.names.includes(<string>expression.args[0])) data.names.push(<string>expression.args[0]);
+            }
+
             if(!data.inlines.hasOwnProperty(<string>expression.args[0])) {
                 if(piecewiseFunctions.includes(<string>expression.args[0])) return HandlePiecewise(<string>expression.args[0], fargs);
                 return <string>expression.args[0] + "(" + fargs.join(",") + ")";
@@ -1479,6 +1486,7 @@ export const cleanData = (data: CompileData, names: string[]) : CompileData => {
         simplificationMap: data.simplificationMap,
         preCompile: data.preCompile,
         shouldExit: {value: false},
+        enableFunctions: data.enableFunctions,
     };
 }
 
@@ -1560,4 +1568,5 @@ export interface CompileData {
      * If true, stops the compile process early.
      */
     shouldExit: {value: boolean};
+    enableFunctions: Record<string, boolean>;
 }
