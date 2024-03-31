@@ -562,10 +562,14 @@ const InternalCompile = (useTex: boolean, tree: OuterDeclaration[], inlines: Rec
                 out.push(HandleName(constDeclaration.name) + "=" + SimplifyExpression(CompileExpression(constDeclaration.expr, data, out), useTex, strict, names, simplificationMap));
                 break;
             case "action":
+                out.push(...CompileDisplay(display, data));
+
                 const actionDeclaration = <ActionDeclaration>declaration;
                 out.push((actionDeclaration.funcName ? HandleName(actionDeclaration.funcName) + (actionDeclaration.args ? "(" + actionDeclaration.args.map(HandleName).join(",") + ")" : "") + "=" : "") + HandleName(actionDeclaration.name) + "\\to " + SimplifyExpression(CompileBlock(actionDeclaration.block, data, "", 0 /* state */, true, out), useTex, strict, actionDeclaration.args ? names.concat(actionDeclaration.args) : names, simplificationMap));
                 break;
             case "actions":
+                out.push(...CompileDisplay(display, data));
+
                 const actionsDeclaration = <ActionsDeclaration>declaration;
 
                 //Get the name without the args (the first part before the opening parenthesis)
