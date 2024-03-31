@@ -405,6 +405,7 @@ const HandleTemplate = async (templateDeclaration: Template, templates: Record<s
                         preCompile: false,
                         shouldExit: {value: false},
                         enableFunctions: {},
+                        folderStack: [],
                     }, []);
 
                     const simplified = SimplifyExpression(compiled, false, !arg["nonStrict"], definedNames, simplificationMap);
@@ -501,6 +502,7 @@ const InternalCompile = (useTex: boolean, tree: OuterDeclaration[], inlines: Rec
         preCompile: false,
         shouldExit: {value: false},
         enableFunctions: {"a_rrset": false, "a_dv": false, "r_et": false},
+        folderStack: [],
     };
 
     // Figure out the stack numbers for all stack function entry-points.
@@ -543,18 +545,18 @@ const InternalCompile = (useTex: boolean, tree: OuterDeclaration[], inlines: Rec
 
                 if(declaration.modifier === "stack") {
                     // Display doesn't make sense for stack functions, so reset it.
-                    CompileDisplay(display);
+                    CompileDisplay(display, data);
 
                     CompileStackFunction(data, functionDeclaration, out, useTex, strict, names, simplificationMap);
 
                     break;
                 }
 
-                out.push(...CompileDisplay(display));
+                out.push(...CompileDisplay(display, data));
                 out.push(HandleName(functionDeclaration.name) + "(" + functionDeclaration.args.map(HandleName).join(",") + ")" + "=" + SimplifyExpression(CompileBlock(functionDeclaration.block, data, "", 0 /* state */, true, out), useTex, strict, names.concat(functionDeclaration.args), simplificationMap));
                 break;
             case "const":
-                out.push(...CompileDisplay(display));
+                out.push(...CompileDisplay(display, data));
 
                 const constDeclaration = <OuterConstDeclaration>declaration;
                 out.push(HandleName(constDeclaration.name) + "=" + SimplifyExpression(CompileExpression(constDeclaration.expr, data, out), useTex, strict, names, simplificationMap));
@@ -575,13 +577,13 @@ const InternalCompile = (useTex: boolean, tree: OuterDeclaration[], inlines: Rec
                 out.push(HandleName(actionsDeclaration.name) + (actionsDeclaration.actionArgs ? "(" + actionsDeclaration.actionArgs.map(HandleName).join(",") + ")" : "") + "=" + actionsDeclaration.args.map(action => HandleName(action[0]) + (action.length > 1 ? "(" + action.slice(1).map(HandleName) + ")" : "")).join(","));
                 break;
             case "expression":
-                out.push(...CompileDisplay(display));
+                out.push(...CompileDisplay(display, data));
 
                 const expressionDeclaration = <ExpressionDeclaration>declaration;
                 out.push(SimplifyExpression(CompileBlock(expressionDeclaration.block, data, "", 0 /* state */, true, out), useTex, strict, names, simplificationMap));
                 break;
             case "graph":
-                out.push(...CompileDisplay(display));
+                out.push(...CompileDisplay(display, data));
 
                 //Give the graph access to x and y.
                 names.push("x", "y");
@@ -590,16 +592,22 @@ const InternalCompile = (useTex: boolean, tree: OuterDeclaration[], inlines: Rec
                 out.push(SimplifyExpression(CompileExpression(graphDeclaration.p1, data, out), useTex, strict, names, simplificationMap) + opMap[graphDeclaration.op] + SimplifyExpression(CompileExpression(graphDeclaration.p2, data, out), useTex, strict, names, simplificationMap));
                 break;
             case "point":
-                out.push(...CompileDisplay(display));
+                out.push(...CompileDisplay(display, data));
 
                 const pointDeclaration = <PointDeclaration>declaration;
                 out.push(SimplifyExpression(CompileExpression(pointDeclaration.point, data, out), useTex, strict, names, simplificationMap));
                 break;
             case "polygon":
-                out.push(...CompileDisplay(display));
+                out.push(...CompileDisplay(display, data));
 
                 const polygonDeclaration = <PolygonDeclaration>declaration;
                 out.push("\\operatorname{polygon}" + (useTex ? "\\left(" : "(") + polygonDeclaration.points.map(point => SimplifyExpression(CompileExpression(point, data, out), useTex, strict, names, simplificationMap)).join(",") + (useTex ? "\\right)" : ")"));
+                break;
+            case "folder":
+                // Null means pop.
+                if(declaration.text === null) data.folderStack.pop();
+                else data.folderStack.push(declaration.text);
+
                 break;
         }
     }
@@ -643,7 +651,17 @@ const InternalCompile = (useTex: boolean, tree: OuterDeclaration[], inlines: Rec
     return {output: out, simplificationMap};
 }
 
-const CompileDisplay = (input: Record<string, string>) => {
+const CompileDisplay = (input: Record<string, string>, data: CompileData) => {
+    // If we're in a folder, and there's not a display overriding it, output it.
+    if("display" in input) {
+        // If there's no name set, then we shouldn't output it.
+        // We won't change it to the current folder though,
+        // since it may have been intentionally overridden.
+        if(input["display"] === "") delete input["display"];
+    } else if(data.folderStack.length !== 0) {
+        input["folder"] = data.folderStack[data.folderStack.length - 1];
+    }
+
     const out = Object.entries(input).map(entry => "!" + entry[0] + "=" + entry[1]);
 
     //Clear the object.
@@ -1487,6 +1505,7 @@ export const cleanData = (data: CompileData, names: string[]) : CompileData => {
         preCompile: data.preCompile,
         shouldExit: {value: false},
         enableFunctions: data.enableFunctions,
+        folderStack: data.folderStack,
     };
 }
 
@@ -1568,5 +1587,13 @@ export interface CompileData {
      * If true, stops the compile process early.
      */
     shouldExit: {value: boolean};
+    /**
+     * Function Name -> Is It Enabled
+     */
     enableFunctions: Record<string, boolean>;
+    /**
+     * A stack of the folders that things should be stored in.
+     * Only the last item will actually apply.
+     */
+    folderStack: string[];
 }

@@ -10,7 +10,7 @@ Logimat {
     Import = ImportTemplates
     ImportTemplates = "import" #space "templates" #space "from" #space string ";"
     
-    OuterDeclaration = DefineTemplate | Template | OuterConstDeclaration | FunctionDeclaration | ExportDeclaration | ActionDeclaration | ActionsDeclaration | ExpressionDeclaration | GraphDeclaration | PointDeclaration | PolygonDeclaration | DisplayDeclarations
+    OuterDeclaration = DefineTemplate | Template | OuterConstDeclaration | FunctionDeclaration | ExportDeclaration | ActionDeclaration | ActionsDeclaration | ExpressionDeclaration | GraphDeclaration | PointDeclaration | PolygonDeclaration | DisplayDeclarations | FolderDeclaration
     
     Template = templateName "(" TemplateArgs ")" ";"
     InnerTemplate = templateName "(" TemplateArgs ")" ";"
@@ -70,6 +70,10 @@ Logimat {
                         | DisplayDeclaration<"min", Expression>
                         | DisplayDeclaration<"max", Expression>
                         | DisplayDeclaration<"step", Expression>
+                        | DisplayDeclaration<"folder", embeddedTemplateString>
+
+    FolderDeclaration = folder #space embeddedTemplateString "{" OuterDeclaration* "}"
+
     ParsedActionArgs = TemplateExportIdentifier "(" ListOf<("index" | Expression), ","> ")"
     
     parsedTemplateString = "\\"" (parsedTemplateStringTemplate | stringCharacter)* "\\""
@@ -250,6 +254,7 @@ Logimat {
     display = "display" ~identifierPart
     return = "return" ~identifierPart
     while = "while" ~identifierPart
+    folder = "folder" ~identifierPart
 
     keywords = export
              | inline
@@ -278,6 +283,7 @@ Logimat {
              | display
              | return
              | while
+             | folder
 
     reservedWord = keywords
 
@@ -343,7 +349,8 @@ semantic.addOperation("parse", {
         return this.sourceString;
     },
     Program(imports, declarations){
-        return {imports: imports.children.map(part => part.parse()), declarations: declarations.children.map(part => part.parse())};
+        // flatMap removes any arrays, which is useful for cases like folders.
+        return {imports: imports.children.map(part => part.parse()), declarations: declarations.children.flatMap(part => part.parse())};
     },
     ImportTemplates(_, _1, _2, _3, _4, _5, path, _7){
         return {importType: "template", path: path.parse()};
@@ -414,6 +421,23 @@ semantic.addOperation("parse", {
     },
     DisplayDeclaration(_1, type, _2, value, _3){
         return {type: "display", modifier: "export", displayType: type.parse(), value: value.parse()};
+    },
+    FolderDeclaration(_1, _2, text, _4, body, _6) {
+        // flatMap is used to remove arrays, which we use below (and so will cause issues with nested folders).
+        const statements: OuterDeclaration[] = body.children.flatMap(part => part.parse());
+        return [
+            {
+                type: "folder",
+                modifier: "export",
+                text: text.parse(),
+            },
+            ...statements,
+            {
+                type: "folder",
+                modifier: "export",
+                text: null,
+            }
+        ];
     },
     ParsedActionArgs(name, _1, args, _2){
         return {type: "aargs", name: name.parse(), args: args.asIteration().parse()};
@@ -738,7 +762,7 @@ export interface Import {
     importType: string;
     path: string;
 }
-export type OuterDeclaration = Template | OuterConstDeclaration | OuterFunctionDeclaration | ExportDeclaration | ActionDeclaration | ActionsDeclaration | ExpressionDeclaration | GraphDeclaration | PointDeclaration | PolygonDeclaration | DisplayDeclaration;
+export type OuterDeclaration = Template | OuterConstDeclaration | OuterFunctionDeclaration | ExportDeclaration | ActionDeclaration | ActionsDeclaration | ExpressionDeclaration | GraphDeclaration | PointDeclaration | PolygonDeclaration | DisplayDeclaration | FolderDeclaration;
 
 export type InternalTemplateArg = string | number | boolean | TemplateBlock | TemplateDeclareValue | TemplateExpression;
 export interface TemplateDeclareValue {
@@ -820,6 +844,11 @@ export interface DisplayDeclaration {
     modifier: Modifier;
     displayType: "color" | "stroke" | "thickness" | "fill" | "click" | "label" | "drag" | "hidden" | "outline" | "angle" | "size" | "min" | "max" | "step";
     value: string | Expression | TemplateString | ParsedActionArgs;
+}
+export interface FolderDeclaration {
+    type: "folder";
+    modifier: "export";
+    text: string;
 }
 export interface TemplateString {
     type: "tstring";
