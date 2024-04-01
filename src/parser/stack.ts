@@ -74,7 +74,7 @@ export function createExecutionPoint(data: CompileData, nextStateName?: string, 
     return {nextStepNum, stackNum, stackName};
 }
 
-export function CompileStackFunction(data: CompileData, declaration: StackFunctionDeclaration, out: string[], useTex: boolean, strict: boolean, names: string[], simplificationMap: Record<string, string>) {
+export function CompileStackFunction(data: CompileData, declaration: StackFunctionDeclaration, out: string[], useTex: boolean, strict: boolean, names: string[], simplificationMap: Record<string, string>, compiledDisplay: string[]) {
     data.parentStackPrefix = declaration.name;
     data.stackContext = true;
     // The +2 is needed to account for the returnStackNum, and to
@@ -167,6 +167,9 @@ export function CompileStackFunction(data: CompileData, declaration: StackFuncti
     const numToName = getNumToName(data);
 
     for (let i = 0; i <= newVersions; i++) {
+        // Include the display for each subfunction (for folders).
+        out.push(...compiledDisplay);
+
         // We need to use cloned data to avoid
         // the state from getting messed up with multiple
         // iterations.

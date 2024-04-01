@@ -555,10 +555,11 @@ const InternalCompile = (useTex: boolean, tree: OuterDeclaration[], inlines: Rec
                 out.push(HandleName(functionDeclaration.name) + "(" + functionDeclaration.args.map(HandleName).join(",") + ")" + "=" + SimplifyExpression(CompileBlock(functionDeclaration.block, data, "", 0 /* state */, true, out), useTex, strict, names.concat(functionDeclaration.args), simplificationMap));
                 break;
             case "stackfunction":
-                // Display doesn't make sense for stack functions, so reset it.
-                CompileDisplay(display, data);
+                // All stack function versions share the same display.
+                // This is useful for folders.
+                const compiledDisplay = CompileDisplay(display, data);;
 
-                CompileStackFunction(data, declaration, out, useTex, strict, names, simplificationMap);
+                CompileStackFunction(data, declaration, out, useTex, strict, names, simplificationMap, compiledDisplay);
 
                 break;
             case "const":
