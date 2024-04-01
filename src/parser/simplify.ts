@@ -174,7 +174,7 @@ const handle = (node: MathNode, options: Options, tex: boolean) : string => {
                 a1 = a1txt;
             } else {
                 a1txt = HandleNode(node.args[0], Object.assign({}, normalOptions), tex);
-                a1 = "\\left\\{" + a1txt + (node.args[0].type !== "OperatorNode" ? "=1" : "") + "\\right\\}";
+                a1 = "\\left\\{" + a1txt + (node.args[0].type !== "OperatorNode" ? "=1" : "") + ",0\\right\\}";
             }
 
             if(node.args[1].type === "OperatorNode" && node.args[1].op === "&") {
@@ -182,7 +182,7 @@ const handle = (node: MathNode, options: Options, tex: boolean) : string => {
                 a2 = a2txt;
             } else {
                 a2txt = HandleNode(node.args[1], Object.assign({}, normalOptions), tex);
-                a2 = "\\left\\{" + a2txt + (node.args[1].type !== "OperatorNode" ? "=1" : "") + "\\right\\}";
+                a2 = "\\left\\{" + a2txt + (node.args[1].type !== "OperatorNode" ? "=1" : "") + ",0\\right\\}";
             }
 
             if(a1txt === "0" || a2txt === "0") {
