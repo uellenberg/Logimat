@@ -1242,6 +1242,18 @@ export const CompileBlock = (input: Statement[], data: CompileData, defaultOut: 
 
                 let {stackNum, stackName} = createExecutionPoint(data);
 
+                // Because we've created an execution point for prior code
+                // to live in, we shouldn't use the current state.
+                // Instead, we should revert back to the original stack.
+                const resetCode: Statement = {
+                    type: "var",
+                    name: "stack",
+                    expr: {
+                        type: "v",
+                        args: ["s_tack1"]
+                    },
+                };
+
                 const runCode: Statement[] = [];
 
                 // - execution point-
@@ -1249,17 +1261,7 @@ export const CompileBlock = (input: Statement[], data: CompileData, defaultOut: 
                 // - loop back (continue_last) -
                 if(Number(newVars[variableMap["stacknum"].idx]) === stackNum || data.preCompile) {
                     runCode.push(
-                        // Because we've created an execution point for prior code
-                        // to live in, we shouldn't use the current state.
-                        // Instead, we should revert back to the original stack.
-                        {
-                            type: "var",
-                            name: "stack",
-                            expr: {
-                                type: "v",
-                                args: ["s_tack1"]
-                            },
-                        },
+                        resetCode,
                         {
                             type: "var",
                             name: "stack",
@@ -1282,7 +1284,7 @@ export const CompileBlock = (input: Statement[], data: CompileData, defaultOut: 
                         runCode.push(...statement.body, {type: "continue_last"});
                     }
                 } else if(getNumToName(data)[Number(newVars[variableMap["stacknum"].idx])].startsWith(stackName)) {
-                    runCode.push(...statement.body, {type: "continue_last"});
+                    runCode.push(resetCode, ...statement.body, {type: "continue_last"});
                 } else {
                     // In this case, reset the state back to its original version
                     // as all updates to it have already been made by the last
