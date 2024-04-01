@@ -81,6 +81,11 @@ export function CompileStackFunction(data: CompileData, declaration: StackFuncti
     // move it one past the end of the stack.
     data.stackOffset = 2;
 
+    // Create the stack variable (we need to know its ID so we can request it).
+    const stackVarAddrIdx = data.addrIdx.value++;
+    data.variableMap["stack"] = {idx: stackVarAddrIdx, variable: true};
+    data.vars[stackVarAddrIdx] = "s_tack";
+
     const variableCode: Statement[] = [];
 
     // Add virtual variables for all the arguments.
@@ -91,8 +96,6 @@ export function CompileStackFunction(data: CompileData, declaration: StackFuncti
 
         variableCode.push({type: "stackvar", name: argName});
     }
-
-    variableCode.push({type: "let", name: "stack", expr: {type: "v", args: ["s_tack"]}});
 
     // First, we need one compile pass to create the stack numbers
     // for each break point.
@@ -125,7 +128,7 @@ export function CompileStackFunction(data: CompileData, declaration: StackFuncti
         // about there not being a state set.
         {type: "var", name: "state", expr: {type: "v", args: ["s_tack"]}},
         ...declaration.block,
-    ], tempData, "", 2 /* stack */, true, out);
+    ], tempData, "", stackVarAddrIdx, true, out);
 
     // Now, we need to add the final execution step.
     // This is explained below, but it's essentially the code
@@ -229,9 +232,9 @@ export function CompileStackFunction(data: CompileData, declaration: StackFuncti
                     }
                 }
             ];
-            out.push(HandleName(name) + "(s_{tack})=" + SimplifyExpression(CompileBlock(returnCode, clonedData, "", 2 /* stack */, true, out), useTex, strict, names.concat("s_tack", "a_dv", "r_et").concat(data.callFunctionsEmitted.map(call => "c_all" + call)), simplificationMap, true));
+            out.push(HandleName(name) + "(s_{tack})=" + SimplifyExpression(CompileBlock(returnCode, clonedData, "", stackVarAddrIdx, true, out), useTex, strict, names.concat("s_tack", "a_dv", "r_et").concat(data.callFunctionsEmitted.map(call => "c_all" + call)), simplificationMap, true));
         } else {
-            out.push(HandleName(name) + "(s_{tack})=" + SimplifyExpression(CompileBlock(functionStatements, clonedData, "", 2 /* stack */, true, out), useTex, strict, names.concat("s_tack", "a_dv", "r_et").concat(data.callFunctionsEmitted.map(call => "c_all" + call)), simplificationMap, true));
+            out.push(HandleName(name) + "(s_{tack})=" + SimplifyExpression(CompileBlock(functionStatements, clonedData, "", stackVarAddrIdx, true, out), useTex, strict, names.concat("s_tack", "a_dv", "r_et").concat(data.callFunctionsEmitted.map(call => "c_all" + call)), simplificationMap, true));
         }
 
         data.stackStateMap = clonedData.stackStateMap;
