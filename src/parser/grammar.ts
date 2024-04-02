@@ -117,6 +117,7 @@ Logimat {
                      | SetVarArray
                      | SetVarDeref
                      | IfStatement
+                     | Debug
                      | FunctionCall
                      | Return
                      | Loop
@@ -147,6 +148,9 @@ Logimat {
     WhileLoop = while "(" Expression ")" StateBlock
     Break = break ";"
     Continue = continue ";"
+    
+    Debug = debug "(" ListOf<DebugValue, ","> ")" ";"
+    DebugValue = Expression | templateString
 
     Ternary = Expression "?" Expression ":" Expression
 
@@ -265,6 +269,7 @@ Logimat {
     folder = "folder" ~identifierPart
     stackid = "stackid" ~identifierPart
     loop = "loop" ~identifierPart
+    debug = "debug" ~identifierPart
 
     keywords = export
              | inline
@@ -298,6 +303,7 @@ Logimat {
              | folder
              | stackid
              | loop
+             | debug
 
     reservedWord = keywords
 
@@ -759,6 +765,9 @@ semantic.addOperation("parse", {
     Continue(_, _2){
         return {type: "continue"};
     },
+    Debug(_1, _2, expr, _3, _4) {
+        return {type: "debug", values: expr.asIteration().parse()};
+    },
     Ternary(condition, _1, tRes, _2, fRes){
         return {type: "b", args: [[{type: "if", condition: condition.parse(), ifaction: [{type: "var", name: "state", expr: tRes.parse()}], elseaction: [{type: "var", name: "state", expr: fRes.parse()}]}]]};
     },
@@ -904,7 +913,7 @@ export interface Expression {
     type: "f" | "sid" | "^" | "*" | "/" | "+" | "-" | "n" | "a_m" | "a_f" | "b" | "v" | "sum" | "prod" | "int" | "div";
     args: (string | object)[];
 }
-export type Statement = ConstDeclaration | StackvarDeclaration | LetDeclaration | Template | SetVar | IfStatement | FunctionCall | Return | Break | Continue | ContinueLast | Loop;
+export type Statement = ConstDeclaration | StackvarDeclaration | LetDeclaration | Template | SetVar | IfStatement | FunctionCall | Return | Break | Continue | ContinueLast | Loop | Debug;
 export interface ConstDeclaration {
     type: "const";
     name: string;
@@ -957,6 +966,11 @@ export interface Continue {
 
 export interface ContinueLast {
     type: "continue_last";
+}
+
+export interface Debug {
+    type: "debug";
+    values: (Expression | string)[];
 }
 
 export type Modifier = "export" | "inline";

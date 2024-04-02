@@ -67,9 +67,12 @@ const simplifyRules = (names: string[], stack: boolean) => [
     // Stack functions.
     ...(stack ? [
         "a_rrset(a_dv(n1,n2),n3,n4) -> a_dv(a_rrset(n1,n3,n4),n2)",
-        ...names.filter(name => /^c_all[0-9]+$/.test(name)).map(name =>
-            `${name}(a_dv(n1,n2),n3,n4,n5,n6) -> ${name}(n1,n3,n4,n5,n6)`
-        ),
+        ...names.filter(name => /^c_all[0-9]+$/.test(name)).map(name => {
+            // Remove the c_all prefix.
+            const numArgs = Number(name.substring("c_all".length));
+            const args = numArgs == 0 ? "" : "," + Array(numArgs).fill(0).map((_, idx) => "n" + (5 + idx)).join(",");
+            return `${name}(a_dv(n1,n2),n3,n4,n5${args}) -> ${name}(n1,n3,n4,n5${args})`;
+        }),
         "r_et(a_dv(n1,n2)) -> r_et(n1)",
         // This forces any accesses to stack[0] to return the original
         // num.

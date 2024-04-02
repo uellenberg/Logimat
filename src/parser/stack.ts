@@ -71,6 +71,15 @@ export function createExecutionPoint(data: CompileData, nextStateName?: string, 
         stackNum = data.globalStackNumber.value++;
         data.stackStateMap[stackName] = stackNum;
     }
+
+    // This should track the latest globalStackNumber, but
+    // shouldn't move into the future, so we'll use
+    // stackNum + 1 (which is what globalStackNumber will be
+    // the first time this runs in a pre-compile).
+    if(data.localStackNumber.value < stackNum + 1) {
+        data.localStackNumber.value = stackNum + 1;
+    }
+
     return {nextStepNum, stackNum, stackName};
 }
 
@@ -80,6 +89,10 @@ export function CompileStackFunction(data: CompileData, declaration: StackFuncti
     // The +2 is needed to account for the returnStackNum, and to
     // move it one past the end of the stack.
     data.stackOffset = 2;
+    // Start localStackNum at name_0 so that
+    // code using it only gets numbers
+    // within this function.
+    data.localStackNumber.value = data.stackStateMap[declaration.name + "_0"];
 
     // Create the stack variable (we need to know its ID so we can request it).
     const stackVarAddrIdx = data.addrIdx.value++;
@@ -113,6 +126,8 @@ export function CompileStackFunction(data: CompileData, declaration: StackFuncti
             stackNextStateMap: data.stackNextStateMap,
             stackIdx: data.stackIdx,
             globalStackNumber: data.globalStackNumber,
+            localStackNumber: data.localStackNumber,
+            callFunctionEmitted: data.callFunctionsEmitted,
             shouldExit: data.shouldExit,
         })
     };
@@ -140,6 +155,7 @@ export function CompileStackFunction(data: CompileData, declaration: StackFuncti
     // this one generated.
     if(!(finalStackName in tempData.stackStateMap)) {
         tempData.stackStateMap[finalStackName] = tempData.globalStackNumber.value++;
+        tempData.localStackNumber.value++;
     }
 
     // Determine the number of break points the function has.
@@ -149,6 +165,8 @@ export function CompileStackFunction(data: CompileData, declaration: StackFuncti
     // Now, we need to bring the relevant fields over.
     data.stackStateMap = tempData.stackStateMap;
     data.globalStackNumber = tempData.globalStackNumber;
+    // localStackNum isn't cloned here because it needs
+    // to be reset before each subfunction compile.
     data.stackNextStateMap = tempData.stackNextStateMap;
     data.stackFunctionMap = tempData.stackFunctionMap;
     data.callFunctionsEmitted = tempData.callFunctionsEmitted;
@@ -185,6 +203,7 @@ export function CompileStackFunction(data: CompileData, declaration: StackFuncti
                 stackNextStateMap: data.stackNextStateMap,
                 stackIdx: data.stackIdx,
                 globalStackNumber: data.globalStackNumber,
+                localStackNumber: data.localStackNumber,
                 callFunctionEmitted: data.callFunctionsEmitted,
                 shouldExit: data.shouldExit,
             })
@@ -218,6 +237,11 @@ export function CompileStackFunction(data: CompileData, declaration: StackFuncti
         const functionStatements = [...variableCode, ...newStateSelectorParsed, ...declaration.block];
 
         if (i === newVersions) {
+            // This is the default return if the function does nothing.
+            // In that case, it'll just be reset and have its compiled output equal to "".
+            // This replaces that empty output.
+            const fallbackOutput = "r_et(s_tack)";
+
             // state = r_et(state);
             const returnCode: Statement[] = [
                 ...functionStatements,
@@ -235,9 +259,11 @@ export function CompileStackFunction(data: CompileData, declaration: StackFuncti
                     }
                 }
             ];
-            out.push(HandleName(name) + "(s_{tack})=" + SimplifyExpression(CompileBlock(returnCode, clonedData, "", stackVarAddrIdx, true, out), useTex, strict, names.concat("s_tack", "a_dv", "r_et").concat(data.callFunctionsEmitted.map(call => "c_all" + call)), simplificationMap, true));
+            out.push(HandleName(name) + "(s_{tack})=" + SimplifyExpression(CompileBlock(returnCode, clonedData, "", stackVarAddrIdx, true, out) || fallbackOutput, useTex, strict, names.concat("s_tack", "a_dv", "r_et").concat(data.callFunctionsEmitted.map(call => "c_all" + call)), simplificationMap, true));
         } else {
-            out.push(HandleName(name) + "(s_{tack})=" + SimplifyExpression(CompileBlock(functionStatements, clonedData, "", stackVarAddrIdx, true, out), useTex, strict, names.concat("s_tack", "a_dv", "r_et").concat(data.callFunctionsEmitted.map(call => "c_all" + call)), simplificationMap, true));
+            const fallbackOutput = "a_dv(s_tack," + stackNum + ")";
+
+            out.push(HandleName(name) + "(s_{tack})=" + SimplifyExpression(CompileBlock(functionStatements, clonedData, "", stackVarAddrIdx, true, out) || fallbackOutput, useTex, strict, names.concat("s_tack", "a_dv", "r_et").concat(data.callFunctionsEmitted.map(call => "c_all" + call)), simplificationMap, true));
         }
 
         data.stackStateMap = clonedData.stackStateMap;
@@ -247,4 +273,7 @@ export function CompileStackFunction(data: CompileData, declaration: StackFuncti
         data.callFunctionsEmitted = clonedData.callFunctionEmitted;
         data.stackFunctionMap[stackNum] = name;
     }
+
+    // Fix localStackNumber.
+    data.localStackNumber.value = data.globalStackNumber.value;
 }

@@ -395,6 +395,7 @@ const HandleTemplate = async (templateDeclaration: Template, templates: Record<s
                         parentStackPrefix: "",
                         stackIdx: {value: 0},
                         globalStackNumber: {value: 0},
+                        localStackNumber: {value: 0},
                         stackContext: false,
                         stackFunctions: [],
                         stackOffset: 0,
@@ -493,6 +494,7 @@ const InternalCompile = (useTex: boolean, tree: OuterDeclaration[], inlines: Rec
         parentStackPrefix: "",
         stackIdx: {value: 0},
         globalStackNumber: {value: 0},
+        localStackNumber: {value: 0},
         stackContext: false,
         stackFunctions: tree.filter(val => val.type === "stackfunction").map(val => val["name"]),
         stackOffset: 0,
@@ -512,6 +514,7 @@ const InternalCompile = (useTex: boolean, tree: OuterDeclaration[], inlines: Rec
         if (declaration.type !== "stackfunction") continue;
 
         let stackNum = data.globalStackNumber.value++;
+        data.localStackNumber.value++;
         data.stackStateMap[declaration.name + "_0"] = stackNum;
         data.stackFunctionMap[stackNum] = declaration.name + "_0";
         data.stackNextStateMap[declaration.name + "_0"] = declaration.name + "_1";
@@ -1287,6 +1290,30 @@ export const CompileBlock = (input: Statement[], data: CompileData, defaultOut: 
                 } else if(getNumToName(data)[Number(newVars[variableMap["stacknum"].idx])].startsWith(stackName)) {
                     runCode.push(resetCode, ...statement.body, {type: "continue_last"});
                 } else {
+                    // It isn't our turn to run, but we still need to compile the
+                    // code inside the loop to ensure that our state remains consistent.
+                    // This is the minimum needed to do that: the body may contain
+                    // execution points, and the continue_last is an execution point.
+                    const oldParent = data.parentStackPrefix;
+                    const oldIdx = data.stackIdx.value;
+                    data.parentStackPrefix = stackName;
+                    data.stackIdx.value = 0;
+                    data.loopContext = true;
+
+                    CompileBlock([...statement.body, {type: "continue_last"}], {
+                        ...data,
+                        vars: {
+                            ...newVars,
+                        },
+                        variableMap: {
+                            ...variableMap
+                        }
+                    }, newVars[variableMap["stack"].idx], variableMap["stack"].idx, false, compilerOutput);
+
+                    data.parentStackPrefix = oldParent;
+                    data.stackIdx.value = oldIdx;
+                    data.loopContext = false;
+
                     // In this case, reset the state back to its original version
                     // as all updates to it have already been made by the last
                     // execution point.
@@ -1570,6 +1597,40 @@ export const CompileBlock = (input: Statement[], data: CompileData, defaultOut: 
                 if(!data.preCompile) {
                     data.shouldExit.value = true;
                 }
+
+                break;
+            }
+            case "debug":
+            {
+                // Debugs should only run once, so they shouldn't happen in pre-compiles.
+                if(data.preCompile) {
+                    break;
+                }
+
+                // If we're in a stack function, then this should only run when
+                // it makes sense to do so, which is in the state that owns this debug.
+                // That state is localStackNum.value.
+                if(data.stackContext && Number(newVars[variableMap["stacknum"].idx]) !== data.localStackNumber.value) {
+                    break;
+                }
+
+                const compiledValues = statement.values.map(value => {
+                    if(typeof(value) === "string") {
+                        return value;
+                    }
+
+                    return CompileExpression(value, {
+                        ...data,
+                        vars: {
+                            ...newVars,
+                        },
+                        variableMap: {
+                            ...variableMap
+                        }
+                    }, compilerOutput);
+                });
+
+                console.log(/* DO NOT remove this console.log */ ...compiledValues);
 
                 break;
             }
@@ -1890,6 +1951,7 @@ export const cleanData = (data: CompileData, names: string[]) : CompileData => {
         parentStackPrefix: "",
         stackIdx: {value: 0},
         globalStackNumber: data.globalStackNumber,
+        localStackNumber: data.localStackNumber,
         stackContext: false,
         stackFunctions: data.stackFunctions,
         stackOffset: 0,
@@ -1960,6 +2022,8 @@ export interface CompileData {
      */
     stackIdx: {value: number};
     globalStackNumber: {value: number};
+    /** Identical to globalStackNumber, except it gets reset after each compile of the same function (even pre-compiles). */
+    localStackNumber: {value: number};
     stackContext: boolean;
     stackFunctions: string[];
     /**
