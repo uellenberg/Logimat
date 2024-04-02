@@ -1,7 +1,7 @@
 import {HandleName} from "./util";
 import {SimplifyExpression} from "./simplify";
 import {cleanData, CompileBlock, CompileData, getNumToName, GetStatementsTree} from "./compiler";
-import {OuterFunctionDeclaration, StackFunctionDeclaration, Statement} from "./grammar";
+import {StackFunctionDeclaration, Statement} from "./grammar";
 
 export function generateCallFunction(data: CompileData, args: number, compilerOutput: string[]) {
     if (!data.callFunctionsEmitted.includes(args)) {
@@ -217,17 +217,19 @@ export function CompileStackFunction(data: CompileData, declaration: StackFuncti
 
         // We need to map each state to its next state as a default value.
         // This will ignore our final one, as it doesn't have a next state to map to.
-        let nextStateSelector = "const s_tack1 = ";
+        let nextStateAdv = "";
 
         // If the function only has a single version (the entrypoint),
         // then there's no reason to advance the state.
         // newVersions being 0 means that there were no new versions after
         // the entrypoint.
         if(newVersions !== 0 && i !== newVersions) {
-            nextStateSelector += "a_dv(s_tack, " + data.stackStateMap[data.stackNextStateMap[numToName[stackNum]]] + ");";
+            nextStateAdv += "a_dv(s_tack, " + data.stackStateMap[data.stackNextStateMap[numToName[stackNum]]] + ")";
         } else {
-            nextStateSelector += "s_tack;";
+            nextStateAdv += "s_tack";
         }
+
+        let nextStateSelector = "const s_tack1 = " + nextStateAdv + ";";
 
         // This is broken out so that it can be reset to at the end of each breakpoint.
         nextStateSelector += "state = s_tack1;";
@@ -236,14 +238,17 @@ export function CompileStackFunction(data: CompileData, declaration: StackFuncti
         const newStateSelectorParsed = GetStatementsTree(nextStateSelector);
         const functionStatements = [...variableCode, ...newStateSelectorParsed, ...declaration.block];
 
+        let runCode: Statement[];
+        let fallbackOutput: string;
+
         if (i === newVersions) {
             // This is the default return if the function does nothing.
             // In that case, it'll just be reset and have its compiled output equal to "".
             // This replaces that empty output.
-            const fallbackOutput = "r_et(s_tack)";
+            fallbackOutput = "r_et(s_tack)";
 
             // state = r_et(state);
-            const returnCode: Statement[] = [
+            runCode = [
                 ...functionStatements,
                 {
                     type: "var",
@@ -259,12 +264,12 @@ export function CompileStackFunction(data: CompileData, declaration: StackFuncti
                     }
                 }
             ];
-            out.push(HandleName(name) + "(s_{tack})=" + SimplifyExpression(CompileBlock(returnCode, clonedData, "", stackVarAddrIdx, true, out) || fallbackOutput, useTex, strict, names.concat("s_tack", "a_dv", "r_et").concat(data.callFunctionsEmitted.map(call => "c_all" + call)), simplificationMap, true));
         } else {
-            const fallbackOutput = "a_dv(s_tack," + stackNum + ")";
-
-            out.push(HandleName(name) + "(s_{tack})=" + SimplifyExpression(CompileBlock(functionStatements, clonedData, "", stackVarAddrIdx, true, out) || fallbackOutput, useTex, strict, names.concat("s_tack", "a_dv", "r_et").concat(data.callFunctionsEmitted.map(call => "c_all" + call)), simplificationMap, true));
+            fallbackOutput = nextStateAdv;
+            runCode = functionStatements;
         }
+
+        out.push(HandleName(name) + "(s_{tack})=" + SimplifyExpression(CompileBlock(runCode, clonedData, "", stackVarAddrIdx, true, out) || fallbackOutput, useTex, strict, names.concat("s_tack", "a_dv", "r_et").concat(data.callFunctionsEmitted.map(call => "c_all" + call)), simplificationMap, true));
 
         data.stackStateMap = clonedData.stackStateMap;
         data.globalStackNumber = clonedData.globalStackNumber;
