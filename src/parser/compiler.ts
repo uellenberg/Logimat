@@ -1761,10 +1761,16 @@ const CompileExpression = (expression: Expression, data: CompileData, compilerOu
             switch(name) {
                 case "pi":
                     return "pi()";
+                case "tau":
+                    return "tau()";
                 case "infinity":
                 case "infty":
                 case "inf":
                     return "inf()";
+                case "width":
+                    return "width()";
+                case "height":
+                    return "height()";
             }
 
             return name;

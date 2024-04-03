@@ -504,8 +504,17 @@ const functions: Record<string, (node: FunctionNode, options: Options, tex: bool
     pi() {
         return "\\pi ";
     },
+    tau() {
+        return "\\tau ";
+    },
     inf() {
         return "\\infty ";
+    },
+    width() {
+        return "\\operatorname{width}";
+    },
+    height() {
+        return "\\operatorname{height}";
     },
     point(node, options, tex) {
         return `\\left(${node.args.map(arg => HandleNode(arg, options, tex)).join(",")}\\right)`;
