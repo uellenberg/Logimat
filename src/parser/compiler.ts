@@ -532,97 +532,102 @@ const InternalCompile = (useTex: boolean, tree: OuterDeclaration[], inlines: Rec
         const names = Object.assign([], outerNames);
         data = cleanData(data, names);
 
-        switch(declaration.type) {
-            case "display":
-                let val;
-                if(typeof(declaration.value) === "string") val = declaration.value;
-                else if(declaration.value.type === "tstring") val = declaration.value.args.map(arg => {
-                    if(typeof(arg) === "string") return arg;
-                    else return "${" + SimplifyExpression(CompileExpression(arg, data, out), useTex, strict, names, simplificationMap) + "}";
-                }).join("");
-                else if(declaration.value.type === "aargs") val = HandleName(declaration.value.name) + "(" + declaration.value.args.map(arg => {
-                    if(typeof(arg) === "string") {
-                        if(arg === "index") return "\\operatorname{index}";
-                        return arg;
+        try {
+            switch(declaration.type) {
+                case "display":
+                    let val;
+                    if(typeof(declaration.value) === "string") val = declaration.value;
+                    else if(declaration.value.type === "tstring") val = declaration.value.args.map(arg => {
+                        if(typeof(arg) === "string") return arg;
+                        else return "${" + SimplifyExpression(CompileExpression(arg, data, out), useTex, strict, names, simplificationMap) + "}";
+                    }).join("");
+                    else if(declaration.value.type === "aargs") val = HandleName(declaration.value.name) + "(" + declaration.value.args.map(arg => {
+                        if(typeof(arg) === "string") {
+                            if(arg === "index") return "\\operatorname{index}";
+                            return arg;
+                        }
+                        else return SimplifyExpression(CompileExpression(arg, data, out), useTex, strict, names, simplificationMap);
+                    }).join(",") + ")";
+                    else val = SimplifyExpression(CompileExpression(declaration.value, data, out), useTex, strict, names, simplificationMap);
+
+                    display[declaration.displayType] = val;
+                    break;
+                case "function":
+                    const functionDeclaration = <OuterFunctionDeclaration>declaration;
+
+                    out.push(...CompileDisplay(display, data));
+                    out.push(HandleName(functionDeclaration.name) + "(" + functionDeclaration.args.map(HandleName).join(",") + ")" + "=" + SimplifyExpression(CompileBlock(functionDeclaration.block, data, "", 0 /* state */, true, out), useTex, strict, names.concat(functionDeclaration.args), simplificationMap));
+                    break;
+                case "stackfunction":
+                    // All stack function versions share the same display.
+                    // This is useful for folders.
+                    const compiledDisplay = CompileDisplay(display, data);;
+
+                    CompileStackFunction(data, declaration, out, useTex, strict, names, simplificationMap, compiledDisplay);
+
+                    break;
+                case "const":
+                    out.push(...CompileDisplay(display, data));
+
+                    const constDeclaration = <OuterConstDeclaration>declaration;
+                    out.push(HandleName(constDeclaration.name) + "=" + SimplifyExpression(CompileExpression(constDeclaration.expr, data, out), useTex, strict, names, simplificationMap));
+                    break;
+                case "action":
+                    out.push(...CompileDisplay(display, data));
+
+                    const actionDeclaration = <ActionDeclaration>declaration;
+                    out.push((actionDeclaration.funcName ? HandleName(actionDeclaration.funcName) + (actionDeclaration.args ? "(" + actionDeclaration.args.map(HandleName).join(",") + ")" : "") + "=" : "") + HandleName(actionDeclaration.name) + "\\to " + SimplifyExpression(CompileBlock(actionDeclaration.block, data, "", 0 /* state */, true, out), useTex, strict, actionDeclaration.args ? names.concat(actionDeclaration.args) : names, simplificationMap));
+                    break;
+                case "actions":
+                    out.push(...CompileDisplay(display, data));
+
+                    const actionsDeclaration = <ActionsDeclaration>declaration;
+
+                    //Get the name without the args (the first part before the opening parenthesis)
+                    const badActions = actionsDeclaration.args.filter(action => !names.includes(action[0]));
+                    if(strict && badActions.length > 0) {
+                        throw new Error("The following actions have not been defined: " + badActions.map(action => "\"" + action[0] + "\"").join(", ") + ".");
                     }
-                    else return SimplifyExpression(CompileExpression(arg, data, out), useTex, strict, names, simplificationMap);
-                }).join(",") + ")";
-                else val = SimplifyExpression(CompileExpression(declaration.value, data, out), useTex, strict, names, simplificationMap);
 
-                display[declaration.displayType] = val;
-                break;
-            case "function":
-                const functionDeclaration = <OuterFunctionDeclaration>declaration;
+                    out.push(HandleName(actionsDeclaration.name) + (actionsDeclaration.actionArgs ? "(" + actionsDeclaration.actionArgs.map(HandleName).join(",") + ")" : "") + "=" + actionsDeclaration.args.map(action => HandleName(action[0]) + (action.length > 1 ? "(" + action.slice(1).map(HandleName) + ")" : "")).join(","));
+                    break;
+                case "expression":
+                    out.push(...CompileDisplay(display, data));
 
-                out.push(...CompileDisplay(display, data));
-                out.push(HandleName(functionDeclaration.name) + "(" + functionDeclaration.args.map(HandleName).join(",") + ")" + "=" + SimplifyExpression(CompileBlock(functionDeclaration.block, data, "", 0 /* state */, true, out), useTex, strict, names.concat(functionDeclaration.args), simplificationMap));
-                break;
-            case "stackfunction":
-                // All stack function versions share the same display.
-                // This is useful for folders.
-                const compiledDisplay = CompileDisplay(display, data);;
+                    const expressionDeclaration = <ExpressionDeclaration>declaration;
+                    out.push(SimplifyExpression(CompileBlock(expressionDeclaration.block, data, "", 0 /* state */, true, out), useTex, strict, names, simplificationMap));
+                    break;
+                case "graph":
+                    out.push(...CompileDisplay(display, data));
 
-                CompileStackFunction(data, declaration, out, useTex, strict, names, simplificationMap, compiledDisplay);
+                    //Give the graph access to x and y.
+                    names.push("x", "y");
 
-                break;
-            case "const":
-                out.push(...CompileDisplay(display, data));
+                    const graphDeclaration = <GraphDeclaration>declaration;
+                    out.push(SimplifyExpression(CompileExpression(graphDeclaration.p1, data, out), useTex, strict, names, simplificationMap) + opMap[graphDeclaration.op] + SimplifyExpression(CompileExpression(graphDeclaration.p2, data, out), useTex, strict, names, simplificationMap));
+                    break;
+                case "point":
+                    out.push(...CompileDisplay(display, data));
 
-                const constDeclaration = <OuterConstDeclaration>declaration;
-                out.push(HandleName(constDeclaration.name) + "=" + SimplifyExpression(CompileExpression(constDeclaration.expr, data, out), useTex, strict, names, simplificationMap));
-                break;
-            case "action":
-                out.push(...CompileDisplay(display, data));
+                    const pointDeclaration = <PointDeclaration>declaration;
+                    out.push(SimplifyExpression(CompileExpression(pointDeclaration.point, data, out), useTex, strict, names, simplificationMap));
+                    break;
+                case "polygon":
+                    out.push(...CompileDisplay(display, data));
 
-                const actionDeclaration = <ActionDeclaration>declaration;
-                out.push((actionDeclaration.funcName ? HandleName(actionDeclaration.funcName) + (actionDeclaration.args ? "(" + actionDeclaration.args.map(HandleName).join(",") + ")" : "") + "=" : "") + HandleName(actionDeclaration.name) + "\\to " + SimplifyExpression(CompileBlock(actionDeclaration.block, data, "", 0 /* state */, true, out), useTex, strict, actionDeclaration.args ? names.concat(actionDeclaration.args) : names, simplificationMap));
-                break;
-            case "actions":
-                out.push(...CompileDisplay(display, data));
+                    const polygonDeclaration = <PolygonDeclaration>declaration;
+                    out.push("\\operatorname{polygon}" + (useTex ? "\\left(" : "(") + polygonDeclaration.points.map(point => SimplifyExpression(CompileExpression(point, data, out), useTex, strict, names, simplificationMap)).join(",") + (useTex ? "\\right)" : ")"));
+                    break;
+                case "folder":
+                    // Null means pop.
+                    if(declaration.text === null) data.folderStack.pop();
+                    else data.folderStack.push(declaration.text);
 
-                const actionsDeclaration = <ActionsDeclaration>declaration;
-
-                //Get the name without the args (the first part before the opening parenthesis)
-                const badActions = actionsDeclaration.args.filter(action => !names.includes(action[0]));
-                if(strict && badActions.length > 0) {
-                    throw new Error("The following actions have not been defined: " + badActions.map(action => "\"" + action[0] + "\"").join(", ") + ".");
-                }
-
-                out.push(HandleName(actionsDeclaration.name) + (actionsDeclaration.actionArgs ? "(" + actionsDeclaration.actionArgs.map(HandleName).join(",") + ")" : "") + "=" + actionsDeclaration.args.map(action => HandleName(action[0]) + (action.length > 1 ? "(" + action.slice(1).map(HandleName) + ")" : "")).join(","));
-                break;
-            case "expression":
-                out.push(...CompileDisplay(display, data));
-
-                const expressionDeclaration = <ExpressionDeclaration>declaration;
-                out.push(SimplifyExpression(CompileBlock(expressionDeclaration.block, data, "", 0 /* state */, true, out), useTex, strict, names, simplificationMap));
-                break;
-            case "graph":
-                out.push(...CompileDisplay(display, data));
-
-                //Give the graph access to x and y.
-                names.push("x", "y");
-
-                const graphDeclaration = <GraphDeclaration>declaration;
-                out.push(SimplifyExpression(CompileExpression(graphDeclaration.p1, data, out), useTex, strict, names, simplificationMap) + opMap[graphDeclaration.op] + SimplifyExpression(CompileExpression(graphDeclaration.p2, data, out), useTex, strict, names, simplificationMap));
-                break;
-            case "point":
-                out.push(...CompileDisplay(display, data));
-
-                const pointDeclaration = <PointDeclaration>declaration;
-                out.push(SimplifyExpression(CompileExpression(pointDeclaration.point, data, out), useTex, strict, names, simplificationMap));
-                break;
-            case "polygon":
-                out.push(...CompileDisplay(display, data));
-
-                const polygonDeclaration = <PolygonDeclaration>declaration;
-                out.push("\\operatorname{polygon}" + (useTex ? "\\left(" : "(") + polygonDeclaration.points.map(point => SimplifyExpression(CompileExpression(point, data, out), useTex, strict, names, simplificationMap)).join(",") + (useTex ? "\\right)" : ")"));
-                break;
-            case "folder":
-                // Null means pop.
-                if(declaration.text === null) data.folderStack.pop();
-                else data.folderStack.push(declaration.text);
-
-                break;
+                    break;
+            }
+        } catch(e) {
+            console.error("An error occurred while compiling type \"" + declaration.type + "\", modifier \"" + declaration.modifier + "\"" + (declaration["name"] ? ", name \"" + declaration["name"] + "\"" : "") + ":");
+            throw e;
         }
     }
 
