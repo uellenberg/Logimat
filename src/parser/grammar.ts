@@ -70,9 +70,9 @@ Logimat {
                         | DisplayDeclaration<"min", Expression>
                         | DisplayDeclaration<"max", Expression>
                         | DisplayDeclaration<"step", Expression>
-                        | DisplayDeclaration<"folder", embeddedTemplateString>
+                        | DisplayDeclaration<"folder", templateString>
 
-    FolderDeclaration = folder #space embeddedTemplateString "{" OuterDeclaration* "}"
+    FolderDeclaration = folder #space templateString "{" OuterDeclaration* "}"
 
     ParsedActionArgs = TemplateExportIdentifier "(" ListOf<("index" | Expression), ","> ")"
     
