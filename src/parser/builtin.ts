@@ -89,5 +89,7 @@ export const constants = [
     "tau",
     "infinity",
     "infty",
-    "inf"
+    "inf",
+    "width",
+    "height"
 ];
