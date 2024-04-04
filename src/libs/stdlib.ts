@@ -424,9 +424,9 @@ inline function stack_ret(s_tack) {
 
     // The stack looks like [stackNum, stackFramePtr, ..., returnStackNum, returnPtr, ...].
     // Set the stackNum to the specified return one.
-    new_stack[1] = new_stack[new_stack[2]];
+    new_stack[1] = s_tack[s_tack[2]];
     // Set the stack frame pointer to the return one.
-    new_stack[2] = new_stack[new_stack[2] + 1];
+    new_stack[2] = s_tack[s_tack[2] + 1];
     new_stack
 }
 

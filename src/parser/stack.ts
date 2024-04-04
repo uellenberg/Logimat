@@ -11,14 +11,14 @@ export function generateCallFunction(data: CompileData, args: number, compilerOu
         // - Puts all of its arguments onto the stack.
         // - Adjusts the stack
         let callCode = `let newStack = s_tack;
-                    newStack[newStack[2] + o_ff] = b_ack;
-                    newStack[newStack[2] + o_ff + 1] = newStack[2];`;
+                    newStack[s_tack[2] + o_ff] = b_ack;
+                    newStack[s_tack[2] + o_ff + 1] = s_tack[2];`;
 
         for (let i = 0; i < args; i++) {
-            callCode += `newStack[newStack[2] + o_ff + ${i} + 2] = a_rg${i};`
+            callCode += `newStack[s_tack[2] + o_ff + ${i} + 2] = a_rg${i};`
         }
 
-        callCode += `newStack[2] = newStack[2] + o_ff;`;
+        callCode += `newStack[2] = s_tack[2] + o_ff;`;
         callCode += `newStack[1] = n_um;`;
         callCode += "newStack";
 
