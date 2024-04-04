@@ -541,13 +541,13 @@ const InternalCompile = (useTex: boolean, tree: OuterDeclaration[], inlines: Rec
                         if(typeof(arg) === "string") return arg;
                         else return "${" + SimplifyExpression(CompileExpression(arg, data, out), useTex, strict, names, simplificationMap) + "}";
                     }).join("");
-                    else if(declaration.value.type === "aargs") val = HandleName(declaration.value.name) + "(" + declaration.value.args.map(arg => {
+                    else if(declaration.value.type === "aargs") val = HandleName(declaration.value.name) + "\\left(" + declaration.value.args.map(arg => {
                         if(typeof(arg) === "string") {
                             if(arg === "index") return "\\operatorname{index}";
                             return arg;
                         }
                         else return SimplifyExpression(CompileExpression(arg, data, out), useTex, strict, names, simplificationMap);
-                    }).join(",") + ")";
+                    }).join(",") + "\\right)";
                     else val = SimplifyExpression(CompileExpression(declaration.value, data, out), useTex, strict, names, simplificationMap);
 
                     display[declaration.displayType] = val;
@@ -556,7 +556,7 @@ const InternalCompile = (useTex: boolean, tree: OuterDeclaration[], inlines: Rec
                     const functionDeclaration = <OuterFunctionDeclaration>declaration;
 
                     out.push(...CompileDisplay(display, data));
-                    out.push(HandleName(functionDeclaration.name) + "(" + functionDeclaration.args.map(HandleName).join(",") + ")" + "=" + SimplifyExpression(CompileBlock(functionDeclaration.block, data, "", 0 /* state */, true, out), useTex, strict, names.concat(functionDeclaration.args), simplificationMap));
+                    out.push(HandleName(functionDeclaration.name) + "\\left(" + functionDeclaration.args.map(HandleName).join(",") + "\\right)" + "=" + SimplifyExpression(CompileBlock(functionDeclaration.block, data, "", 0 /* state */, true, out), useTex, strict, names.concat(functionDeclaration.args), simplificationMap));
                     break;
                 case "stackfunction":
                     // All stack function versions share the same display.
@@ -576,7 +576,7 @@ const InternalCompile = (useTex: boolean, tree: OuterDeclaration[], inlines: Rec
                     out.push(...CompileDisplay(display, data));
 
                     const actionDeclaration = <ActionDeclaration>declaration;
-                    out.push((actionDeclaration.funcName ? HandleName(actionDeclaration.funcName) + (actionDeclaration.args ? "(" + actionDeclaration.args.map(HandleName).join(",") + ")" : "") + "=" : "") + HandleName(actionDeclaration.name) + "\\to " + SimplifyExpression(CompileBlock(actionDeclaration.block, data, "", 0 /* state */, true, out), useTex, strict, actionDeclaration.args ? names.concat(actionDeclaration.args) : names, simplificationMap));
+                    out.push((actionDeclaration.funcName ? HandleName(actionDeclaration.funcName) + (actionDeclaration.args ? "\\left(" + actionDeclaration.args.map(HandleName).join(",") + "\\right)" : "") + "=" : "") + HandleName(actionDeclaration.name) + "\\to " + SimplifyExpression(CompileBlock(actionDeclaration.block, data, "", 0 /* state */, true, out), useTex, strict, actionDeclaration.args ? names.concat(actionDeclaration.args) : names, simplificationMap));
                     break;
                 case "actions":
                     out.push(...CompileDisplay(display, data));
@@ -589,7 +589,7 @@ const InternalCompile = (useTex: boolean, tree: OuterDeclaration[], inlines: Rec
                         throw new Error("The following actions have not been defined: " + badActions.map(action => "\"" + action[0] + "\"").join(", ") + ".");
                     }
 
-                    out.push(HandleName(actionsDeclaration.name) + (actionsDeclaration.actionArgs ? "(" + actionsDeclaration.actionArgs.map(HandleName).join(",") + ")" : "") + "=" + actionsDeclaration.args.map(action => HandleName(action[0]) + (action.length > 1 ? "(" + action.slice(1).map(HandleName) + ")" : "")).join(","));
+                    out.push(HandleName(actionsDeclaration.name) + (actionsDeclaration.actionArgs ? "\\left(" + actionsDeclaration.actionArgs.map(HandleName).join(",") + "\\right)" : "") + "=" + actionsDeclaration.args.map(action => HandleName(action[0]) + (action.length > 1 ? "\\left(" + action.slice(1).map(HandleName) + "\\right)" : "")).join(","));
                     break;
                 case "expression":
                     out.push(...CompileDisplay(display, data));
@@ -616,7 +616,7 @@ const InternalCompile = (useTex: boolean, tree: OuterDeclaration[], inlines: Rec
                     out.push(...CompileDisplay(display, data));
 
                     const polygonDeclaration = <PolygonDeclaration>declaration;
-                    out.push("\\operatorname{polygon}" + (useTex ? "\\left(" : "(") + polygonDeclaration.points.map(point => SimplifyExpression(CompileExpression(point, data, out), useTex, strict, names, simplificationMap)).join(",") + (useTex ? "\\right)" : ")"));
+                    out.push("\\operatorname{polygon}" + "\\left(" + polygonDeclaration.points.map(point => SimplifyExpression(CompileExpression(point, data, out), useTex, strict, names, simplificationMap)).join(",") + "\\right)");
                     break;
                 case "folder":
                     // Null means pop.
@@ -656,7 +656,7 @@ const InternalCompile = (useTex: boolean, tree: OuterDeclaration[], inlines: Rec
             }
         ];
 
-        out.push(HandleName(newFn) + "(" + args.map(HandleName).join(",") + ")" + "=" + SimplifyExpression(CompileBlock(code, data, "", 0 /* state */, true, out), useTex, strict, names.concat(args), simplificationMap));
+        out.push(HandleName(newFn) + "\\left(" + args.map(HandleName).join(",") + "\\right)" + "=" + SimplifyExpression(CompileBlock(code, data, "", 0 /* state */, true, out), useTex, strict, names.concat(args), simplificationMap));
     }
 
     // If there were stack functions used, create the method to run them.
