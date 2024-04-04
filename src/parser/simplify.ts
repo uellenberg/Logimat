@@ -5,7 +5,7 @@ import {builtinMultiArgs, builtinOneArg, builtinThreeArgs, builtinTwoArgs, built
 const math = create(all);
 
 //Disable conflicting functions.
-for(const name of ["range"]) {
+for(const name of ["range", "random"]) {
     if(math.hasOwnProperty(name)) delete math[name];
     if(math["expression"]["transform"].hasOwnProperty(name)) delete math["expression"]["transform"][name];
     if(math["expression"]["mathWithTransform"].hasOwnProperty(name)) delete math["expression"]["mathWithTransform"][name];
