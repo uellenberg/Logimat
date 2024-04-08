@@ -47,7 +47,8 @@ export const builtinOneArg = [
     "tscore",
     "sort",
     "shuffle",
-    "random"
+    "random",
+    "unique"
 ];
 
 export const builtinTwoArgs = [
