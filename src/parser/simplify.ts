@@ -539,7 +539,7 @@ const functions: Record<string, (node: FunctionNode, options: Options, tex: bool
         const indexer = HandleNode(node.args[1], options, tex);
 
         if(node.args[0].type === "OperatorNode") return `\\left(${array}\\right)\\left[${indexer}\\right]`;
-        return `${array}[${indexer}]`;
+        return `${array}\\left[${indexer}\\right]`;
     },
     array_length(node, options, tex) {
         const array = HandleNode(node.args[0], options, tex);
@@ -680,7 +680,7 @@ const texFunctions: Record<string, (node: FunctionNode, options: Options) => str
     },
     array_idx(node, options) {
         let arr = node.args[0].toTex(options);
-        if(node.args[0].type === "OperatorNode") arr = `(${arr})`;
+        if(node.args[0].type === "OperatorNode") arr = `\\left(${arr}\\right)`;
 
         return `${arr}\\left[${node.args[1].toTex(options)}\\right]`;
     },
