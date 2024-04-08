@@ -30,7 +30,9 @@ Logimat {
 
     ExportDeclaration =  export #space TemplateIdentifier ";"
 
-    ActionDeclaration = UnnamedActionDeclaration | NamedActionDeclaration
+    ActionDeclaration = BaseActionDeclaration if Expression ";" -- if
+                      | BaseActionDeclaration
+    BaseActionDeclaration = UnnamedActionDeclaration | NamedActionDeclaration
     UnnamedActionDeclaration = action #space TemplateExportIdentifier FunctionBody
     NamedActionDeclaration = NoArgsActionDeclaration | ArgsActionDeclaration
     NoArgsActionDeclaration = action #space TemplateExportIdentifier "=" TemplateExportIdentifier FunctionBody
@@ -411,6 +413,12 @@ semantic.addOperation("parse", {
     },
     ExportDeclaration(_1, _2, name, _3){
         return {type: "export", modifier: "export", name: name.parse()};
+    },
+    ActionDeclaration_if(action, _2, expr, _4){
+        const parsedAction: ActionDeclaration = action.parse();
+        parsedAction.if = expr.parse();
+
+        return parsedAction;
     },
     UnnamedActionDeclaration(_1, _2, name, block){
         return {type: "action", modifier: "export", name: name.parse(), funcName: "", block: block.parse()};
@@ -859,6 +867,7 @@ export interface ActionDeclaration {
     funcName: string;
     args: string[];
     block: Statement[];
+    if?: Expression;
 }
 export interface ActionsDeclaration {
     type: "actions";

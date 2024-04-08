@@ -576,7 +576,14 @@ const InternalCompile = (useTex: boolean, tree: OuterDeclaration[], inlines: Rec
                     out.push(...CompileDisplay(display, data));
 
                     const actionDeclaration = <ActionDeclaration>declaration;
-                    out.push((actionDeclaration.funcName ? HandleName(actionDeclaration.funcName) + (actionDeclaration.args ? "\\left(" + actionDeclaration.args.map(HandleName).join(",") + "\\right)" : "") + "=" : "") + HandleName(actionDeclaration.name) + "\\to " + SimplifyExpression(CompileBlock(actionDeclaration.block, data, "", 0 /* state */, true, out), useTex, strict, actionDeclaration.args ? names.concat(actionDeclaration.args) : names, simplificationMap));
+
+                    let compiledAction = "action(" + actionDeclaration.name + "," + CompileBlock(actionDeclaration.block, data, "", 0 /* state */, true, out) + ")";
+                    if(actionDeclaration.if) {
+                        const compiledIf = CompileExpression(actionDeclaration.if, data, out);
+                        compiledAction = `if_func_no_else(${compiledIf},${compiledAction})`;
+                    }
+
+                    out.push((actionDeclaration.funcName ? HandleName(actionDeclaration.funcName) + (actionDeclaration.args ? "\\left(" + actionDeclaration.args.map(HandleName).join(",") + "\\right)" : "") + "=" : "") + SimplifyExpression(compiledAction, useTex, strict, (actionDeclaration.args ? names.concat(actionDeclaration.args) : names).concat(actionDeclaration.name), simplificationMap));
                     break;
                 case "actions":
                     out.push(...CompileDisplay(display, data));

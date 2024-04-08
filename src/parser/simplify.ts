@@ -599,6 +599,23 @@ const functions: Record<string, (node: FunctionNode, options: Options, tex: bool
 
         return `\\left\\{${cond + (node.args[0].type !== "OperatorNode" ? "=1" : "")}${ifVal !== "1" ? `:${ifVal}` : ""},${elseVal}\\right\\}`;
     },
+    if_func_no_else(node, options: Options, tex) {
+        const nonEnclosedOptions = Object.assign({}, options);
+        nonEnclosedOptions.encaseLogicalOperators = false;
+
+        const cond = HandleNode(node.args[0], nonEnclosedOptions, tex);
+        const ifVal = HandleNode(node.args[1], options, tex);
+
+        if(cond === "1") return ifVal;
+
+        return `\\left\\{${cond + (node.args[0].type !== "OperatorNode" ? "=1" : "")}${ifVal !== "1" ? `:${ifVal}` : ""}\\right\\}`;
+    },
+    action(node, options: Options, tex) {
+        const name = HandleNode(node.args[0], options, tex);
+        const body = HandleNode(node.args[1], options, tex);
+
+        return `${name}\\to ${body}`;
+    },
     log_base(node, options: Options, tex) {
         const base = HandleNode(node.args[0], options, tex);
         const value = HandleNode(node.args[1], options, tex);
