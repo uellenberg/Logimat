@@ -60,7 +60,7 @@ export function createExecutionPoint(data: CompileData, nextStateName?: string, 
 
     // We need this to have the list of next steps, and so that
     // the function returns to the step after this.
-    const nextStepName = nextStateName ?? (data.parentStackPrefix + "_" + (stackIdx + 1));
+    const nextStepName = data.stackNextStateMap[stackName] ?? (nextStateName ?? (data.parentStackPrefix + "_" + (stackIdx + 1)));
     if(!noNextState) data.stackNextStateMap[stackName] = nextStepName;
     const nextStepNum = data.stackStateMap[nextStepName];
 
@@ -80,7 +80,7 @@ export function createExecutionPoint(data: CompileData, nextStateName?: string, 
         data.localStackNumber.value = stackNum + 1;
     }
 
-    return {nextStepNum, stackNum, stackName};
+    return {nextStepNum, stackNum, stackName, nextStepName};
 }
 
 export function CompileStackFunction(data: CompileData, declaration: StackFunctionDeclaration, out: string[], useTex: boolean, strict: boolean, names: string[], simplificationMap: Record<string, string>, compiledDisplay: string[]) {

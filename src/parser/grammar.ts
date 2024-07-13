@@ -922,7 +922,7 @@ export interface Expression {
     type: "f" | "sid" | "^" | "*" | "/" | "+" | "-" | "n" | "a_m" | "a_f" | "b" | "v" | "sum" | "prod" | "int" | "div";
     args: (string | object)[];
 }
-export type Statement = ConstDeclaration | StackvarDeclaration | LetDeclaration | Template | SetVar | IfStatement | FunctionCall | Return | Break | Continue | ContinueLast | Loop | Debug;
+export type Statement = ConstDeclaration | StackvarDeclaration | LetDeclaration | Template | SetVar | IfStatement | FunctionCall | Return | Break | Continue | ContinueLast | Goto | Loop | Debug;
 export interface ConstDeclaration {
     type: "const";
     name: string;
@@ -975,6 +975,11 @@ export interface Continue {
 
 export interface ContinueLast {
     type: "continue_last";
+}
+
+export interface Goto {
+    type: "goto";
+    stackNum: Expression | number;
 }
 
 export interface Debug {
