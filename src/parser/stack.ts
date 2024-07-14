@@ -32,22 +32,36 @@ export function generateCallFunction(data: CompileData, args: number, compilerOu
 }
 
 export const GetStackSelector = (data: CompileData): string => {
-    let code = "";
+    const stackIds = Object.keys(data.stackFunctionMap).map(Number);
 
-    const entries = Object.entries(data.stackFunctionMap);
-    for (let i = 0; i < entries.length; i++) {
-        const [stackNum, functionName] = entries[i];
-        const cond = "s_tack[1] == " + stackNum;
-        const body = `{ ${functionName}(s_tack) }`;
+    // This needs to be in ascending order, starting with 0, and with
+    // no holes.
+    // We need to sort to ensure the first property, and the last two should
+    // be guaranteed, but everything will break if they're violated, so we'll
+    // check.
+    stackIds.sort((a, b) => a > b ? 1 : -1);
 
-        if (i === 0) {
-            code += `if(${cond}) ${body}`;
-        } else {
-            code += `else if(${cond}) ${body}`;
-        }
+    // Duplicates are not possible since this comes from an Object.
+    if(stackIds[0] !== 0 || stackIds[stackIds.length - 1] !== stackIds.length - 1) {
+        throw new Error("A hole is not allowed in stack IDs");
     }
 
-    code += "else { s_tack }";
+    const binarySearch = (left: number, right: number) : string => {
+        if(left === right || right < left) {
+            const functionName = data.stackFunctionMap[left];
+            return `${functionName}(s_tack)`;
+        }
+
+        // We can just use a simple comparison if there are two.
+        if(right - left === 1) {
+            return `if(s_tack[1] == ${left}) { ${binarySearch(left, left)} } else { ${binarySearch(right, right)} }`;
+        }
+
+        const middle = Math.floor((right - left) / 2) + left;
+        return `if(s_tack[1] < ${middle}) { ${binarySearch(left, middle - 1)} } else { ${binarySearch(middle, right)} }`;
+    };
+
+    const code = binarySearch(0, stackIds.length - 1);
 
     const compiled = CompileBlock(GetStatementsTree(code), data, "", 0 /* state */, true, []);
     return "r_{unstack}(s_{tack})=" + SimplifyExpression(compiled, data.useTex, data.strict, data.names.concat("s_tack", ...Object.values(data.stackFunctionMap)), data.simplificationMap, true);
