@@ -184,6 +184,8 @@ Logimat {
                      | MemberExpression "." "length"       -- arrayLength
                      | MemberExpression "." "filter" "(" TemplateIdentifier "=>" (Block | Expression) ")"  -- filter
                      | MemberExpression "." "map" "(" TemplateIdentifier "=>" (Block | Expression) ")"  -- map
+                     | MemberExpression "." "slice" "(" Expression ")" -- sliceLower
+                     | MemberExpression "." "slice" "(" Expression "," Expression ")" -- slice
                      | PrimaryExpression
     
     UnaryExpression = "+" UnaryExpression -- plus
@@ -603,6 +605,12 @@ semantic.addOperation("parse", {
     MemberExpression_map(e, _, _2, _3, varName, _4, block, _5){
         return {type: "a_m", args: [e.parse(), varName.parse(), block.parse()]};
     },
+    MemberExpression_sliceLower(e, _, _2, _3, lower, _4){
+        return {type: "a_sl", args: [e.parse(), lower.parse()]};
+    },
+    MemberExpression_slice(e, _, _2, _3, lower, _4, upper, _5){
+        return {type: "a_s", args: [e.parse(), lower.parse(), upper.parse()]};
+    },
     UnaryExpression_plus(_, e){
         return e.parse();
     },
@@ -919,7 +927,7 @@ export interface ParsedActionArgs {
     args: (string | Expression)[];
 }
 export interface Expression {
-    type: "f" | "sid" | "^" | "*" | "/" | "+" | "-" | "n" | "a_m" | "a_f" | "b" | "v" | "sum" | "prod" | "int" | "div";
+    type: "f" | "sid" | "^" | "*" | "/" | "+" | "-" | "n" | "a_m" | "a_f" | "a_sl" | "a_s" | "b" | "v" | "sum" | "prod" | "int" | "div";
     args: (string | object)[];
 }
 export type Statement = ConstDeclaration | StackvarDeclaration | LetDeclaration | Template | SetVar | IfStatement | FunctionCall | Return | Break | Continue | ContinueLast | Goto | Loop | Debug;

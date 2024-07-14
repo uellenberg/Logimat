@@ -561,6 +561,21 @@ const functions: Record<string, (node: FunctionNode, options: Options, tex: bool
 
         return `\\left[${func}\\operatorname{for}${varName}=${array}\\right]`;
     },
+    array_slice_lower(node, options, tex) {
+        const array = HandleNode(node.args[0], options, tex);
+        const lower = HandleNode(node.args[1], options, tex);
+
+        if(node.args[0].type === "OperatorNode") return `\\left(${array}\\right)\\left[${lower}...\\right]`;
+        return `${array}\\left[${lower}...\\right]`;
+    },
+    array_slice(node, options, tex) {
+        const array = HandleNode(node.args[0], options, tex);
+        const lower = HandleNode(node.args[1], options, tex);
+        const upper = HandleNode(node.args[2], options, tex);
+
+        if(node.args[0].type === "OperatorNode") return `\\left(${array}\\right)\\left[${lower}...${upper}\\right]`;
+        return `${array}\\left[${lower}...${upper}\\right]`;
+    },
     range(node, options, tex) {
         const from = HandleNode(node.args[0], options, tex);
         const to = HandleNode(node.args[1], options, tex);
@@ -692,6 +707,18 @@ const texFunctions: Record<string, (node: FunctionNode, options: Options) => str
     },
     array_map(node, options) {
         return `\\left[${node.args[1].toTex(options)}\\ \\operatorname{for}\\ ${node.args[2].toTex(options)}=${node.args[0].toTex(options)}\\right]`;
+    },
+    array_slice_lower(node, options) {
+        let arr = node.args[0].toTex(options);
+        if(node.args[0].type === "OperatorNode") arr = `\\left(${arr}\\right)`;
+
+        return `${arr}\\left[${node.args[1].toTex(options)}...\\right]`;
+    },
+    array_slice(node, options) {
+        let arr = node.args[0].toTex(options);
+        if(node.args[0].type === "OperatorNode") arr = `\\left(${arr}\\right)`;
+
+        return `${arr}\\left[${node.args[1].toTex(options)}...${node.args[2].toTex(options)}\\right]`;
     },
     range(node, options) {
         return `\\left[${node.args[0].toTex(options)}...${node.args[1].toTex(options)}\\right]`;

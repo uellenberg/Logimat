@@ -2118,6 +2118,10 @@ const CompileExpression = (expression: Expression, data: CompileData, compilerOu
                     }, compilerOutput);
 
             return "array_map(" + args[0] + "," + mapFunc + "," + mapName + ")";
+        case "a_sl":
+            return "array_slice_lower(" + args[0] + "," + args[1] + ")";
+        case "a_s":
+            return "array_slice(" + args[0] + "," + args[1] + "," + args[2] + ")";
     }
 
     return "";
