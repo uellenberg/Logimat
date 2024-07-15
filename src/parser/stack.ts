@@ -61,7 +61,7 @@ export const GetStackSelector = (data: CompileData): string => {
         return `if(s_tack[1] < ${middle}) { ${binarySearch(left, middle - 1)} } else { ${binarySearch(middle, right)} }`;
     };
 
-    const code = binarySearch(0, stackIds.length - 1);
+    const code = "if(s_tack[1] == -1) { s_tack } else {" + binarySearch(0, stackIds.length - 1) + "}";
 
     const compiled = CompileBlock(GetStatementsTree(code), data, "", 0 /* state */, true, []);
     return "r_{unstack}(s_{tack})=" + SimplifyExpression(compiled, data.useTex, data.strict, data.names.concat("s_tack", ...Object.values(data.stackFunctionMap)), data.simplificationMap, true);
