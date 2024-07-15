@@ -72,6 +72,8 @@ export function createExecutionPoint(data: CompileData, nextStateName?: string, 
     const stackIdx = data.stackIdx.value++;
     const stackName = data.parentStackPrefix + "_" + stackIdx;
 
+    data.stackParentLastMap[data.parentStackPrefix] = stackName;
+
     // We need this to have the list of next steps, and so that
     // the function returns to the step after this.
     const nextStepName = data.stackNextStateMap[stackName] ?? (nextStateName ?? (data.parentStackPrefix + "_" + (stackIdx + 1)));
