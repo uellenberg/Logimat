@@ -433,5 +433,6 @@ inline function stack_ret(s_tack) {
 // Sets idx in arr to new_value, returning the new array.
 // This will pad zeros at the end of the array if idx does not exist in it.
 inline function array_set(arr, idx, new_value) {
-    range(1, min(10000, max(arr.length, idx))).map(v => v == idx ? new_value : (arr.length < v ? 0 : arr[v]))
+    // idx == idx is used to ensure that undefined isn't passed to range.
+    range(1, min(10000, max(arr.length, (idx == idx ? idx : 0)))).map(v => v == idx ? new_value : (arr.length < v ? 0 : arr[v]))
 }`;
