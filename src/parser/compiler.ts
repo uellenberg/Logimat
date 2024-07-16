@@ -843,7 +843,7 @@ export const CompileBlock = (input: Statement[], data: CompileData, defaultOut: 
                         throw new Error("Stack variable " + statement["name"] + " cannot be set in a non-stack context!");
                     }
 
-                    let {nextStepNum, stackNum} = createExecutionPoint(data);
+                    let {nextStepNum, stackNum, stackName} = createExecutionPoint(data);
 
                     // There's no reason for us to compile anything if this isn't requested.
                     // The code above is required to run, however.
@@ -2289,6 +2289,7 @@ export interface CompileData {
      * This map is only valid after all children have
      * executed, or before they have except for on
      * the first compile pass.
+     * This should not be modified after the precompile.
      */
     stackParentLastMap: Record<string, string>;
     parentStackPrefix: string;
