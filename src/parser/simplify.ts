@@ -70,7 +70,7 @@ const simplifyRules = (names: string[], stack: boolean) => [
         ...names.filter(name => /^c_all[0-9]+$/.test(name)).map(name => {
             // Remove the c_all prefix.
             const numArgs = Number(name.substring("c_all".length));
-            const args = numArgs == 0 ? "" : "," + Array(numArgs).fill(0).map((_, idx) => "n" + (5 + idx)).join(",");
+            const args = numArgs == 0 ? "" : "," + Array(numArgs).fill(0).map((_, idx) => "n" + (6 + idx)).join(",");
             return `${name}(a_dv(n1,n2),n3,n4,n5${args}) -> ${name}(n1,n3,n4,n5${args})`;
         }),
         "r_et(a_dv(n1,n2)) -> r_et(n1)",
