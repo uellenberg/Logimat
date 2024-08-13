@@ -362,7 +362,7 @@ Logimat {
     string = "\\"" stringCharacter* "\\""
     stringCharacter = ~("\\"" | "\\\\" | lineTerminator) any -- nonEscaped
                     | "\\\\" singleEscapeCharacter          -- escaped
-    singleEscapeCharacter = "\\"" | "\\\\"
+    singleEscapeCharacter = "\\"" | "\\\\" | "n"
 }
 `);
 
@@ -806,7 +806,14 @@ semantic.addOperation("parse", {
         return str.parse();
     },
     stringCharacter_escaped(_, str){
-        return str.parse();
+        const escapeMap = {
+            "\\": "\\",
+            "\"": "\"",
+            "n": "\n",
+        };
+
+        const parsed = str.parse();
+        return escapeMap[parsed] ?? parsed;
     },
     _iter(...children) {
         return children.map(c => c.parse());
