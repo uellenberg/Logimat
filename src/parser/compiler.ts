@@ -1564,10 +1564,7 @@ export const CompileBlock = (input: Statement[], data: CompileData, defaultOut: 
                 // If statements can also create new parent states so we
                 // need to rely on a special parent state holder reserved for
                 // loops.
-                const lastPartIndex = data.loopParentStackPrefix.lastIndexOf("_");
-                const parentLastIdx = Number(data.loopParentStackPrefix.slice(lastPartIndex + 1));
-
-                const afterParentName = data.loopParentStackPrefix.slice(0, lastPartIndex + 1) + (parentLastIdx + 1);
+                const afterParentName = data.stackNextStateMap[data.loopParentStackPrefix];
                 const afterParentStackNum = data.stackStateMap[afterParentName];
 
                 let {stackNum} = createExecutionPoint(data);
@@ -1605,7 +1602,8 @@ export const CompileBlock = (input: Statement[], data: CompileData, defaultOut: 
                             "a_dv",
                             [
                                 {type: "v", args: ["stack"]},
-                                afterParentStackNum.toString()
+                                // Give a dummy value on preCompile because afterParentStackNum may be undefined.
+                                data.preCompile ? "0" : afterParentStackNum.toString(),
                             ],
                         ]
                     }
