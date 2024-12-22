@@ -11,7 +11,12 @@
 inline function nthPrime(n) {
     // First, we should determine an upper bound.
     // These are inclusive bounds.
-    const upper = floor(1.5 * n * ln(n));
+    //
+    // This is from Pierre Dusart's "Estimates of some functions over primes without RH."
+    // at https://arxiv.org/abs/1002.0442
+    // It gives p(n) < en(ln(n))
+    // for n >= 2
+    const upper = ceil(e * n * ln(n));
 
     // Now, we need to calculate the number.
     // We'll do this by counting the number of numbers
