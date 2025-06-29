@@ -409,4 +409,30 @@ inline function unpackInt(packed, digits) {
 }
 
 //Rounds a number to the closest product of another number. For example, roundTo(1.2, .5) will give 1.
-inline function roundTo(num, to) => to * round(num/to);`;
+inline function roundTo(num, to) => to * round(num/to);
+
+inline function stack_adv(s_tack, nextNum) {
+    let new_stack = s_tack;
+
+    // Set the state num to the one specified above.
+    new_stack[1] = nextNum;
+    new_stack
+}
+
+inline function stack_ret(s_tack) {
+    let new_stack = s_tack;
+
+    // The stack looks like [stackNum, stackFramePtr, ..., returnStackNum, returnPtr, ...].
+    // Set the stackNum to the specified return one.
+    new_stack[1] = s_tack[s_tack[2]];
+    // Set the stack frame pointer to the return one.
+    new_stack[2] = s_tack[s_tack[2] + 1];
+    new_stack
+}
+
+// Sets idx in arr to new_value, returning the new array.
+// This will pad zeros at the end of the array if idx does not exist in it.
+inline function array_set(arr, idx, new_value) {
+    // idx == idx is used to ensure that undefined isn't passed to range.
+    range(1, min(10000, max(arr.length, (idx == idx ? idx : 0)))).map(v => v == idx ? new_value : (arr.length < v ? 0 : arr[v]))
+}`;

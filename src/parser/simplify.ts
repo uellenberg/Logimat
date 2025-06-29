@@ -5,19 +5,19 @@ import {builtinMultiArgs, builtinOneArg, builtinThreeArgs, builtinTwoArgs, built
 const math = create(all);
 
 //Disable conflicting functions.
-for(const name of ["range"]) {
+for(const name of ["range", "random"]) {
     if(math.hasOwnProperty(name)) delete math[name];
     if(math["expression"]["transform"].hasOwnProperty(name)) delete math["expression"]["transform"][name];
     if(math["expression"]["mathWithTransform"].hasOwnProperty(name)) delete math["expression"]["mathWithTransform"][name];
 }
 
-export const SimplifyExpression = (input: string, useTex: boolean, strict: boolean, names: string[], map: Record<string, string>) : string => {
+export const SimplifyExpression = (input: string, useTex: boolean, strict: boolean, names: string[], map: Record<string, string>, stack?: boolean) : string => {
     if(map.hasOwnProperty(input)) return map[input];
 
     const newNames = names.concat(builtinNames);
 
     try {
-        const res = math.simplify(input, simplifyRules, {}, {exactFractions: false});
+        const res = math.simplify(input, simplifyRules(names, stack), {}, {exactFractions: false});
         //They say they return a string but they can sometimes return numbers.
         const text = useTex ? res.toTex(getTexOptions(strict, newNames)) : res.toString(getStringOptions(strict, newNames));
         map[input] = text;
@@ -29,7 +29,7 @@ export const SimplifyExpression = (input: string, useTex: boolean, strict: boole
     }
 }
 
-const simplifyRules = [
+const simplifyRules = (names: string[], stack: boolean) => [
     //Or
     "n | 1 -> 1",
     "1 | n -> 1",
@@ -44,6 +44,12 @@ const simplifyRules = [
     "if_func(0,n1,n2) -> n2",
     "if_func(1,n1,n2) -> n1",
     "if_func(n1,1,0) -> n1",
+    "if_func(if_func(n1,0,1) == 0,n2,n3) -> if_func(n1,n2,n3)",
+    "if_func(if_func(n1,0,1),n2,n3) -> if_func(n1,n3,n2)",
+    "if_func(if_func(n1,0,1) == 1,n2,n3) -> if_func(n1,n3,n2)",
+    "if_func(if_func(n1,1,0),n2,n3) -> if_func(n1,n2,n3)",
+    "if_func(n1,if_func(n1,n2,n3),n4) -> if_func(n1,n2,n4)",
+    "if_func(n1,n2,if_func(n1,n3,n4)) -> if_func(n1,n2,n4)",
     //Point
     "point(n1,n2) + point(n3,n4) -> point(n1+n3,n2+n4)",
     "0 * point(n1,n2) -> point(0,0)",
@@ -57,7 +63,26 @@ const simplifyRules = [
     "n1-+n2 -> n1-n2",
     "n1+-n2 -> n1-n2",
     "n1--n2 -> n1+n2",
-    "n1++n2 -> n1+n2"
+    "n1++n2 -> n1+n2",
+    // Stack functions.
+    ...(stack ? [
+        "a_rrset(a_dv(n1,n2),n3,n4) -> a_dv(a_rrset(n1,n3,n4),n2)",
+        ...names.filter(name => /^c_all[0-9]+$/.test(name)).map(name => {
+            // Remove the c_all prefix.
+            const numArgs = Number(name.substring("c_all".length));
+            const args = numArgs == 0 ? "" : "," + Array(numArgs).fill(0).map((_, idx) => "n" + (6 + idx)).join(",");
+            return `${name}(a_dv(n1,n2),n3,n4,n5${args}) -> ${name}(n1,n3,n4,n5${args})`;
+        }),
+        "r_et(a_dv(n1,n2)) -> r_et(n1)",
+        // This forces any accesses to stack[0] to return the original
+        // num.
+        // Programs should never do this, but if for some reason they do,
+        // it is desirable behavior.
+        "array_idx(a_dv(n1,n2),n3) -> array_idx(n1,n3)",
+        "array_idx(a_rrset(n1,n2,n3),n2) -> n3",
+        "if_func(n1,a_dv(if_func(n1,n2,n3),n4),n5) -> if_func(n1,a_dv(n2,n4),n5)",
+        "if_func(n1,a_dv(if_func(n1 == 0,n2,n3),n4),n5) -> if_func(n1,a_dv(n3,n4),n5)"
+    ]: []),
 ].concat(math.simplify["rules"] as string[]);
 
 const HandleFunction = (node: FunctionNode, options: Options, builtIn: boolean = false) : string => {
@@ -152,7 +177,7 @@ const handle = (node: MathNode, options: Options, tex: boolean) : string => {
                 a1 = a1txt;
             } else {
                 a1txt = HandleNode(node.args[0], Object.assign({}, normalOptions), tex);
-                a1 = "\\left\\{" + a1txt + (node.args[0].type !== "OperatorNode" ? "=1" : "") + "\\right\\}";
+                a1 = "\\left\\{" + a1txt + (node.args[0].type !== "OperatorNode" ? "=1" : "") + ",0\\right\\}";
             }
 
             if(node.args[1].type === "OperatorNode" && node.args[1].op === "&") {
@@ -160,7 +185,7 @@ const handle = (node: MathNode, options: Options, tex: boolean) : string => {
                 a2 = a2txt;
             } else {
                 a2txt = HandleNode(node.args[1], Object.assign({}, normalOptions), tex);
-                a2 = "\\left\\{" + a2txt + (node.args[1].type !== "OperatorNode" ? "=1" : "") + "\\right\\}";
+                a2 = "\\left\\{" + a2txt + (node.args[1].type !== "OperatorNode" ? "=1" : "") + ",0\\right\\}";
             }
 
             if(a1txt === "0" || a2txt === "0") {
@@ -366,7 +391,8 @@ const getStringOptions = (strict: boolean, names: string[]) : Options => {
         strict,
         names,
         encaseLogicalOperators: true,
-        secondaryBinary: false
+        secondaryBinary: false,
+        advDisabled: false,
     };
 }
 
@@ -378,7 +404,8 @@ const getTexOptions = (strict: boolean, names: string[]) : Options => {
         strict,
         names,
         encaseLogicalOperators: true,
-        secondaryBinary: false
+        secondaryBinary: false,
+        advDisabled: false,
     };
 }
 
@@ -388,9 +415,10 @@ interface Options {
     names: string[];
     encaseLogicalOperators: boolean;
     secondaryBinary: boolean;
+    advDisabled: boolean;
 }
 
-const simplification: Record<string, (node: FunctionNode, options: object, tex: boolean) => string | null> = {
+const simplification: Record<string, (node: FunctionNode, options: Options, tex: boolean) => string | null> = {
     array_idx(node, options, tex) {
         const handledIndexer = HandleNode(node.args[1], options, tex);
         const indexer = parseInt(handledIndexer);
@@ -439,7 +467,7 @@ const simplification: Record<string, (node: FunctionNode, options: object, tex: 
     }
 };
 
-const functions: Record<string, (node: FunctionNode, options: object, tex: boolean) => string> = {
+const functions: Record<string, (node: FunctionNode, options: Options, tex: boolean) => string> = {
     sum(node, options, tex) {
         const encapsulate = !(node.args[3].type === "FunctionNode" && typeof(node.args[3].fn) === "object" && ["sum", "prod", "int", "div"].includes(node.args[3].fn["name"]));
 
@@ -476,8 +504,17 @@ const functions: Record<string, (node: FunctionNode, options: object, tex: boole
     pi() {
         return "\\pi ";
     },
+    tau() {
+        return "\\tau ";
+    },
     inf() {
         return "\\infty ";
+    },
+    width() {
+        return "\\operatorname{width}";
+    },
+    height() {
+        return "\\operatorname{height}";
     },
     point(node, options, tex) {
         return `\\left(${node.args.map(arg => HandleNode(arg, options, tex)).join(",")}\\right)`;
@@ -502,7 +539,7 @@ const functions: Record<string, (node: FunctionNode, options: object, tex: boole
         const indexer = HandleNode(node.args[1], options, tex);
 
         if(node.args[0].type === "OperatorNode") return `\\left(${array}\\right)\\left[${indexer}\\right]`;
-        return `${array}[${indexer}]`;
+        return `${array}\\left[${indexer}\\right]`;
     },
     array_length(node, options, tex) {
         const array = HandleNode(node.args[0], options, tex);
@@ -523,6 +560,21 @@ const functions: Record<string, (node: FunctionNode, options: object, tex: boole
         const varName = HandleNode(node.args[2], options, tex);
 
         return `\\left[${func}\\operatorname{for}${varName}=${array}\\right]`;
+    },
+    array_slice_lower(node, options, tex) {
+        const array = HandleNode(node.args[0], options, tex);
+        const lower = HandleNode(node.args[1], options, tex);
+
+        if(node.args[0].type === "OperatorNode") return `\\left(${array}\\right)\\left[${lower}...\\right]`;
+        return `${array}\\left[${lower}...\\right]`;
+    },
+    array_slice(node, options, tex) {
+        const array = HandleNode(node.args[0], options, tex);
+        const lower = HandleNode(node.args[1], options, tex);
+        const upper = HandleNode(node.args[2], options, tex);
+
+        if(node.args[0].type === "OperatorNode") return `\\left(${array}\\right)\\left[${lower}...${upper}\\right]`;
+        return `${array}\\left[${lower}...${upper}\\right]`;
     },
     range(node, options, tex) {
         const from = HandleNode(node.args[0], options, tex);
@@ -562,15 +614,55 @@ const functions: Record<string, (node: FunctionNode, options: object, tex: boole
 
         return `\\left\\{${cond + (node.args[0].type !== "OperatorNode" ? "=1" : "")}${ifVal !== "1" ? `:${ifVal}` : ""},${elseVal}\\right\\}`;
     },
+    if_func_no_else(node, options: Options, tex) {
+        const nonEnclosedOptions = Object.assign({}, options);
+        nonEnclosedOptions.encaseLogicalOperators = false;
+
+        const cond = HandleNode(node.args[0], nonEnclosedOptions, tex);
+        const ifVal = HandleNode(node.args[1], options, tex);
+
+        if(cond === "1") return ifVal;
+
+        return `\\left\\{${cond + (node.args[0].type !== "OperatorNode" ? "=1" : "")}${ifVal !== "1" ? `:${ifVal}` : ""}\\right\\}`;
+    },
+    action(node, options: Options, tex) {
+        const name = HandleNode(node.args[0], options, tex);
+        const body = HandleNode(node.args[1], options, tex);
+
+        return `${name}\\to ${body}`;
+    },
     log_base(node, options: Options, tex) {
         const base = HandleNode(node.args[0], options, tex);
         const value = HandleNode(node.args[1], options, tex);
 
         return `\\log_{${base}}(${value})`;
-    }
+    },
+    a_dv(node, options, tex) {
+        if(options.advDisabled) {
+            return HandleNode(node.args[0], options, tex);
+        }
+
+        options.advDisabled = true;
+        const result = "a_{dv}\\left(" + HandleNode(node.args[0], options, tex) + "," + HandleNode(node.args[1], options, tex) + "\\right)";
+        options.advDisabled = false;
+
+        return result;
+    },
+    r_et(node, options, tex) {
+        if(options.advDisabled) {
+            return HandleNode(node.args[0], options, tex);
+        }
+
+        options.advDisabled = true;
+        const result = "r_{et}\\left(" + HandleNode(node.args[0], options, tex) + "\\right)";
+        options.advDisabled = false;
+
+        return result;
+    },
+    // TODO: Implement the above for call.
 };
 
-const texFunctions: Record<string, (node: FunctionNode, options: object) => string> = {
+const texFunctions: Record<string, (node: FunctionNode, options: Options) => string> = {
     sum(node, options) {
         return `{\\sum_{${node.args[0].toTex(options)}=${node.args[1].toTex(options)}}^{${node.args[2].toTex(options)}}{\\left(${node.args[3].toTex(options)}\\right)}}`;
     },
@@ -603,7 +695,7 @@ const texFunctions: Record<string, (node: FunctionNode, options: object) => stri
     },
     array_idx(node, options) {
         let arr = node.args[0].toTex(options);
-        if(node.args[0].type === "OperatorNode") arr = `(${arr})`;
+        if(node.args[0].type === "OperatorNode") arr = `\\left(${arr}\\right)`;
 
         return `${arr}\\left[${node.args[1].toTex(options)}\\right]`;
     },
@@ -615,6 +707,18 @@ const texFunctions: Record<string, (node: FunctionNode, options: object) => stri
     },
     array_map(node, options) {
         return `\\left[${node.args[1].toTex(options)}\\ \\operatorname{for}\\ ${node.args[2].toTex(options)}=${node.args[0].toTex(options)}\\right]`;
+    },
+    array_slice_lower(node, options) {
+        let arr = node.args[0].toTex(options);
+        if(node.args[0].type === "OperatorNode") arr = `\\left(${arr}\\right)`;
+
+        return `${arr}\\left[${node.args[1].toTex(options)}...\\right]`;
+    },
+    array_slice(node, options) {
+        let arr = node.args[0].toTex(options);
+        if(node.args[0].type === "OperatorNode") arr = `\\left(${arr}\\right)`;
+
+        return `${arr}\\left[${node.args[1].toTex(options)}...${node.args[2].toTex(options)}\\right]`;
     },
     range(node, options) {
         return `\\left[${node.args[0].toTex(options)}...${node.args[1].toTex(options)}\\right]`;

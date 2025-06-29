@@ -47,7 +47,8 @@ export const builtinOneArg = [
     "tscore",
     "sort",
     "shuffle",
-    "random"
+    "random",
+    "unique"
 ];
 
 export const builtinTwoArgs = [
@@ -89,5 +90,7 @@ export const constants = [
     "tau",
     "infinity",
     "infty",
-    "inf"
+    "inf",
+    "width",
+    "height"
 ];
